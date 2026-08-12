@@ -162,6 +162,96 @@ const registrarPracticante = async (req, res) => {
     }
 };
 
+
+// ==========================================
+// LOGIN DE USUARIO
+// ==========================================
+
+const login = async (req, res) => {
+    try {
+        const { correo, password } = req.body;
+
+        // Validar campos obligatorios
+        if (!correo || !password) {
+            return res.status(400).json({
+                mensaje: "Correo y contraseña son obligatorios"
+            });
+        }
+
+        // Buscar usuario por correo
+        const sql = `
+            SELECT
+                id_usuario,
+                nombre,
+                apellido_paterno,
+                apellido_materno,
+                correo,
+                password_hash,
+                id_rol
+            FROM usuarios
+            WHERE correo = ?
+        `;
+
+        db.query(sql, [correo], async (error, resultados) => {
+            if (error) {
+                console.error(error);
+
+                return res.status(500).json({
+                    mensaje: "Error al consultar la base de datos"
+                });
+            }
+
+            // Usuario no encontrado
+            if (resultados.length === 0) {
+                return res.status(401).json({
+                    mensaje: "Correo o contraseña incorrectos"
+                });
+            }
+
+            const usuario = resultados[0];
+
+            // Comparar contraseña con el hash almacenado
+            const passwordCorrecta = await bcrypt.compare(
+                password,
+                usuario.password_hash
+            );
+
+            // Contraseña incorrecta
+            if (!passwordCorrecta) {
+                return res.status(401).json({
+                    mensaje: "Correo o contraseña incorrectos"
+                });
+            }
+
+            // Login correcto
+            return res.status(200).json({
+                mensaje: "Inicio de sesión exitoso",
+                usuario: {
+                    id_usuario: usuario.id_usuario,
+                    nombre: usuario.nombre,
+                    apellido_paterno: usuario.apellido_paterno,
+                    apellido_materno: usuario.apellido_materno,
+                    correo: usuario.correo,
+                    id_rol: usuario.id_rol
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            mensaje: "Error interno del servidor"
+        });
+    }
+};
+
+
+// ==========================================
+// EXPORTAR FUNCIONES
+// ==========================================
+
 module.exports = {
-    registrarPracticante
+    registrarPracticante,
+    login
 };
