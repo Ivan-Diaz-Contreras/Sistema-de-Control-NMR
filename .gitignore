@@ -1,5 +1,8 @@
 node_modules/
 .env
+
 uploads/
 backend/uploads/
-otra-regla-de-samuel/
+
+# Respaldos locales de la base de datos
+database/*_backup.sql
