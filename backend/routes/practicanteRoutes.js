@@ -7,19 +7,43 @@ const {
     obtenerPerfil,
     registrarHoras,
     obtenerAvance,
-    obtenerHoras
+    obtenerHoras,
+    actualizarPerfil
 } = require("../controllers/practicanteController");
 
 // Obtener perfil
-router.get("/perfil", verificarToken, obtenerPerfil);
+router.get(
+    "/perfil",
+    verificarToken,
+    obtenerPerfil
+);
+
+// Actualizar perfil
+router.put(
+    "/perfil",
+    verificarToken,
+    actualizarPerfil
+);
 
 // Registrar horas
-router.post("/horas", verificarToken, registrarHoras);
+router.post(
+    "/horas",
+    verificarToken,
+    registrarHoras
+);
 
 // Consultar registros de horas
-router.get("/horas", verificarToken, obtenerHoras);
+router.get(
+    "/horas",
+    verificarToken,
+    obtenerHoras
+);
 
 // Consultar avance
-router.get("/avance", verificarToken, obtenerAvance);
+router.get(
+    "/avance",
+    verificarToken,
+    obtenerAvance
+);
 
 module.exports = router;

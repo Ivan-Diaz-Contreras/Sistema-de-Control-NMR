@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const registrarActividad = require("../utils/registrarActividad");
 
 // ==========================================
 // REGISTRAR ENTRADA
@@ -10,7 +11,6 @@ const registrarEntrada = (req, res) => {
     const ahora = new Date();
 
     const fechaActual = ahora.toISOString().split("T")[0];
-
     const horaActual = ahora.toTimeString().split(" ")[0];
 
     const dias = [
@@ -158,6 +158,12 @@ const registrarEntrada = (req, res) => {
                                         });
                                     }
 
+                                    registrarActividad(
+                                        idUsuario,
+                                        "REGISTRAR_ENTRADA",
+                                        `El practicante registró su entrada el ${fechaActual} a las ${horaActual} con estado: ${estado}`
+                                    );
+
                                     return res.status(201).json({
                                         mensaje:
                                             "Entrada registrada correctamente",
@@ -294,6 +300,12 @@ const registrarSalida = (req, res) => {
                                 });
                             }
 
+                            registrarActividad(
+                                idUsuario,
+                                "REGISTRAR_SALIDA",
+                                `El practicante registró su salida el ${fechaActual} a las ${horaActual}`
+                            );
+
                             return res.status(200).json({
                                 mensaje:
                                     "Salida registrada correctamente",
@@ -311,7 +323,6 @@ const registrarSalida = (req, res) => {
         }
     );
 };
-
 
 // ==========================================
 // OBTENER HORARIO DEL PRACTICANTE
@@ -396,7 +407,8 @@ const obtenerHistorial = (req, res) => {
             );
 
             return res.status(500).json({
-                mensaje: "Error al consultar el historial de asistencias"
+                mensaje:
+                    "Error al consultar el historial de asistencias"
             });
         }
 
