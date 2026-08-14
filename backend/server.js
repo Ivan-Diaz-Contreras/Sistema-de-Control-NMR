@@ -16,6 +16,9 @@ const asistenciaRoutes = require("./routes/asistenciaRoutes");
 //Ruta de administrador
 const adminRoutes = require("./routes/adminRoutes");
 
+//Ruta de bitacoras
+const bitacoraRoutes = require("./routes/bitacoraRoutes");
+
 // Middlewares
 app.use(cors());
 app.use(express.json());
@@ -54,3 +57,8 @@ app.get("/db-test", (req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor funcionando en http://localhost:${PORT}`);
 });
+
+app.use(
+    "/api/practicantes/bitacoras",
+    bitacoraRoutes
+);

@@ -639,6 +639,42 @@ const actualizarRegistroHoras = (req, res) => {
     );
 };
 
+// ==========================================
+// ELIMINAR REGISTRO DE HORAS
+// ==========================================
+
+const eliminarRegistroHoras = (req, res) => {
+    const { id } = req.params;
+
+    const sql = `
+        DELETE FROM registros_horas
+        WHERE id_registro = ?
+    `;
+
+    db.query(sql, [id], (error, resultado) => {
+        if (error) {
+            console.error(
+                "Error eliminando registro de horas:",
+                error
+            );
+
+            return res.status(500).json({
+                mensaje: "Error al eliminar el registro de horas"
+            });
+        }
+
+        if (resultado.affectedRows === 0) {
+            return res.status(404).json({
+                mensaje: "Registro de horas no encontrado"
+            });
+        }
+
+        return res.status(200).json({
+            mensaje: "Registro de horas eliminado correctamente"
+        });
+    });
+};
+
 module.exports = {
     obtenerPracticantes,
     obtenerPracticantePorId,
@@ -648,5 +684,6 @@ module.exports = {
     crearHorarioPracticante,
     actualizarHorario,
     obtenerHorasPracticante,
-    actualizarRegistroHoras
+    actualizarRegistroHoras,
+    eliminarRegistroHoras
 };

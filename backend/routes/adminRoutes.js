@@ -13,7 +13,8 @@ const {
     crearHorarioPracticante,
     actualizarHorario,
     obtenerHorasPracticante,
-    actualizarRegistroHoras
+    actualizarRegistroHoras,
+    eliminarRegistroHoras
 } = require("../controllers/adminController");
 
 // Consultar todos los practicantes
@@ -86,6 +87,14 @@ router.put(
     verificarToken,
     verificarAdmin,
     actualizarRegistroHoras
+);
+
+// Eliminar un registro de horas
+router.delete(
+    "/horas/:id",
+    verificarToken,
+    verificarAdmin,
+    eliminarRegistroHoras
 );
 
 module.exports = router;
