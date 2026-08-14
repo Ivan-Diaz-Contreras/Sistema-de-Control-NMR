@@ -14,8 +14,21 @@ const {
     actualizarHorario,
     obtenerHorasPracticante,
     actualizarRegistroHoras,
-    eliminarRegistroHoras
+    eliminarRegistroHoras,
+    obtenerBitacorasPracticante,
+    revisarBitacora,
+    obtenerArchivoBitacoraAdmin,
+    obtenerCarreras,
+    crearCarrera,
+    actualizarCarrera,
+    obtenerEstadisticas,
+    obtenerHistorialActividades
 } = require("../controllers/adminController");
+
+
+// ==========================================
+// PRACTICANTES
+// ==========================================
 
 // Consultar todos los practicantes
 router.get(
@@ -25,6 +38,7 @@ router.get(
     obtenerPracticantes
 );
 
+
 // Consultar un practicante por ID
 router.get(
     "/practicantes/:id",
@@ -32,6 +46,7 @@ router.get(
     verificarAdmin,
     obtenerPracticantePorId
 );
+
 
 // Consultar horario de un practicante
 router.get(
@@ -41,6 +56,7 @@ router.get(
     obtenerHorarioPracticante
 );
 
+
 // Consultar asistencias de un practicante
 router.get(
     "/practicantes/:id/asistencias",
@@ -48,6 +64,7 @@ router.get(
     verificarAdmin,
     obtenerAsistenciasPracticante
 );
+
 
 // Consultar registros de horas de un practicante
 router.get(
@@ -57,6 +74,11 @@ router.get(
     obtenerHorasPracticante
 );
 
+
+// ==========================================
+// ASISTENCIAS
+// ==========================================
+
 // Actualizar una asistencia
 router.put(
     "/asistencias/:id",
@@ -64,6 +86,11 @@ router.put(
     verificarAdmin,
     actualizarAsistencia
 );
+
+
+// ==========================================
+// HORARIOS
+// ==========================================
 
 // Crear horario para un practicante
 router.post(
@@ -73,6 +100,7 @@ router.post(
     crearHorarioPracticante
 );
 
+
 // Actualizar un horario
 router.put(
     "/horarios/:id",
@@ -80,6 +108,11 @@ router.put(
     verificarAdmin,
     actualizarHorario
 );
+
+
+// ==========================================
+// HORAS
+// ==========================================
 
 // Actualizar un registro de horas
 router.put(
@@ -89,6 +122,7 @@ router.put(
     actualizarRegistroHoras
 );
 
+
 // Eliminar un registro de horas
 router.delete(
     "/horas/:id",
@@ -96,5 +130,94 @@ router.delete(
     verificarAdmin,
     eliminarRegistroHoras
 );
+
+
+// ==========================================
+// BITÁCORAS
+// ==========================================
+
+// Consultar bitácoras de un practicante
+router.get(
+    "/practicantes/:id/bitacoras",
+    verificarToken,
+    verificarAdmin,
+    obtenerBitacorasPracticante
+);
+
+
+// Aprobar o rechazar una bitácora
+router.put(
+    "/bitacoras/:id/revision",
+    verificarToken,
+    verificarAdmin,
+    revisarBitacora
+);
+
+
+// Visualizar PDF de una bitácora
+router.get(
+    "/bitacoras/:id/archivo",
+    verificarToken,
+    verificarAdmin,
+    obtenerArchivoBitacoraAdmin
+);
+
+
+// ==========================================
+// CARRERAS
+// ==========================================
+
+// Consultar todas las carreras
+router.get(
+    "/carreras",
+    verificarToken,
+    verificarAdmin,
+    obtenerCarreras
+);
+
+
+// Crear una carrera
+router.post(
+    "/carreras",
+    verificarToken,
+    verificarAdmin,
+    crearCarrera
+);
+
+
+// Actualizar, activar o desactivar una carrera
+router.put(
+    "/carreras/:id",
+    verificarToken,
+    verificarAdmin,
+    actualizarCarrera
+);
+
+
+// ==========================================
+// ESTADÍSTICAS
+// ==========================================
+
+// Consultar estadísticas generales
+router.get(
+    "/estadisticas",
+    verificarToken,
+    verificarAdmin,
+    obtenerEstadisticas
+);
+
+
+// ==========================================
+// HISTORIAL DE ACTIVIDADES
+// ==========================================
+
+// Consultar historial de actividades
+router.get(
+    "/historial",
+    verificarToken,
+    verificarAdmin,
+    obtenerHistorialActividades
+);
+
 
 module.exports = router;

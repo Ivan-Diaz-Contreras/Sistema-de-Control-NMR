@@ -1,4 +1,7 @@
 const db = require("../config/db");
+const path = require("path");
+const fs = require("fs");
+const registrarActividad = require("../utils/registrarActividad");
 
 // ==========================================
 // OBTENER TODOS LOS PRACTICANTES
@@ -232,13 +235,14 @@ const obtenerAsistenciasPracticante = (req, res) => {
 
 const actualizarAsistencia = (req, res) => {
     const { id } = req.params;
+    const idUsuario = req.usuario.id_usuario;
 
     const {
         hora_entrada_real,
         hora_salida_real,
         estado,
         observaciones
-    } = req.body;
+    } = req.body || {};
 
     const estadosPermitidos = [
         "Pendiente",
@@ -289,6 +293,12 @@ const actualizarAsistencia = (req, res) => {
                     mensaje: "Asistencia no encontrada"
                 });
             }
+            
+            registrarActividad(
+                idUsuario,
+                "ACTUALIZAR_ASISTENCIA",
+                `El administrador actualizó la asistencia ${id}`
+            );
 
             return res.status(200).json({
                 mensaje: "Asistencia actualizada correctamente"
@@ -303,6 +313,7 @@ const actualizarAsistencia = (req, res) => {
 
 const crearHorarioPracticante = (req, res) => {
     const { id } = req.params;
+    const idUsuario = req.usuario.id_usuario;
 
     const {
         dia_semana,
@@ -398,6 +409,12 @@ const crearHorarioPracticante = (req, res) => {
                         mensaje: "Error al crear el horario"
                     });
                 }
+                
+                registrarActividad(
+                 idUsuario,
+                "CREAR_HORARIO",
+                `El administrador creó un horario para el practicante ${id}: ${dia_semana} de ${hora_entrada} a ${hora_salida}`
+                );
 
                 return res.status(201).json({
                     mensaje: "Horario creado correctamente",
@@ -415,6 +432,7 @@ const crearHorarioPracticante = (req, res) => {
 
 const actualizarHorario = (req, res) => {
     const { id } = req.params;
+    const idUsuario = req.usuario.id_usuario;
 
     const {
         dia_semana,
@@ -507,6 +525,12 @@ const actualizarHorario = (req, res) => {
                 });
             }
 
+            registrarActividad(
+                idUsuario,
+                "ACTUALIZAR_HORARIO",
+                `El administrador actualizó el horario ${id}`
+            );
+
             return res.status(200).json({
                 mensaje: "Horario actualizado correctamente"
             });
@@ -570,6 +594,7 @@ const obtenerHorasPracticante = (req, res) => {
 
 const actualizarRegistroHoras = (req, res) => {
     const { id } = req.params;
+    const idUsuario = req.usuario.id_usuario;
 
     const {
         fecha,
@@ -632,6 +657,12 @@ const actualizarRegistroHoras = (req, res) => {
                 });
             }
 
+            registrarActividad(
+                idUsuario,
+                "ACTUALIZAR_HORAS",
+                `El administrador actualizó el registro de horas ${id}`
+            );
+
             return res.status(200).json({
                 mensaje: "Registro de horas actualizado correctamente"
             });
@@ -645,6 +676,7 @@ const actualizarRegistroHoras = (req, res) => {
 
 const eliminarRegistroHoras = (req, res) => {
     const { id } = req.params;
+    const idUsuario = req.usuario.id_usuario;
 
     const sql = `
         DELETE FROM registros_horas
@@ -669,8 +701,561 @@ const eliminarRegistroHoras = (req, res) => {
             });
         }
 
+        registrarActividad(
+            idUsuario,
+            "ELIMINAR_HORAS",
+            `El administrador eliminó el registro de horas ${id}`
+        );
+
         return res.status(200).json({
             mensaje: "Registro de horas eliminado correctamente"
+        });
+    });
+};
+
+// ==========================================
+// OBTENER BITÁCORAS DE UN PRACTICANTE
+// ==========================================
+
+const obtenerBitacorasPracticante = (req, res) => {
+    const { id } = req.params;
+
+    const sql = `
+        SELECT
+            b.id_bitacora,
+            b.numero_semana,
+            b.fecha_inicio,
+            b.fecha_fin,
+            b.nombre_archivo,
+            b.ruta_archivo,
+            b.estado,
+            b.observaciones,
+            b.fecha_envio,
+            b.fecha_revision
+        FROM bitacoras b
+        WHERE b.id_practicante = ?
+        ORDER BY b.fecha_envio DESC, b.id_bitacora DESC
+    `;
+
+    db.query(sql, [id], (error, resultados) => {
+        if (error) {
+            console.error(
+                "Error obteniendo bitácoras del practicante:",
+                error
+            );
+
+            return res.status(500).json({
+                mensaje: "Error al consultar las bitácoras"
+            });
+        }
+
+        const bitacoras = resultados.map((bitacora) => ({
+        ...bitacora,
+        url_archivo:
+        `/api/admin/bitacoras/${bitacora.id_bitacora}/archivo`
+        }));
+
+        return res.status(200).json({
+            id_practicante: Number(id),
+            total_bitacoras: bitacoras.length,
+            bitacoras
+        });
+    });
+};
+
+// ==========================================
+// REVISAR BITÁCORA
+// ==========================================
+
+const revisarBitacora = (req, res) => {
+    const { id } = req.params;
+    const idUsuario = req.usuario.id_usuario;
+
+    const {
+        estado,
+        observaciones
+    } = req.body || {};
+
+    const estadosPermitidos = [
+        "Aprobada",
+        "Rechazada"
+    ];
+
+    if (!estado) {
+        return res.status(400).json({
+            mensaje: "El estado es obligatorio"
+        });
+    }
+
+    if (!estadosPermitidos.includes(estado)) {
+        return res.status(400).json({
+            mensaje: "El estado debe ser Aprobada o Rechazada"
+        });
+    }
+
+    if (
+        estado === "Rechazada" &&
+        (!observaciones || !observaciones.trim())
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "Debes indicar una observación al rechazar una bitácora"
+        });
+    }
+
+    const sql = `
+        UPDATE bitacoras
+        SET
+            estado = ?,
+            observaciones = ?,
+            fecha_revision = NOW()
+        WHERE id_bitacora = ?
+    `;
+
+    db.query(
+        sql,
+        [
+            estado,
+            observaciones?.trim() || null,
+            id
+        ],
+        (error, resultado) => {
+            if (error) {
+                console.error(
+                    "Error revisando bitácora:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje: "Error al revisar la bitácora"
+                });
+            }
+
+            if (resultado.affectedRows === 0) {
+                return res.status(404).json({
+                    mensaje: "Bitácora no encontrada"
+                });
+            }
+
+            const accionRevision =
+    estado === "Aprobada"
+        ? "aprobó"
+        : "rechazó";
+
+            let descripcionActividad =
+                `El administrador ${accionRevision} la bitácora ${id}`;
+            if (
+                estado === "Rechazada" &&
+                observaciones?.trim()
+            ) {
+                descripcionActividad +=
+                    `. Observaciones: ${observaciones.trim()}`;
+            }
+
+            registrarActividad(
+                idUsuario,
+                "REVISAR_BITACORA",
+                descripcionActividad
+            );
+
+            return res.status(200).json({
+                mensaje:
+                    `Bitácora ${estado.toLowerCase()} correctamente`
+            });
+        }
+    );
+};
+
+// ==========================================
+// OBTENER ARCHIVO PDF DE UNA BITÁCORA
+// ADMINISTRADOR
+// ==========================================
+
+const obtenerArchivoBitacoraAdmin = (req, res) => {
+    const { id } = req.params;
+
+    const sql = `
+        SELECT
+            ruta_archivo,
+            nombre_archivo
+        FROM bitacoras
+        WHERE id_bitacora = ?
+    `;
+
+    db.query(sql, [id], (error, resultados) => {
+        if (error) {
+            console.error(
+                "Error consultando archivo de bitácora:",
+                error
+            );
+
+            return res.status(500).json({
+                mensaje: "Error al consultar la bitácora"
+            });
+        }
+
+        if (resultados.length === 0) {
+            return res.status(404).json({
+                mensaje: "Bitácora no encontrada"
+            });
+        }
+
+        const bitacora = resultados[0];
+
+        const rutaCompleta = path.join(
+            __dirname,
+            "../uploads/bitacoras",
+            bitacora.ruta_archivo
+        );
+
+        if (!fs.existsSync(rutaCompleta)) {
+            return res.status(404).json({
+                mensaje: "Archivo PDF no encontrado"
+            });
+        }
+
+        res.setHeader(
+            "Content-Type",
+            "application/pdf"
+        );
+
+        res.setHeader(
+            "Content-Disposition",
+            `inline; filename="${bitacora.nombre_archivo}"`
+        );
+
+        return res.sendFile(rutaCompleta);
+    });
+};
+
+// ==========================================
+// OBTENER CARRERAS
+// ==========================================
+
+const obtenerCarreras = (req, res) => {
+    const sql = `
+        SELECT
+            id_carrera,
+            nombre,
+            descripcion,
+            activa,
+            fecha_creacion
+        FROM carreras
+        ORDER BY nombre ASC
+    `;
+
+    db.query(sql, (error, resultados) => {
+        if (error) {
+            console.error(
+                "Error obteniendo carreras:",
+                error
+            );
+
+            return res.status(500).json({
+                mensaje: "Error al consultar las carreras"
+            });
+        }
+
+        return res.status(200).json({
+            total_carreras: resultados.length,
+            carreras: resultados
+        });
+    });
+};
+
+
+// ==========================================
+// CREAR CARRERA
+// ==========================================
+
+const crearCarrera = (req, res) => {
+    const idUsuario = req.usuario.id_usuario;
+
+    const {
+        nombre,
+        descripcion
+    } = req.body || {};
+
+    if (!nombre || !nombre.trim()) {
+        return res.status(400).json({
+            mensaje: "El nombre de la carrera es obligatorio"
+        });
+    }
+
+    const sql = `
+        INSERT INTO carreras (
+            nombre,
+            descripcion
+        )
+        VALUES (?, ?)
+    `;
+
+    db.query(
+        sql,
+        [
+            nombre.trim(),
+            descripcion?.trim() || null
+        ],
+        (error, resultado) => {
+            if (error) {
+                // Nombre duplicado
+                if (error.code === "ER_DUP_ENTRY") {
+                    return res.status(409).json({
+                        mensaje: "Ya existe una carrera con ese nombre"
+                    });
+                }
+
+                console.error(
+                    "Error creando carrera:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje: "Error al crear la carrera"
+                });
+            }
+
+            registrarActividad(
+                idUsuario,
+                "CREAR_CARRERA",
+                `El administrador creó la carrera "${nombre.trim()}"`
+            );
+
+            return res.status(201).json({
+                mensaje: "Carrera creada correctamente",
+                id_carrera: resultado.insertId
+            });
+        }
+    );
+};
+
+
+// ==========================================
+// ACTUALIZAR CARRERA
+// ==========================================
+
+const actualizarCarrera = (req, res) => {
+    const { id } = req.params;
+    const idUsuario = req.usuario.id_usuario;
+
+    const {
+        nombre,
+        descripcion,
+        activa
+    } = req.body || {};
+
+    if (
+        nombre === undefined &&
+        descripcion === undefined &&
+        activa === undefined
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "Debes proporcionar al menos un dato para actualizar"
+        });
+    }
+
+    if (
+        nombre !== undefined &&
+        !nombre.trim()
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "El nombre de la carrera no puede estar vacío"
+        });
+    }
+
+    if (
+        activa !== undefined &&
+        activa !== 0 &&
+        activa !== 1 &&
+        activa !== false &&
+        activa !== true
+    ) {
+        return res.status(400).json({
+            mensaje: "El campo activa debe ser 1 o 0"
+        });
+    }
+
+    const sql = `
+        UPDATE carreras
+        SET
+            nombre = COALESCE(?, nombre),
+            descripcion = COALESCE(?, descripcion),
+            activa = COALESCE(?, activa)
+        WHERE id_carrera = ?
+    `;
+
+    db.query(
+        sql,
+        [
+            nombre !== undefined
+                ? nombre.trim()
+                : null,
+
+            descripcion !== undefined
+                ? descripcion.trim()
+                : null,
+
+            activa !== undefined
+                ? Number(activa)
+                : null,
+
+            id
+        ],
+        (error, resultado) => {
+            if (error) {
+                if (error.code === "ER_DUP_ENTRY") {
+                    return res.status(409).json({
+                        mensaje:
+                            "Ya existe una carrera con ese nombre"
+                    });
+                }
+
+                console.error(
+                    "Error actualizando carrera:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al actualizar la carrera"
+                });
+            }
+
+            if (resultado.affectedRows === 0) {
+                return res.status(404).json({
+                    mensaje: "Carrera no encontrada"
+                });
+            }
+
+            registrarActividad(
+                idUsuario,
+                "ACTUALIZAR_CARRERA",
+                `El administrador actualizó la carrera ${id}`
+            );
+
+            return res.status(200).json({
+                mensaje:
+                    "Carrera actualizada correctamente"
+            });
+        }
+    );
+};
+
+// ==========================================
+// OBTENER ESTADÍSTICAS GENERALES
+// ==========================================
+
+const obtenerEstadisticas = (req, res) => {
+    const sql = `
+        SELECT
+            (SELECT COUNT(*)
+             FROM practicantes) AS total_practicantes,
+
+            (SELECT COUNT(*)
+             FROM practicantes
+             WHERE fecha_fin IS NULL
+                OR fecha_fin >= CURDATE()
+            ) AS practicantes_activos,
+
+            (SELECT COALESCE(SUM(horas), 0)
+             FROM registros_horas
+            ) AS total_horas_registradas,
+
+            (SELECT COUNT(*)
+             FROM bitacoras
+             WHERE estado = 'Pendiente'
+            ) AS bitacoras_pendientes,
+
+            (SELECT COUNT(*)
+             FROM bitacoras
+             WHERE estado = 'Aprobada'
+            ) AS bitacoras_aprobadas,
+
+            (SELECT COUNT(*)
+             FROM bitacoras
+             WHERE estado = 'Rechazada'
+            ) AS bitacoras_rechazadas
+    `;
+
+    db.query(sql, (error, resultados) => {
+        if (error) {
+            console.error(
+                "Error obteniendo estadísticas:",
+                error
+            );
+
+            return res.status(500).json({
+                mensaje: "Error al consultar las estadísticas"
+            });
+        }
+
+        const datos = resultados[0];
+
+        return res.status(200).json({
+            total_practicantes:
+                Number(datos.total_practicantes),
+
+            practicantes_activos:
+                Number(datos.practicantes_activos),
+
+            total_horas_registradas:
+                Number(datos.total_horas_registradas),
+
+            bitacoras_pendientes:
+                Number(datos.bitacoras_pendientes),
+
+            bitacoras_aprobadas:
+                Number(datos.bitacoras_aprobadas),
+
+            bitacoras_rechazadas:
+                Number(datos.bitacoras_rechazadas)
+        });
+    });
+};
+
+// ==========================================
+// OBTENER HISTORIAL DE ACTIVIDADES
+// ==========================================
+
+const obtenerHistorialActividades = (req, res) => {
+    const sql = `
+        SELECT
+            h.id_historial,
+            h.id_usuario,
+            CONCAT_WS(
+                ' ',
+                u.nombre,
+                u.apellido_paterno,
+                u.apellido_materno
+            ) AS nombre_usuario,
+            u.correo,
+            h.accion,
+            h.descripcion,
+            h.fecha
+        FROM historial_actividades h
+        LEFT JOIN usuarios u
+            ON h.id_usuario = u.id_usuario
+        ORDER BY h.fecha DESC, h.id_historial DESC
+    `;
+
+    db.query(sql, (error, resultados) => {
+        if (error) {
+            console.error(
+                "Error obteniendo historial de actividades:",
+                error
+            );
+
+            return res.status(500).json({
+                mensaje:
+                    "Error al consultar el historial de actividades"
+            });
+        }
+
+        return res.status(200).json({
+            total_actividades: resultados.length,
+            actividades: resultados
         });
     });
 };
@@ -685,5 +1270,19 @@ module.exports = {
     actualizarHorario,
     obtenerHorasPracticante,
     actualizarRegistroHoras,
-    eliminarRegistroHoras
+    eliminarRegistroHoras,
+    obtenerBitacorasPracticante,
+    revisarBitacora,
+    obtenerArchivoBitacoraAdmin,
+
+    // Carreras
+    obtenerCarreras,
+    crearCarrera,
+    actualizarCarrera,
+
+    // Estadísticas
+obtenerEstadisticas,
+
+// Historial de actividades
+obtenerHistorialActividades
 };

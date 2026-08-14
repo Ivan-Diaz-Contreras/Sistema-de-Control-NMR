@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const registrarActividad = require("../utils/registrarActividad");
 
 const obtenerPerfil = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
@@ -118,10 +119,16 @@ const registrarHoras = (req, res) => {
                         });
                     }
 
-                    return res.status(201).json({
-                        mensaje: "Horas registradas correctamente",
-                        id_registro: resultado.insertId
-                    });
+                    registrarActividad(
+             idUsuario,
+            "REGISTRAR_HORAS",
+            `El practicante registró ${cantidadHoras} horas correspondientes al día ${fecha}`
+            );
+
+                return res.status(201).json({
+                mensaje: "Horas registradas correctamente",
+                 id_registro: resultado.insertId
+            });
                 }
             );
         }
@@ -227,9 +234,130 @@ const obtenerHoras = (req, res) => {
     });
 };
 
+// ==========================================
+// ACTUALIZAR PERFIL DEL PRACTICANTE
+// ==========================================
+
+const actualizarPerfil = (req, res) => {
+    const idUsuario = req.usuario.id_usuario;
+
+    const {
+        nombre,
+        apellido_paterno,
+        apellido_materno,
+        telefono,
+        universidad,
+        matricula,
+        id_carrera,
+        fecha_inicio,
+        fecha_fin
+    } = req.body || {};
+
+    if (
+        nombre === undefined &&
+        apellido_paterno === undefined &&
+        apellido_materno === undefined &&
+        telefono === undefined &&
+        universidad === undefined &&
+        matricula === undefined &&
+        id_carrera === undefined &&
+        fecha_inicio === undefined &&
+        fecha_fin === undefined
+    ) {
+        return res.status(400).json({
+            mensaje: "Debes proporcionar al menos un dato para actualizar"
+        });
+    }
+
+    const sqlUsuario = `
+        UPDATE usuarios
+        SET
+            nombre = COALESCE(?, nombre),
+            apellido_paterno = COALESCE(?, apellido_paterno),
+            apellido_materno = COALESCE(?, apellido_materno)
+        WHERE id_usuario = ?
+    `;
+
+    db.query(
+        sqlUsuario,
+        [
+            nombre ?? null,
+            apellido_paterno ?? null,
+            apellido_materno ?? null,
+            idUsuario
+        ],
+        (errorUsuario) => {
+            if (errorUsuario) {
+                console.error(
+                    "Error actualizando usuario:",
+                    errorUsuario
+                );
+
+                return res.status(500).json({
+                    mensaje: "Error al actualizar los datos personales"
+                });
+            }
+
+            const sqlPracticante = `
+                UPDATE practicantes
+                SET
+                    telefono = COALESCE(?, telefono),
+                    universidad = COALESCE(?, universidad),
+                    matricula = COALESCE(?, matricula),
+                    id_carrera = COALESCE(?, id_carrera),
+                    fecha_inicio = COALESCE(?, fecha_inicio),
+                    fecha_fin = COALESCE(?, fecha_fin)
+                WHERE id_usuario = ?
+            `;
+
+            db.query(
+                sqlPracticante,
+                [
+                    telefono ?? null,
+                    universidad ?? null,
+                    matricula ?? null,
+                    id_carrera ?? null,
+                    fecha_inicio ?? null,
+                    fecha_fin ?? null,
+                    idUsuario
+                ],
+                (errorPracticante, resultadoPracticante) => {
+                    if (errorPracticante) {
+                        console.error(
+                            "Error actualizando practicante:",
+                            errorPracticante
+                        );
+
+                        return res.status(500).json({
+                            mensaje: "Error al actualizar el perfil"
+                        });
+                    }
+
+                    if (resultadoPracticante.affectedRows === 0) {
+                        return res.status(404).json({
+                            mensaje: "Practicante no encontrado"
+                        });
+                    }
+
+                    registrarActividad(
+    idUsuario,
+    "ACTUALIZAR_PERFIL",
+    "El practicante actualizó la información de su perfil"
+);
+
+return res.status(200).json({
+    mensaje: "Perfil actualizado correctamente"
+});
+                }
+            );
+        }
+    );
+};
+
 module.exports = {
     obtenerPerfil,
     registrarHoras,
     obtenerAvance,
-    obtenerHoras
+    obtenerHoras,
+    actualizarPerfil
 };
