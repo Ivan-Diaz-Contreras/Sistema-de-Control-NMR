@@ -1,10 +1,10 @@
-Ôªøimport { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
 import "./App.css";
 
-const API = "http://localhost:3000/api";
+const API = `${import.meta.env.VITE_API_URL}/api`;
 
 function App() {
   const [perfil, setPerfil] = useState(null);
@@ -74,7 +74,7 @@ const cargarDatos = async () => {
 
       setMensaje(
         error.response?.data?.mensaje ||
-          "Tu sesi√≥n ya no es v√°lida. Inicia sesi√≥n nuevamente."
+          "Tu sesiÛn ya no es v·lida. Inicia sesiÛn nuevamente."
       );
     } else {
       setMensaje(
@@ -213,7 +213,7 @@ const registrarSalida = async () => {
 
           <div>
             <h1>NMR</h1>
-            <span>Control de Pr√°cticas</span>
+            <span>Control de Pr·cticas</span>
           </div>
         </div>
 
@@ -224,7 +224,7 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("dashboard")}
           >
-            <span>‚åÇ</span>
+            <span>¶</span>
             Dashboard
           </button>
 
@@ -234,7 +234,7 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("perfil")}
           >
-            <span>üë§</span>
+            <span>??</span>
             Mi perfil
           </button>
 
@@ -244,7 +244,7 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("asistencia")}
           >
-            <span>üïê</span>
+            <span>??</span>
             Asistencia
           </button>
 
@@ -254,7 +254,7 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("horas")}
           >
-            <span>‚è±</span>
+            <span>?</span>
             Mis horas
           </button>
 
@@ -264,8 +264,8 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("bitacoras")}
           >
-            <span>üìã</span>
-            Bit√°coras
+            <span>??</span>
+            Bit·coras
           </button>
 
           <button
@@ -274,14 +274,14 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("evidencias")}
           >
-            <span>üìé</span>
+            <span>??</span>
             Evidencias
           </button>
         </nav>
 
         <button className="logout-button" onClick={cerrarSesion}>
-          <span>‚Ü™</span>
-          Cerrar sesi√≥n
+          <span>?</span>
+          Cerrar sesiÛn
         </button>
       </aside>
 
@@ -300,7 +300,7 @@ const registrarSalida = async () => {
                 : seccion === "horas"
                 ? "Mis horas"
                 : seccion === "bitacoras"
-                ? "Bit√°coras"
+                ? "Bit·coras"
                 : "Evidencias"}
             </h2>
           </div>
@@ -331,12 +331,12 @@ const registrarSalida = async () => {
                 <p className="section-label">BIENVENIDO</p>
 
                 <h1>
-                  Hola, {perfil?.nombre || usuario?.nombre || "Samuel"} üëã
+                  Hola, {perfil?.nombre || usuario?.nombre || "Samuel"} ??
                 </h1>
 
                 <p>
-                  Aqu√≠ puedes consultar tu progreso y administrar tus
-                  actividades de pr√°cticas profesionales.
+                  AquÌ puedes consultar tu progreso y administrar tus
+                  actividades de pr·cticas profesionales.
                 </p>
               </div>
 
@@ -345,7 +345,7 @@ const registrarSalida = async () => {
 
             <section className="stats-grid">
               <div className="stat-card">
-                <span className="stat-icon">‚è±</span>
+                <span className="stat-icon">?</span>
 
                 <div>
                   <p>Horas acumuladas</p>
@@ -357,7 +357,7 @@ const registrarSalida = async () => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">üìä</span>
+                <span className="stat-icon">??</span>
 
                 <div>
                   <p>Avance</p>
@@ -367,7 +367,7 @@ const registrarSalida = async () => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">üéØ</span>
+                <span className="stat-icon">??</span>
 
                 <div>
                   <p>Horas restantes</p>
@@ -387,7 +387,7 @@ const registrarSalida = async () => {
                     <h3>Control de asistencia</h3>
                   </div>
 
-                  <span className="status-dot">‚óè Disponible</span>
+                  <span className="status-dot">? Disponible</span>
                 </div>
 
                 <p className="panel-description">
@@ -401,7 +401,7 @@ const registrarSalida = async () => {
                     onClick={registrarEntrada}
                     disabled={procesandoAsistencia}
                   >
-                    <span>‚Üí</span>
+                    <span>?</span>
                     Registrar entrada
                   </button>
 
@@ -410,7 +410,7 @@ const registrarSalida = async () => {
                     onClick={registrarSalida}
                     disabled={procesandoAsistencia}
                   >
-                    <span>‚Üê</span>
+                    <span>?</span>
                     Registrar salida
                   </button>
                 </div>
@@ -419,7 +419,7 @@ const registrarSalida = async () => {
               <div className="panel">
                 <div className="panel-header">
                   <div>
-                    <p className="section-label">MI INFORMACI√ìN</p>
+                    <p className="section-label">MI INFORMACI”N</p>
                     <h3>Perfil</h3>
                   </div>
                 </div>
@@ -440,7 +440,7 @@ const registrarSalida = async () => {
                     </div>
 
                     <div>
-                      <span>Matr√≠cula</span>
+                      <span>MatrÌcula</span>
                       <strong>
                         {perfil.matricula || "No registrada"}
                       </strong>
@@ -468,7 +468,7 @@ const registrarSalida = async () => {
               <div className="progress-header">
                 <div>
                   <p className="section-label">PROGRESO</p>
-                  <h3>Avance de pr√°cticas profesionales</h3>
+                  <h3>Avance de pr·cticas profesionales</h3>
                 </div>
 
                 <strong>{porcentaje}%</strong>
@@ -500,7 +500,7 @@ const registrarSalida = async () => {
           <section className="panel">
             <div className="panel-header">
               <div>
-                <p className="section-label">INFORMACI√ìN PERSONAL</p>
+                <p className="section-label">INFORMACI”N PERSONAL</p>
                 <h3>Mi perfil</h3>
               </div>
             </div>
@@ -516,12 +516,12 @@ const registrarSalida = async () => {
                 </div>
 
                 <div>
-                  <span>Correo electr√≥nico</span>
+                  <span>Correo electrÛnico</span>
                   <strong>{perfil.correo}</strong>
                 </div>
 
                 <div>
-                  <span>Matr√≠cula</span>
+                  <span>MatrÌcula</span>
                   <strong>
                     {perfil.matricula || "No registrada"}
                   </strong>
@@ -540,7 +540,7 @@ const registrarSalida = async () => {
                 </div>
 
                 <div>
-                  <span>Tel√©fono</span>
+                  <span>TelÈfono</span>
                   <strong>
                     {perfil.telefono || "No registrado"}
                   </strong>
@@ -560,7 +560,7 @@ const registrarSalida = async () => {
                 <h3>Asistencia</h3>
               </div>
 
-              <span className="status-dot">‚óè Disponible</span>
+              <span className="status-dot">? Disponible</span>
             </div>
 
             <p className="panel-description">
@@ -573,7 +573,7 @@ const registrarSalida = async () => {
                 onClick={registrarEntrada}
                 disabled={procesandoAsistencia}
               >
-                <span>‚Üí</span>
+                <span>?</span>
                 Registrar entrada
               </button>
 
@@ -582,7 +582,7 @@ const registrarSalida = async () => {
                 onClick={registrarSalida}
                 disabled={procesandoAsistencia}
               >
-                <span>‚Üê</span>
+                <span>?</span>
                 Registrar salida
               </button>
             </div>
@@ -600,7 +600,7 @@ const registrarSalida = async () => {
 
             <div className="stats-grid">
               <div className="stat-card">
-                <span className="stat-icon">‚è±</span>
+                <span className="stat-icon">?</span>
                 <div>
                   <p>Horas acumuladas</p>
                   <strong>
@@ -611,7 +611,7 @@ const registrarSalida = async () => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">üéØ</span>
+                <span className="stat-icon">??</span>
                 <div>
                   <p>Horas requeridas</p>
                   <strong>
@@ -622,7 +622,7 @@ const registrarSalida = async () => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">üìä</span>
+                <span className="stat-icon">??</span>
                 <div>
                   <p>Avance</p>
                   <strong>{porcentaje}%</strong>
@@ -638,16 +638,16 @@ const registrarSalida = async () => {
             <div className="panel-header">
               <div>
                 <p className="section-label">ACTIVIDADES</p>
-                <h3>Bit√°coras</h3>
+                <h3>Bit·coras</h3>
               </div>
             </div>
 
             <p className="panel-description">
-              En esta secci√≥n podr√°s consultar y administrar tus
-              bit√°coras de pr√°cticas profesionales.
+              En esta secciÛn podr·s consultar y administrar tus
+              bit·coras de pr·cticas profesionales.
             </p>
 
-            <p>üöß M√≥dulo en desarrollo.</p>
+            <p>?? MÛdulo en desarrollo.</p>
           </section>
         )}
 
@@ -655,17 +655,17 @@ const registrarSalida = async () => {
           <section className="panel">
             <div className="panel-header">
               <div>
-                <p className="section-label">DOCUMENTACI√ìN</p>
+                <p className="section-label">DOCUMENTACI”N</p>
                 <h3>Evidencias</h3>
               </div>
             </div>
 
             <p className="panel-description">
-              En esta secci√≥n podr√°s consultar y administrar las
+              En esta secciÛn podr·s consultar y administrar las
               evidencias de tus actividades.
             </p>
 
-            <p>üöß M√≥dulo en desarrollo.</p>
+            <p>?? MÛdulo en desarrollo.</p>
           </section>
         )}
       </main>
