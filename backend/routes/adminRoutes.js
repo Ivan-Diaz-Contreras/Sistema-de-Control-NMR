@@ -7,6 +7,8 @@ const verificarAdmin = require("../middleware/verificarAdmin");
 const {
     obtenerPracticantes,
     obtenerPracticantePorId,
+    actualizarPracticante,
+    actualizarEstadoPracticante,
     obtenerHorarioPracticante,
     obtenerAsistenciasPracticante,
     actualizarAsistencia,
@@ -38,7 +40,6 @@ router.get(
     obtenerPracticantes
 );
 
-
 // Consultar un practicante por ID
 router.get(
     "/practicantes/:id",
@@ -47,6 +48,21 @@ router.get(
     obtenerPracticantePorId
 );
 
+// Actualizar un practicante
+router.put(
+    "/practicantes/:id",
+    verificarToken,
+    verificarAdmin,
+    actualizarPracticante
+);
+
+// Activar o desactivar un practicante
+router.put(
+    "/practicantes/:id/estado",
+    verificarToken,
+    verificarAdmin,
+    actualizarEstadoPracticante
+);
 
 // Consultar horario de un practicante
 router.get(
@@ -56,7 +72,6 @@ router.get(
     obtenerHorarioPracticante
 );
 
-
 // Consultar asistencias de un practicante
 router.get(
     "/practicantes/:id/asistencias",
@@ -64,7 +79,6 @@ router.get(
     verificarAdmin,
     obtenerAsistenciasPracticante
 );
-
 
 // Consultar registros de horas de un practicante
 router.get(
@@ -100,7 +114,6 @@ router.post(
     crearHorarioPracticante
 );
 
-
 // Actualizar un horario
 router.put(
     "/horarios/:id",
@@ -121,7 +134,6 @@ router.put(
     verificarAdmin,
     actualizarRegistroHoras
 );
-
 
 // Eliminar un registro de horas
 router.delete(
@@ -144,7 +156,6 @@ router.get(
     obtenerBitacorasPracticante
 );
 
-
 // Aprobar o rechazar una bitácora
 router.put(
     "/bitacoras/:id/revision",
@@ -152,7 +163,6 @@ router.put(
     verificarAdmin,
     revisarBitacora
 );
-
 
 // Visualizar PDF de una bitácora
 router.get(
@@ -175,7 +185,6 @@ router.get(
     obtenerCarreras
 );
 
-
 // Crear una carrera
 router.post(
     "/carreras",
@@ -183,7 +192,6 @@ router.post(
     verificarAdmin,
     crearCarrera
 );
-
 
 // Actualizar, activar o desactivar una carrera
 router.put(
@@ -218,6 +226,5 @@ router.get(
     verificarAdmin,
     obtenerHistorialActividades
 );
-
 
 module.exports = router;

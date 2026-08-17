@@ -49,34 +49,136 @@ const obtenerPerfil = (req, res) => {
     });
 };
 
+// ==========================================
+// REGISTRAR HORAS
+// ==========================================
+
 const registrarHoras = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
-    const { fecha, horas, descripcion } = req.body;
 
-    if (!fecha || horas === undefined || horas === null) {
+    const {
+        fecha,
+        horas,
+        descripcion
+    } = req.body || {};
+
+    // ==========================================
+    // VALIDAR CAMPOS OBLIGATORIOS
+    // ==========================================
+
+    if (
+        !fecha ||
+        horas === undefined ||
+        horas === null
+    ) {
         return res.status(400).json({
             mensaje: "Fecha y horas son obligatorias"
         });
     }
 
+    // ==========================================
+    // VALIDAR CANTIDAD DE HORAS
+    // ==========================================
+
     const cantidadHoras = Number(horas);
 
-    if (!Number.isFinite(cantidadHoras) || cantidadHoras <= 0) {
+    if (
+        !Number.isFinite(cantidadHoras) ||
+        cantidadHoras <= 0
+    ) {
         return res.status(400).json({
-            mensaje: "La cantidad de horas debe ser mayor a 0"
+            mensaje:
+                "La cantidad de horas debe ser mayor a 0"
         });
     }
 
-    // Obtener el practicante correspondiente al usuario autenticado
+    // Evitar cantidades imposibles en un solo día
+    if (cantidadHoras > 24) {
+        return res.status(400).json({
+            mensaje:
+                "No puedes registrar más de 24 horas en un día"
+        });
+    }
+
+    // ==========================================
+    // VALIDAR FECHA
+    // ==========================================
+
+    // Exigir formato YYYY-MM-DD
+    const formatoFecha = /^\d{4}-\d{2}-\d{2}$/;
+
+    if (!formatoFecha.test(fecha)) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha debe tener el formato YYYY-MM-DD"
+        });
+    }
+
+    const fechaRegistro = new Date(
+        `${fecha}T00:00:00`
+    );
+
+    if (Number.isNaN(fechaRegistro.getTime())) {
+        return res.status(400).json({
+            mensaje: "La fecha proporcionada no es válida"
+        });
+    }
+
+    // Verificar que JavaScript no haya normalizado
+    // una fecha inexistente como 2026-02-30.
+    const anio = fechaRegistro.getFullYear();
+    const mes = String(
+        fechaRegistro.getMonth() + 1
+    ).padStart(2, "0");
+    const dia = String(
+        fechaRegistro.getDate()
+    ).padStart(2, "0");
+
+    const fechaNormalizada =
+        `${anio}-${mes}-${dia}`;
+
+    if (fechaNormalizada !== fecha) {
+        return res.status(400).json({
+            mensaje: "La fecha proporcionada no existe"
+        });
+    }
+
+    // No permitir registros futuros
+    const hoy = new Date();
+
+    hoy.setHours(0, 0, 0, 0);
+
+    if (fechaRegistro > hoy) {
+        return res.status(400).json({
+            mensaje:
+                "No puedes registrar horas en una fecha futura"
+        });
+    }
+
+    // ==========================================
+    // BUSCAR PRACTICANTE
+    // ==========================================
+
     db.query(
-        "SELECT id_practicante FROM practicantes WHERE id_usuario = ?",
+        `
+            SELECT
+                id_practicante,
+                fecha_inicio,
+                fecha_fin
+            FROM practicantes
+            WHERE id_usuario = ?
+        `,
         [idUsuario],
         (error, resultados) => {
             if (error) {
-                console.error("Error buscando practicante:", error);
+                console.error(
+                    "Error buscando practicante:",
+                    error
+                );
 
                 return res.status(500).json({
-                    mensaje: "Error al consultar el practicante"
+                    mensaje:
+                        "Error al consultar el practicante"
                 });
             }
 
@@ -86,11 +188,49 @@ const registrarHoras = (req, res) => {
                 });
             }
 
-            const idPracticante = resultados[0].id_practicante;
+            const practicante = resultados[0];
+
+            const idPracticante =
+                practicante.id_practicante;
+
+            // ==========================================
+            // VALIDAR PERIODO DE PRÁCTICAS
+            // ==========================================
+
+            if (practicante.fecha_inicio) {
+                const fechaInicio =
+                    new Date(practicante.fecha_inicio);
+
+                fechaInicio.setHours(0, 0, 0, 0);
+
+                if (fechaRegistro < fechaInicio) {
+                    return res.status(400).json({
+                        mensaje:
+                            "No puedes registrar horas anteriores al inicio de tus prácticas"
+                    });
+                }
+            }
+
+            if (practicante.fecha_fin) {
+                const fechaFin =
+                    new Date(practicante.fecha_fin);
+
+                fechaFin.setHours(0, 0, 0, 0);
+
+                if (fechaRegistro > fechaFin) {
+                    return res.status(400).json({
+                        mensaje:
+                            "No puedes registrar horas posteriores al fin de tus prácticas"
+                    });
+                }
+            }
+
+            // ==========================================
+            // REGISTRAR HORAS
+            // ==========================================
 
             const sql = `
-                INSERT INTO registros_horas
-                (
+                INSERT INTO registros_horas (
                     id_practicante,
                     fecha,
                     horas,
@@ -105,7 +245,7 @@ const registrarHoras = (req, res) => {
                     idPracticante,
                     fecha,
                     cantidadHoras,
-                    descripcion || null
+                    descripcion?.trim() || null
                 ],
                 (errorRegistro, resultado) => {
                     if (errorRegistro) {
@@ -115,20 +255,23 @@ const registrarHoras = (req, res) => {
                         );
 
                         return res.status(500).json({
-                            mensaje: "Error al registrar las horas"
+                            mensaje:
+                                "Error al registrar las horas"
                         });
                     }
 
                     registrarActividad(
-             idUsuario,
-            "REGISTRAR_HORAS",
-            `El practicante registró ${cantidadHoras} horas correspondientes al día ${fecha}`
-            );
+                        idUsuario,
+                        "REGISTRAR_HORAS",
+                        `El practicante registró ${cantidadHoras} horas correspondientes al día ${fecha}`
+                    );
 
-                return res.status(201).json({
-                mensaje: "Horas registradas correctamente",
-                 id_registro: resultado.insertId
-            });
+                    return res.status(201).json({
+                        mensaje:
+                            "Horas registradas correctamente",
+                        id_registro:
+                            resultado.insertId
+                    });
                 }
             );
         }
@@ -253,6 +396,7 @@ const actualizarPerfil = (req, res) => {
         fecha_fin
     } = req.body || {};
 
+    // Verificar que venga al menos un dato
     if (
         nombre === undefined &&
         apellido_paterno === undefined &&
@@ -269,89 +413,252 @@ const actualizarPerfil = (req, res) => {
         });
     }
 
-    const sqlUsuario = `
-        UPDATE usuarios
-        SET
-            nombre = COALESCE(?, nombre),
-            apellido_paterno = COALESCE(?, apellido_paterno),
-            apellido_materno = COALESCE(?, apellido_materno)
-        WHERE id_usuario = ?
-    `;
+    // Validar textos obligatorios si fueron enviados
+    if (nombre !== undefined && !nombre.trim()) {
+        return res.status(400).json({
+            mensaje: "El nombre no puede estar vacío"
+        });
+    }
 
-    db.query(
-        sqlUsuario,
-        [
-            nombre ?? null,
-            apellido_paterno ?? null,
-            apellido_materno ?? null,
-            idUsuario
-        ],
-        (errorUsuario) => {
-            if (errorUsuario) {
-                console.error(
-                    "Error actualizando usuario:",
-                    errorUsuario
-                );
+    if (
+        apellido_paterno !== undefined &&
+        !apellido_paterno.trim()
+    ) {
+        return res.status(400).json({
+            mensaje: "El apellido paterno no puede estar vacío"
+        });
+    }
 
-                return res.status(500).json({
-                    mensaje: "Error al actualizar los datos personales"
-                });
-            }
+    // Validar fechas si fueron enviadas
+    const validarFecha = (fecha) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+            return false;
+        }
 
-            const sqlPracticante = `
-                UPDATE practicantes
-                SET
-                    telefono = COALESCE(?, telefono),
-                    universidad = COALESCE(?, universidad),
-                    matricula = COALESCE(?, matricula),
-                    id_carrera = COALESCE(?, id_carrera),
-                    fecha_inicio = COALESCE(?, fecha_inicio),
-                    fecha_fin = COALESCE(?, fecha_fin)
-                WHERE id_usuario = ?
-            `;
+        const fechaObjeto = new Date(`${fecha}T00:00:00`);
 
-            db.query(
-                sqlPracticante,
-                [
-                    telefono ?? null,
-                    universidad ?? null,
-                    matricula ?? null,
-                    id_carrera ?? null,
-                    fecha_inicio ?? null,
-                    fecha_fin ?? null,
-                    idUsuario
-                ],
-                (errorPracticante, resultadoPracticante) => {
-                    if (errorPracticante) {
-                        console.error(
-                            "Error actualizando practicante:",
-                            errorPracticante
+        if (Number.isNaN(fechaObjeto.getTime())) {
+            return false;
+        }
+
+        const anio = fechaObjeto.getFullYear();
+        const mes = String(
+            fechaObjeto.getMonth() + 1
+        ).padStart(2, "0");
+        const dia = String(
+            fechaObjeto.getDate()
+        ).padStart(2, "0");
+
+        return `${anio}-${mes}-${dia}` === fecha;
+    };
+
+    if (
+        fecha_inicio !== undefined &&
+        !validarFecha(fecha_inicio)
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha de inicio no es válida o no tiene formato YYYY-MM-DD"
+        });
+    }
+
+    if (
+        fecha_fin !== undefined &&
+        !validarFecha(fecha_fin)
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha de fin no es válida o no tiene formato YYYY-MM-DD"
+        });
+    }
+
+    // Validar que fecha_fin no sea anterior a fecha_inicio
+    if (
+        fecha_inicio !== undefined &&
+        fecha_fin !== undefined
+    ) {
+        const inicio = new Date(
+            `${fecha_inicio}T00:00:00`
+        );
+
+        const fin = new Date(
+            `${fecha_fin}T00:00:00`
+        );
+
+        if (fin < inicio) {
+            return res.status(400).json({
+                mensaje:
+                    "La fecha de fin no puede ser anterior a la fecha de inicio"
+            });
+        }
+    }
+
+    // Función para continuar con la actualización
+    const ejecutarActualizacion = () => {
+        const sqlUsuario = `
+            UPDATE usuarios
+            SET
+                nombre = COALESCE(?, nombre),
+                apellido_paterno = COALESCE(?, apellido_paterno),
+                apellido_materno = COALESCE(?, apellido_materno)
+            WHERE id_usuario = ?
+        `;
+
+        db.query(
+            sqlUsuario,
+            [
+                nombre !== undefined
+                    ? nombre.trim()
+                    : null,
+
+                apellido_paterno !== undefined
+                    ? apellido_paterno.trim()
+                    : null,
+
+                apellido_materno !== undefined
+                    ? apellido_materno.trim()
+                    : null,
+
+                idUsuario
+            ],
+            (errorUsuario) => {
+                if (errorUsuario) {
+                    console.error(
+                        "Error actualizando usuario:",
+                        errorUsuario
+                    );
+
+                    return res.status(500).json({
+                        mensaje:
+                            "Error al actualizar los datos personales"
+                    });
+                }
+
+                const sqlPracticante = `
+                    UPDATE practicantes
+                    SET
+                        telefono = COALESCE(?, telefono),
+                        universidad = COALESCE(?, universidad),
+                        matricula = COALESCE(?, matricula),
+                        id_carrera = COALESCE(?, id_carrera),
+                        fecha_inicio = COALESCE(?, fecha_inicio),
+                        fecha_fin = COALESCE(?, fecha_fin)
+                    WHERE id_usuario = ?
+                `;
+
+                db.query(
+                    sqlPracticante,
+                    [
+                        telefono !== undefined
+                            ? telefono.trim()
+                            : null,
+
+                        universidad !== undefined
+                            ? universidad.trim()
+                            : null,
+
+                        matricula !== undefined
+                            ? matricula.trim()
+                            : null,
+
+                        id_carrera ?? null,
+                        fecha_inicio ?? null,
+                        fecha_fin ?? null,
+                        idUsuario
+                    ],
+                    (
+                        errorPracticante,
+                        resultadoPracticante
+                    ) => {
+                        if (errorPracticante) {
+                            console.error(
+                                "Error actualizando practicante:",
+                                errorPracticante
+                            );
+
+                            return res.status(500).json({
+                                mensaje:
+                                    "Error al actualizar el perfil"
+                            });
+                        }
+
+                        if (
+                            resultadoPracticante.affectedRows === 0
+                        ) {
+                            return res.status(404).json({
+                                mensaje:
+                                    "Practicante no encontrado"
+                            });
+                        }
+
+                        registrarActividad(
+                            idUsuario,
+                            "ACTUALIZAR_PERFIL",
+                            "El practicante actualizó la información de su perfil"
                         );
 
-                        return res.status(500).json({
-                            mensaje: "Error al actualizar el perfil"
+                        return res.status(200).json({
+                            mensaje:
+                                "Perfil actualizado correctamente"
                         });
                     }
+                );
+            }
+        );
+    };
 
-                    if (resultadoPracticante.affectedRows === 0) {
-                        return res.status(404).json({
-                            mensaje: "Practicante no encontrado"
-                        });
-                    }
+    // Si se quiere cambiar la carrera,
+    // comprobar que exista y esté activa
+    if (id_carrera !== undefined) {
+        const idCarrera = Number(id_carrera);
 
-                    registrarActividad(
-    idUsuario,
-    "ACTUALIZAR_PERFIL",
-    "El practicante actualizó la información de su perfil"
-);
-
-return res.status(200).json({
-    mensaje: "Perfil actualizado correctamente"
-});
-                }
-            );
+        if (
+            !Number.isInteger(idCarrera) ||
+            idCarrera <= 0
+        ) {
+            return res.status(400).json({
+                mensaje: "El id de carrera es inválido"
+            });
         }
-    );
+
+        const sqlCarrera = `
+            SELECT id_carrera
+            FROM carreras
+            WHERE id_carrera = ?
+              AND activa = 1
+        `;
+
+        db.query(
+            sqlCarrera,
+            [idCarrera],
+            (errorCarrera, resultadosCarrera) => {
+                if (errorCarrera) {
+                    console.error(
+                        "Error verificando carrera:",
+                        errorCarrera
+                    );
+
+                    return res.status(500).json({
+                        mensaje:
+                            "Error al verificar la carrera"
+                    });
+                }
+
+                if (resultadosCarrera.length === 0) {
+                    return res.status(400).json({
+                        mensaje:
+                            "La carrera seleccionada no existe o está desactivada"
+                    });
+                }
+
+                ejecutarActualizacion();
+            }
+        );
+
+        return;
+    }
+
+    ejecutarActualizacion();
 };
 
 module.exports = {

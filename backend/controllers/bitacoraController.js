@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const registrarActividad = require("../utils/registrarActividad");
 
-// ==========================================
+/// ==========================================
 // SUBIR BITÁCORA
 // ==========================================
 
@@ -16,24 +16,87 @@ const subirBitacora = (req, res) => {
         fecha_fin
     } = req.body;
 
+    // Función auxiliar para eliminar el archivo
+    // si Multer ya lo guardó pero ocurre un error después.
+    const eliminarArchivoSubido = () => {
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (error) {
+                console.error(
+                    "Error eliminando archivo temporal:",
+                    error
+                );
+            }
+        }
+    };
+
+    // Validar campos obligatorios
     if (
         !numero_semana ||
         !fecha_inicio ||
         !fecha_fin ||
         !req.file
     ) {
+        eliminarArchivoSubido();
+
         return res.status(400).json({
             mensaje:
                 "Semana, fechas y archivo PDF son obligatorios"
         });
     }
 
+    // Validar número de semana
+    const semana = Number(numero_semana);
+
+    if (
+        !Number.isInteger(semana) ||
+        semana <= 0
+    ) {
+        eliminarArchivoSubido();
+
+        return res.status(400).json({
+            mensaje:
+                "El número de semana debe ser un entero mayor a 0"
+        });
+    }
+
+    // Validar fechas
+    const inicio = new Date(fecha_inicio);
+    const fin = new Date(fecha_fin);
+
+    if (
+        Number.isNaN(inicio.getTime()) ||
+        Number.isNaN(fin.getTime())
+    ) {
+        eliminarArchivoSubido();
+
+        return res.status(400).json({
+            mensaje: "Las fechas proporcionadas no son válidas"
+        });
+    }
+
+    if (fin < inicio) {
+        eliminarArchivoSubido();
+
+        return res.status(400).json({
+            mensaje:
+                "La fecha de fin no puede ser anterior a la fecha de inicio"
+        });
+    }
+
+    // Buscar practicante
     db.query(
         "SELECT id_practicante FROM practicantes WHERE id_usuario = ?",
         [idUsuario],
         (errorPracticante, resultadosPracticante) => {
             if (errorPracticante) {
-                console.error(errorPracticante);
+                console.error(
+                    "Error consultando practicante:",
+                    errorPracticante
+                );
+
+                eliminarArchivoSubido();
 
                 return res.status(500).json({
                     mensaje:
@@ -42,6 +105,8 @@ const subirBitacora = (req, res) => {
             }
 
             if (resultadosPracticante.length === 0) {
+                eliminarArchivoSubido();
+
                 return res.status(404).json({
                     mensaje:
                         "Practicante no encontrado"
@@ -51,53 +116,97 @@ const subirBitacora = (req, res) => {
             const idPracticante =
                 resultadosPracticante[0].id_practicante;
 
-            const sql = `
-                INSERT INTO bitacoras (
-                    id_practicante,
-                    numero_semana,
-                    fecha_inicio,
-                    fecha_fin,
-                    nombre_archivo,
-                    ruta_archivo,
-                    estado
-                )
-                VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')
+            // Verificar que no exista otra bitácora
+            // para la misma semana.
+            const sqlDuplicada = `
+                SELECT id_bitacora
+                FROM bitacoras
+                WHERE id_practicante = ?
+                  AND numero_semana = ?
+                LIMIT 1
             `;
 
             db.query(
-                sql,
-                [
-                    idPracticante,
-                    numero_semana,
-                    fecha_inicio,
-                    fecha_fin,
-                    req.file.originalname,
-                    req.file.filename
-                ],
-                (errorInsert, resultado) => {
-                    if (errorInsert) {
-                        console.error(errorInsert);
+                sqlDuplicada,
+                [idPracticante, semana],
+                (errorDuplicada, resultadosDuplicada) => {
+                    if (errorDuplicada) {
+                        console.error(
+                            "Error verificando bitácora duplicada:",
+                            errorDuplicada
+                        );
+
+                        eliminarArchivoSubido();
 
                         return res.status(500).json({
                             mensaje:
-                                "Error al registrar la bitácora"
+                                "Error al verificar la bitácora"
                         });
                     }
 
-                    registrarActividad(
-                        idUsuario,
-                        "SUBIR_BITACORA",
-                        `El practicante subió la bitácora de la semana ${numero_semana}: ${req.file.originalname}`
-                    );
+                    if (resultadosDuplicada.length > 0) {
+                        eliminarArchivoSubido();
 
-                    return res.status(201).json({
-                        mensaje:
-                            "Bitácora subida correctamente",
-                        id_bitacora:
-                            resultado.insertId,
-                        archivo:
-                            req.file.originalname
-                    });
+                        return res.status(409).json({
+                            mensaje:
+                                "Ya existe una bitácora registrada para esa semana"
+                        });
+                    }
+
+                    const sql = `
+                        INSERT INTO bitacoras (
+                            id_practicante,
+                            numero_semana,
+                            fecha_inicio,
+                            fecha_fin,
+                            nombre_archivo,
+                            ruta_archivo,
+                            estado
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')
+                    `;
+
+                    db.query(
+                        sql,
+                        [
+                            idPracticante,
+                            semana,
+                            fecha_inicio,
+                            fecha_fin,
+                            req.file.originalname,
+                            req.file.filename
+                        ],
+                        (errorInsert, resultado) => {
+                            if (errorInsert) {
+                                console.error(
+                                    "Error registrando bitácora:",
+                                    errorInsert
+                                );
+
+                                eliminarArchivoSubido();
+
+                                return res.status(500).json({
+                                    mensaje:
+                                        "Error al registrar la bitácora"
+                                });
+                            }
+
+                            registrarActividad(
+                                idUsuario,
+                                "SUBIR_BITACORA",
+                                `El practicante subió la bitácora de la semana ${semana}: ${req.file.originalname}`
+                            );
+
+                            return res.status(201).json({
+                                mensaje:
+                                    "Bitácora subida correctamente",
+                                id_bitacora:
+                                    resultado.insertId,
+                                archivo:
+                                    req.file.originalname
+                            });
+                        }
+                    );
                 }
             );
         }

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const verificarToken = require("../middleware/verificarToken");
+const verificarPracticante = require("../middleware/verificarPracticante");
 
 const {
     obtenerPerfil,
@@ -15,6 +16,7 @@ const {
 router.get(
     "/perfil",
     verificarToken,
+    verificarPracticante,
     obtenerPerfil
 );
 
@@ -22,6 +24,7 @@ router.get(
 router.put(
     "/perfil",
     verificarToken,
+    verificarPracticante,
     actualizarPerfil
 );
 
@@ -29,6 +32,7 @@ router.put(
 router.post(
     "/horas",
     verificarToken,
+    verificarPracticante,
     registrarHoras
 );
 
@@ -36,6 +40,7 @@ router.post(
 router.get(
     "/horas",
     verificarToken,
+    verificarPracticante,
     obtenerHoras
 );
 
@@ -43,6 +48,7 @@ router.get(
 router.get(
     "/avance",
     verificarToken,
+    verificarPracticante,
     obtenerAvance
 );
 

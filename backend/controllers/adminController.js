@@ -8,7 +8,9 @@ const registrarActividad = require("../utils/registrarActividad");
 // ==========================================
 
 const obtenerPracticantes = (req, res) => {
-    const sql = `
+    const { id_carrera } = req.query;
+
+    let sql = `
         SELECT
             p.id_practicante,
             u.id_usuario,
@@ -16,6 +18,7 @@ const obtenerPracticantes = (req, res) => {
             u.apellido_paterno,
             u.apellido_materno,
             u.correo,
+            u.activo,
             p.matricula,
             p.telefono,
             p.universidad,
@@ -29,10 +32,31 @@ const obtenerPracticantes = (req, res) => {
             ON p.id_usuario = u.id_usuario
         INNER JOIN carreras c
             ON p.id_carrera = c.id_carrera
+    `;
+
+    const parametros = [];
+
+    if (id_carrera !== undefined) {
+        const idCarrera = Number(id_carrera);
+
+        if (!Number.isInteger(idCarrera) || idCarrera <= 0) {
+            return res.status(400).json({
+                mensaje: "El id de carrera es inválido"
+            });
+        }
+
+        sql += `
+            WHERE p.id_carrera = ?
+        `;
+
+        parametros.push(idCarrera);
+    }
+
+    sql += `
         ORDER BY u.apellido_paterno, u.nombre
     `;
 
-    db.query(sql, (error, resultados) => {
+    db.query(sql, parametros, (error, resultados) => {
         if (error) {
             console.error(
                 "Error obteniendo practicantes:",
@@ -45,11 +69,19 @@ const obtenerPracticantes = (req, res) => {
         }
 
         return res.status(200).json({
+            filtro_carrera:
+                id_carrera !== undefined
+                    ? Number(id_carrera)
+                    : null,
             total_practicantes: resultados.length,
             practicantes: resultados
         });
     });
 };
+
+// ==========================================
+// OBTENER UN PRACTICANTE POR ID
+// ==========================================
 
 const obtenerPracticantePorId = (req, res) => {
     const { id } = req.params;
@@ -62,6 +94,7 @@ const obtenerPracticantePorId = (req, res) => {
             u.apellido_paterno,
             u.apellido_materno,
             u.correo,
+            u.activo,
             p.matricula,
             p.telefono,
             p.universidad,
@@ -86,6 +119,7 @@ const obtenerPracticantePorId = (req, res) => {
             u.apellido_paterno,
             u.apellido_materno,
             u.correo,
+            u.activo,
             p.matricula,
             p.telefono,
             p.universidad,
@@ -116,8 +150,11 @@ const obtenerPracticantePorId = (req, res) => {
 
         const practicante = resultados[0];
 
-        const horasRequeridas = Number(practicante.horas_requeridas);
-        const horasAcumuladas = Number(practicante.horas_acumuladas);
+        const horasRequeridas =
+            Number(practicante.horas_requeridas);
+
+        const horasAcumuladas =
+            Number(practicante.horas_acumuladas);
 
         const horasRestantes = Math.max(
             horasRequeridas - horasAcumuladas,
@@ -1260,17 +1297,263 @@ const obtenerHistorialActividades = (req, res) => {
     });
 };
 
+// ==========================================
+// ACTUALIZAR PRACTICANTE
+// ==========================================
+
+const actualizarPracticante = (req, res) => {
+    const { id } = req.params;
+    const idUsuarioAdmin = req.usuario.id_usuario;
+
+    const {
+        nombre,
+        apellido_paterno,
+        apellido_materno,
+        correo,
+        matricula,
+        telefono,
+        universidad,
+        id_carrera,
+        fecha_inicio,
+        fecha_fin,
+        horas_requeridas
+    } = req.body || {};
+
+    if (
+        nombre === undefined &&
+        apellido_paterno === undefined &&
+        apellido_materno === undefined &&
+        correo === undefined &&
+        matricula === undefined &&
+        telefono === undefined &&
+        universidad === undefined &&
+        id_carrera === undefined &&
+        fecha_inicio === undefined &&
+        fecha_fin === undefined &&
+        horas_requeridas === undefined
+    ) {
+        return res.status(400).json({
+            mensaje: "Debes proporcionar al menos un dato para actualizar"
+        });
+    }
+
+    const sqlBuscar = `
+        SELECT id_usuario
+        FROM practicantes
+        WHERE id_practicante = ?
+    `;
+
+    db.query(sqlBuscar, [id], (errorBuscar, resultados) => {
+        if (errorBuscar) {
+            console.error(
+                "Error buscando practicante:",
+                errorBuscar
+            );
+
+            return res.status(500).json({
+                mensaje: "Error al consultar el practicante"
+            });
+        }
+
+        if (resultados.length === 0) {
+            return res.status(404).json({
+                mensaje: "Practicante no encontrado"
+            });
+        }
+
+        const idUsuarioPracticante =
+            resultados[0].id_usuario;
+
+        const sqlUsuario = `
+            UPDATE usuarios
+            SET
+                nombre = COALESCE(?, nombre),
+                apellido_paterno = COALESCE(?, apellido_paterno),
+                apellido_materno = COALESCE(?, apellido_materno),
+                correo = COALESCE(?, correo)
+            WHERE id_usuario = ?
+        `;
+
+        db.query(
+            sqlUsuario,
+            [
+                nombre ?? null,
+                apellido_paterno ?? null,
+                apellido_materno ?? null,
+                correo ?? null,
+                idUsuarioPracticante
+            ],
+            (errorUsuario) => {
+                if (errorUsuario) {
+                    if (errorUsuario.code === "ER_DUP_ENTRY") {
+                        return res.status(409).json({
+                            mensaje: "El correo ya está registrado"
+                        });
+                    }
+
+                    console.error(
+                        "Error actualizando usuario:",
+                        errorUsuario
+                    );
+
+                    return res.status(500).json({
+                        mensaje: "Error al actualizar los datos del usuario"
+                    });
+                }
+
+                const sqlPracticante = `
+                    UPDATE practicantes
+                    SET
+                        matricula = COALESCE(?, matricula),
+                        telefono = COALESCE(?, telefono),
+                        universidad = COALESCE(?, universidad),
+                        id_carrera = COALESCE(?, id_carrera),
+                        fecha_inicio = COALESCE(?, fecha_inicio),
+                        fecha_fin = COALESCE(?, fecha_fin),
+                        horas_requeridas = COALESCE(?, horas_requeridas)
+                    WHERE id_practicante = ?
+                `;
+
+                db.query(
+                    sqlPracticante,
+                    [
+                        matricula ?? null,
+                        telefono ?? null,
+                        universidad ?? null,
+                        id_carrera ?? null,
+                        fecha_inicio ?? null,
+                        fecha_fin ?? null,
+                        horas_requeridas ?? null,
+                        id
+                    ],
+                    (errorPracticante) => {
+                        if (errorPracticante) {
+                            console.error(
+                                "Error actualizando practicante:",
+                                errorPracticante
+                            );
+
+                            return res.status(500).json({
+                                mensaje: "Error al actualizar el practicante"
+                            });
+                        }
+
+                        registrarActividad(
+                            idUsuarioAdmin,
+                            "ACTUALIZAR_PRACTICANTE",
+                            `El administrador actualizó los datos del practicante ${id}`
+                        );
+
+                        return res.status(200).json({
+                            mensaje: "Practicante actualizado correctamente"
+                        });
+                    }
+                );
+            }
+        );
+    });
+};
+
+// ==========================================
+// ACTIVAR O DESACTIVAR PRACTICANTE
+// ==========================================
+
+const actualizarEstadoPracticante = (req, res) => {
+    const { id } = req.params;
+    const idUsuarioAdmin = req.usuario.id_usuario;
+    const { activo } = req.body || {};
+
+    if (
+        activo !== 0 &&
+        activo !== 1 &&
+        activo !== false &&
+        activo !== true
+    ) {
+        return res.status(400).json({
+            mensaje: "El campo activo debe ser 1 o 0"
+        });
+    }
+
+    const nuevoEstado = Number(activo);
+
+    const sql = `
+        UPDATE usuarios u
+        INNER JOIN practicantes p
+            ON u.id_usuario = p.id_usuario
+        SET u.activo = ?
+        WHERE p.id_practicante = ?
+    `;
+
+    db.query(
+        sql,
+        [nuevoEstado, id],
+        (error, resultado) => {
+            if (error) {
+                console.error(
+                    "Error actualizando estado del practicante:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al actualizar el estado del practicante"
+                });
+            }
+
+            if (resultado.affectedRows === 0) {
+                return res.status(404).json({
+                    mensaje: "Practicante no encontrado"
+                });
+            }
+
+            const accion =
+                nuevoEstado === 1
+                    ? "ACTIVAR_PRACTICANTE"
+                    : "DESACTIVAR_PRACTICANTE";
+
+            const descripcion =
+                nuevoEstado === 1
+                    ? `El administrador activó al practicante ${id}`
+                    : `El administrador desactivó al practicante ${id}`;
+
+            registrarActividad(
+                idUsuarioAdmin,
+                accion,
+                descripcion
+            );
+
+            return res.status(200).json({
+                mensaje:
+                    nuevoEstado === 1
+                        ? "Practicante activado correctamente"
+                        : "Practicante desactivado correctamente",
+                id_practicante: Number(id),
+                activo: nuevoEstado
+            });
+        }
+    );
+};
+
 module.exports = {
+    // Practicantes
     obtenerPracticantes,
     obtenerPracticantePorId,
+    actualizarEstadoPracticante,
+    actualizarPracticante,
+
+    // Horarios y asistencias
     obtenerHorarioPracticante,
     obtenerAsistenciasPracticante,
     actualizarAsistencia,
     crearHorarioPracticante,
     actualizarHorario,
+
+    // Horas
     obtenerHorasPracticante,
     actualizarRegistroHoras,
     eliminarRegistroHoras,
+
+    // Bitácoras
     obtenerBitacorasPracticante,
     revisarBitacora,
     obtenerArchivoBitacoraAdmin,
@@ -1281,8 +1564,10 @@ module.exports = {
     actualizarCarrera,
 
     // Estadísticas
-obtenerEstadisticas,
+    obtenerEstadisticas,
 
-// Historial de actividades
-obtenerHistorialActividades
+    // Historial de actividades
+    obtenerHistorialActividades
+
+    
 };
