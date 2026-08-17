@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import axios from "axios";
+import Login from "./pages/Login";
 import "./App.css";
 
 const API = "http://localhost:3000/api";
@@ -8,30 +9,36 @@ function App() {
   const [perfil, setPerfil] = useState(null);
   const [avance, setAvance] = useState(null);
   const [mensaje, setMensaje] = useState("");
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(
+  Boolean(localStorage.getItem("token"))
+  );
   const [procesandoAsistencia, setProcesandoAsistencia] = useState(false);
   const [seccion, setSeccion] = useState("dashboard");
 
-  const token = localStorage.getItem("token");
-  const usuario = JSON.parse(localStorage.getItem("usuario") || "null");
+  const [token, setToken] = useState(
+  localStorage.getItem("token")
+);
+
+const [usuario, setUsuario] = useState(
+  JSON.parse(localStorage.getItem("usuario") || "null")
+);
 
   const headers = {
     Authorization: `Bearer ${token}`,
   };
 
   useEffect(() => {
-    if (!token) {
-      setMensaje("No hay una sesión activa.");
-      setCargando(false);
-      return;
-    }
-
-    cargarDatos();
-  }, []);
+  if (!token) {
+    return;
+  }
 
   const cargarDatos = async () => {
     try {
       setCargando(true);
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
 
       const [perfilResponse, avanceResponse] = await Promise.all([
         axios.get(`${API}/practicantes/perfil`, { headers }),
@@ -46,7 +53,13 @@ function App() {
       if (error.response?.status === 401) {
         localStorage.removeItem("token");
         localStorage.removeItem("usuario");
-        setMensaje("Tu sesión ha expirado. Inicia sesión nuevamente.");
+
+        setToken(null);
+        setUsuario(null);
+
+        setMensaje(
+          "Tu sesión ha expirado. Inicia sesión nuevamente."
+        );
       } else {
         setMensaje(
           error.response?.data?.mensaje ||
@@ -56,6 +69,15 @@ function App() {
     } finally {
       setCargando(false);
     }
+  };
+
+    cargarDatos();
+  }, [token]);
+
+  const iniciarSesion = (nuevoToken, nuevoUsuario) => {
+    setToken(nuevoToken);
+    setUsuario(nuevoUsuario);
+    setMensaje("");
   };
 
   const registrarEntrada = async () => {
@@ -111,10 +133,14 @@ function App() {
   };
 
   const cerrarSesion = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("usuario");
-    window.location.reload();
-  };
+  localStorage.removeItem("token");
+  localStorage.removeItem("usuario");
+
+  setToken(null);
+  setUsuario(null);
+  setPerfil(null);
+  setAvance(null);
+};
 
   if (cargando) {
     return (
@@ -129,18 +155,8 @@ function App() {
   }
 
   if (!token) {
-    return (
-      <div className="loading-screen">
-        <div className="loading-card">
-          <h2>Sesión no encontrada</h2>
-          <p>{mensaje}</p>
-          <p>
-            Regresa al inicio de sesión para acceder al sistema.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  return <Login onLogin={iniciarSesion} />;
+}
 
   const porcentaje = avance?.porcentaje_avance || 0;
 
