@@ -24,7 +24,12 @@ const {
     crearCarrera,
     actualizarCarrera,
     obtenerEstadisticas,
-    obtenerHistorialActividades
+    obtenerHistorialActividades,
+    obtenerActividadesBitacora,
+    crearActividadBitacora,
+    actualizarActividadBitacora,
+    actualizarEstadoActividadBitacora,
+    eliminarActividadBitacora
 } = require("../controllers/adminController");
 
 
@@ -172,6 +177,41 @@ router.get(
     obtenerArchivoBitacoraAdmin
 );
 
+// ==========================================
+// ACTIVIDADES DE BITÁCORA
+// ==========================================
+
+// Consultar actividades de bitácora
+router.get(
+    "/actividades-bitacora",
+    verificarToken,
+    verificarAdmin,
+    obtenerActividadesBitacora
+);
+
+// Crear actividad de bitácora
+router.post(
+    "/actividades-bitacora",
+    verificarToken,
+    verificarAdmin,
+    crearActividadBitacora
+);
+
+// Actualizar actividad de bitácora
+router.put(
+    "/actividades-bitacora/:id",
+    verificarToken,
+    verificarAdmin,
+    actualizarActividadBitacora
+);
+
+// Activar o desactivar actividad de bitácora
+router.put(
+    "/actividades-bitacora/:id/estado",
+    verificarToken,
+    verificarAdmin,
+    actualizarEstadoActividadBitacora
+);
 
 // ==========================================
 // CARRERAS
@@ -225,6 +265,14 @@ router.get(
     verificarToken,
     verificarAdmin,
     obtenerHistorialActividades
+);
+
+//Elimina las bitacoras
+router.delete(
+    "/actividades-bitacora/:id",
+    verificarToken,
+    verificarAdmin,
+    eliminarActividadBitacora
 );
 
 module.exports = router;

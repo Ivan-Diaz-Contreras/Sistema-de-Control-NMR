@@ -1534,6 +1534,374 @@ const actualizarEstadoPracticante = (req, res) => {
     );
 };
 
+// ==========================================
+// OBTENER ACTIVIDADES DE BITÁCORA
+// ==========================================
+
+const obtenerActividadesBitacora = (req, res) => {
+    const sql = `
+        SELECT
+            id_actividad,
+            numero_semana,
+            titulo,
+            descripcion,
+            fecha_inicio,
+            fecha_fin,
+            fecha_limite,
+            activa,
+            fecha_creacion
+        FROM actividades_bitacora
+        ORDER BY numero_semana DESC, id_actividad DESC
+    `;
+
+    db.query(sql, (error, resultados) => {
+        if (error) {
+            console.error(
+                "Error obteniendo actividades de bitácora:",
+                error
+            );
+
+            return res.status(500).json({
+                mensaje:
+                    "Error al consultar las actividades de bitácora"
+            });
+        }
+
+        return res.status(200).json({
+            total_actividades: resultados.length,
+            actividades: resultados
+        });
+    });
+};
+
+
+// ==========================================
+// CREAR ACTIVIDAD DE BITÁCORA
+// ==========================================
+
+const crearActividadBitacora = (req, res) => {
+    const idUsuarioAdmin = req.usuario.id_usuario;
+
+    const {
+        numero_semana,
+        titulo,
+        descripcion,
+        fecha_inicio,
+        fecha_fin,
+        fecha_limite
+    } = req.body || {};
+
+    if (
+        !numero_semana ||
+        !titulo ||
+        !descripcion ||
+        !fecha_inicio ||
+        !fecha_fin ||
+        !fecha_limite
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "Semana, título, descripción, fechas y fecha límite son obligatorios"
+        });
+    }
+
+    const semana = Number(numero_semana);
+
+    if (
+        !Number.isInteger(semana) ||
+        semana <= 0
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "El número de semana debe ser un entero mayor a 0"
+        });
+    }
+
+    if (
+        new Date(fecha_fin) <
+        new Date(fecha_inicio)
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha de fin no puede ser anterior a la fecha de inicio"
+        });
+    }
+
+    const sql = `
+        INSERT INTO actividades_bitacora (
+            numero_semana,
+            titulo,
+            descripcion,
+            fecha_inicio,
+            fecha_fin,
+            fecha_limite
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+        sql,
+        [
+            semana,
+            titulo.trim(),
+            descripcion.trim(),
+            fecha_inicio,
+            fecha_fin,
+            fecha_limite
+        ],
+        (error, resultado) => {
+            if (error) {
+                console.error(
+                    "Error creando actividad de bitácora:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al crear la actividad de bitácora"
+                });
+            }
+
+            registrarActividad(
+                idUsuarioAdmin,
+                "CREAR_ACTIVIDAD_BITACORA",
+                `El administrador creó la actividad de bitácora de la semana ${semana}: ${titulo.trim()}`
+            );
+
+            return res.status(201).json({
+                mensaje:
+                    "Actividad de bitácora creada correctamente",
+                id_actividad: resultado.insertId
+            });
+        }
+    );
+};
+
+
+// ==========================================
+// ACTUALIZAR ACTIVIDAD DE BITÁCORA
+// ==========================================
+
+const actualizarActividadBitacora = (req, res) => {
+    const { id } = req.params;
+    const idUsuarioAdmin = req.usuario.id_usuario;
+
+    const {
+        numero_semana,
+        titulo,
+        descripcion,
+        fecha_inicio,
+        fecha_fin,
+        fecha_limite
+    } = req.body || {};
+
+    if (
+        numero_semana === undefined &&
+        titulo === undefined &&
+        descripcion === undefined &&
+        fecha_inicio === undefined &&
+        fecha_fin === undefined &&
+        fecha_limite === undefined
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "Debes proporcionar al menos un dato para actualizar"
+        });
+    }
+
+    const sql = `
+        UPDATE actividades_bitacora
+        SET
+            numero_semana = COALESCE(?, numero_semana),
+            titulo = COALESCE(?, titulo),
+            descripcion = COALESCE(?, descripcion),
+            fecha_inicio = COALESCE(?, fecha_inicio),
+            fecha_fin = COALESCE(?, fecha_fin),
+            fecha_limite = COALESCE(?, fecha_limite)
+        WHERE id_actividad = ?
+    `;
+
+    db.query(
+        sql,
+        [
+            numero_semana ?? null,
+            titulo !== undefined
+                ? titulo.trim()
+                : null,
+            descripcion !== undefined
+                ? descripcion.trim()
+                : null,
+            fecha_inicio ?? null,
+            fecha_fin ?? null,
+            fecha_limite ?? null,
+            id
+        ],
+        (error, resultado) => {
+            if (error) {
+                console.error(
+                    "Error actualizando actividad de bitácora:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al actualizar la actividad de bitácora"
+                });
+            }
+
+            if (resultado.affectedRows === 0) {
+                return res.status(404).json({
+                    mensaje:
+                        "Actividad de bitácora no encontrada"
+                });
+            }
+
+            registrarActividad(
+                idUsuarioAdmin,
+                "ACTUALIZAR_ACTIVIDAD_BITACORA",
+                `El administrador actualizó la actividad de bitácora ${id}`
+            );
+
+            return res.status(200).json({
+                mensaje:
+                    "Actividad de bitácora actualizada correctamente"
+            });
+        }
+    );
+};
+
+
+// ==========================================
+// ACTIVAR O DESACTIVAR ACTIVIDAD DE BITÁCORA
+// ==========================================
+
+const actualizarEstadoActividadBitacora = (req, res) => {
+    const { id } = req.params;
+    const idUsuarioAdmin = req.usuario.id_usuario;
+    const { activa } = req.body || {};
+
+    if (
+        activa !== 0 &&
+        activa !== 1 &&
+        activa !== false &&
+        activa !== true
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "El campo activa debe ser 1 o 0"
+        });
+    }
+
+    const nuevoEstado = Number(activa);
+
+    const sql = `
+        UPDATE actividades_bitacora
+        SET activa = ?
+        WHERE id_actividad = ?
+    `;
+
+    db.query(
+        sql,
+        [nuevoEstado, id],
+        (error, resultado) => {
+            if (error) {
+                console.error(
+                    "Error actualizando estado de actividad:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al actualizar el estado de la actividad"
+                });
+            }
+
+            if (resultado.affectedRows === 0) {
+                return res.status(404).json({
+                    mensaje:
+                        "Actividad de bitácora no encontrada"
+                });
+            }
+
+            registrarActividad(
+                idUsuarioAdmin,
+                nuevoEstado === 1
+                    ? "ACTIVAR_ACTIVIDAD_BITACORA"
+                    : "DESACTIVAR_ACTIVIDAD_BITACORA",
+                nuevoEstado === 1
+                    ? `El administrador activó la actividad de bitácora ${id}`
+                    : `El administrador desactivó la actividad de bitácora ${id}`
+            );
+
+            return res.status(200).json({
+                mensaje:
+                    nuevoEstado === 1
+                        ? "Actividad activada correctamente"
+                        : "Actividad desactivada correctamente",
+                id_actividad: Number(id),
+                activa: nuevoEstado
+            });
+        }
+    );
+};
+
+// ==========================================
+// ELIMINAR ACTIVIDAD DE BITÁCORA
+// ==========================================
+
+const eliminarActividadBitacora = (req, res) => {
+    const { id } = req.params;
+    const idUsuarioAdmin = req.usuario.id_usuario;
+
+    const sql = `
+        DELETE FROM actividades_bitacora
+        WHERE id_actividad = ?
+    `;
+
+    db.query(
+        sql,
+        [id],
+        (error, resultado) => {
+            if (error) {
+                if (error.code === "ER_ROW_IS_REFERENCED_2") {
+                    return res.status(409).json({
+                        mensaje:
+                            "No se puede eliminar la actividad porque ya tiene bitácoras asociadas"
+                    });
+                }
+
+                console.error(
+                    "Error eliminando actividad de bitácora:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al eliminar la actividad de bitácora"
+                });
+            }
+
+            if (resultado.affectedRows === 0) {
+                return res.status(404).json({
+                    mensaje:
+                        "Actividad de bitácora no encontrada"
+                });
+            }
+
+            registrarActividad(
+                idUsuarioAdmin,
+                "ELIMINAR_ACTIVIDAD_BITACORA",
+                `El administrador eliminó la actividad de bitácora ${id}`
+            );
+
+            return res.status(200).json({
+                mensaje:
+                    "Actividad de bitácora eliminada correctamente"
+            });
+        }
+    );
+};
+
 module.exports = {
     // Practicantes
     obtenerPracticantes,
@@ -1566,8 +1934,16 @@ module.exports = {
     // Estadísticas
     obtenerEstadisticas,
 
+    // Actividades de bitácora
+    obtenerActividadesBitacora,
+    crearActividadBitacora,
+    actualizarActividadBitacora,
+    actualizarEstadoActividadBitacora,
+    eliminarActividadBitacora,
+
     // Historial de actividades
     obtenerHistorialActividades
+
 
     
 };

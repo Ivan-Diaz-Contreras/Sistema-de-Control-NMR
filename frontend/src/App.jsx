@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import axios from "axios";
 import Login from "./pages/Login";
+import AdminPanel from "./pages/AdminPanel";
 import "./App.css";
 
 const API = "http://localhost:3000/api";
@@ -27,110 +28,137 @@ const [usuario, setUsuario] = useState(
     Authorization: `Bearer ${token}`,
   };
 
-  useEffect(() => {
+useEffect(() => {
   if (!token) {
+    setCargando(false);
     return;
   }
 
-  const cargarDatos = async () => {
-    try {
-      setCargando(true);
-
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
-
-      const [perfilResponse, avanceResponse] = await Promise.all([
-        axios.get(`${API}/practicantes/perfil`, { headers }),
-        axios.get(`${API}/practicantes/avance`, { headers }),
-      ]);
-
-      setPerfil(perfilResponse.data.perfil);
-      setAvance(avanceResponse.data);
-    } catch (error) {
-      console.error(error);
-
-      if (error.response?.status === 401) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("usuario");
-
-        setToken(null);
-        setUsuario(null);
-
-        setMensaje(
-          "Tu sesión ha expirado. Inicia sesión nuevamente."
-        );
-      } else {
-        setMensaje(
-          error.response?.data?.mensaje ||
-            "No se pudieron cargar los datos del practicante."
-        );
-      }
-    } finally {
-      setCargando(false);
-    }
-  };
-
-    cargarDatos();
-  }, [token]);
-
-  const iniciarSesion = (nuevoToken, nuevoUsuario) => {
-    setToken(nuevoToken);
-    setUsuario(nuevoUsuario);
+  // Solo cargar perfil y avance si el usuario es practicante
+  if (Number(usuario?.id_rol) !== 1) {
     setMensaje("");
-  };
+    setCargando(false);
+    return;
+  }
 
-  const registrarEntrada = async () => {
-    try {
-      setProcesandoAsistencia(true);
-      setMensaje("");
+const cargarDatos = async () => {
+  try {
+    setCargando(true);
+    setMensaje("");
 
-      const response = await axios.post(
-        `${API}/practicantes/asistencia/entrada`,
-        {},
-        { headers }
-      );
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
 
-      setMensaje(
-        response.data.mensaje || "Entrada registrada correctamente."
-      );
-    } catch (error) {
-      console.error(error);
+    const [perfilResponse, avanceResponse] = await Promise.all([
+      axios.get(`${API}/practicantes/perfil`, { headers }),
+      axios.get(`${API}/practicantes/avance`, { headers }),
+    ]);
 
-      setMensaje(
-        error.response?.data?.mensaje ||
-          "No se pudo registrar la entrada."
-      );
-    } finally {
-      setProcesandoAsistencia(false);
-    }
-  };
+    setPerfil(perfilResponse.data.perfil);
+    setAvance(avanceResponse.data);
+  } catch (error) {
+    console.error(error);
 
-  const registrarSalida = async () => {
-    try {
-      setProcesandoAsistencia(true);
-      setMensaje("");
+    if (
+      error.response?.status === 401 ||
+      error.response?.status === 403
+    ) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("usuario");
 
-      const response = await axios.post(
-        `${API}/practicantes/asistencia/salida`,
-        {},
-        { headers }
-      );
-
-      setMensaje(
-        response.data.mensaje || "Salida registrada correctamente."
-      );
-    } catch (error) {
-      console.error(error);
+      setToken(null);
+      setUsuario(null);
+      setPerfil(null);
+      setAvance(null);
 
       setMensaje(
         error.response?.data?.mensaje ||
-          "No se pudo registrar la salida."
+          "Tu sesión ya no es válida. Inicia sesión nuevamente."
       );
-    } finally {
-      setProcesandoAsistencia(false);
+    } else {
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudieron cargar los datos del practicante."
+      );
     }
-  };
+  } finally {
+    setCargando(false);
+  }
+};
+
+cargarDatos();
+}, [token, usuario?.id_rol]);
+
+const iniciarSesion = (nuevoToken, nuevoUsuario) => {
+  setToken(nuevoToken);
+  setUsuario(nuevoUsuario);
+  setPerfil(null);
+  setAvance(null);
+  setMensaje("");
+};
+
+const registrarEntrada = async () => {
+  try {
+    setProcesandoAsistencia(true);
+    setMensaje("");
+
+    const response = await axios.post(
+      `${API}/practicantes/asistencia/entrada`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setMensaje(
+      response.data.mensaje ||
+        "Entrada registrada correctamente."
+    );
+  } catch (error) {
+    console.error(error);
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo registrar la entrada."
+    );
+  } finally {
+    setProcesandoAsistencia(false);
+  }
+};
+
+const registrarSalida = async () => {
+  try {
+    setProcesandoAsistencia(true);
+    setMensaje("");
+
+    const response = await axios.post(
+      `${API}/practicantes/asistencia/salida`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setMensaje(
+      response.data.mensaje ||
+        "Salida registrada correctamente."
+    );
+  } catch (error) {
+    console.error(error);
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo registrar la salida."
+    );
+  } finally {
+    setProcesandoAsistencia(false);
+  }
+};
 
   const cerrarSesion = () => {
   localStorage.removeItem("token");
@@ -155,8 +183,25 @@ const [usuario, setUsuario] = useState(
   }
 
   if (!token) {
-  return <Login onLogin={iniciarSesion} />;
-}
+    return <Login onLogin={iniciarSesion} />;
+  }
+
+  // ==========================================
+  // PANEL DEL ADMINISTRADOR
+  // ==========================================
+
+  if (Number(usuario?.id_rol) === 2) {
+    return (
+      <AdminPanel
+        usuario={usuario}
+        onLogout={cerrarSesion}
+      />
+    );
+  }
+
+  // ==========================================
+  // PANEL DEL PRACTICANTE
+  // ==========================================
 
   const porcentaje = avance?.porcentaje_avance || 0;
 
