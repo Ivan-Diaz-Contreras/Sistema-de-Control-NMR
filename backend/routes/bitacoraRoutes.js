@@ -9,6 +9,7 @@ const subirArchivo = require("../middleware/subirBitacora");
 
 const {
     subirBitacora,
+    obtenerActividadesDisponibles,
     obtenerBitacoras,
     obtenerArchivoBitacora
 } = require("../controllers/bitacoraController");
@@ -58,6 +59,16 @@ router.get(
     verificarToken,
     verificarPracticante,
     obtenerBitacoras
+);
+
+// ==========================================
+// CONSULTAR ACTIVIDADES DE BITÁCORA DISPONIBLES
+// ==========================================
+
+router.get(
+    "/actividades",
+    verificarToken,
+    obtenerActividadesDisponibles
 );
 
 // ==========================================

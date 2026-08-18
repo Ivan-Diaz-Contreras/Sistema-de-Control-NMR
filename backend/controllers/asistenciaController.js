@@ -191,8 +191,19 @@ const registrarSalida = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
 
     const ahora = new Date();
-    const fechaActual = ahora.toISOString().split("T")[0];
-    const horaActual = ahora.toTimeString().split(" ")[0];
+
+    // Usamos fecha y hora locales del servidor
+    const anio = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+    const dia = String(ahora.getDate()).padStart(2, "0");
+
+    const fechaActual = `${anio}-${mes}-${dia}`;
+
+    const horaActual = [
+        String(ahora.getHours()).padStart(2, "0"),
+        String(ahora.getMinutes()).padStart(2, "0"),
+        String(ahora.getSeconds()).padStart(2, "0")
+    ].join(":");
 
     // Buscar practicante
     db.query(
@@ -253,7 +264,8 @@ const registrarSalida = (req, res) => {
                         });
                     }
 
-                    const asistencia = resultadosAsistencia[0];
+                    const asistencia =
+                        resultadosAsistencia[0];
 
                     if (!asistencia.hora_entrada_real) {
                         return res.status(400).json({
@@ -268,6 +280,52 @@ const registrarSalida = (req, res) => {
                                 "La salida de hoy ya fue registrada"
                         });
                     }
+
+                    // ==========================================
+                    // CALCULAR HORAS TRABAJADAS
+                    // ==========================================
+
+                    const convertirSegundos = (hora) => {
+                        const [h, m, s] = hora
+                            .split(":")
+                            .map(Number);
+
+                        return h * 3600 + m * 60 + s;
+                    };
+
+                    const segundosEntrada =
+                        convertirSegundos(
+                            asistencia.hora_entrada_real
+                        );
+
+                    const segundosSalida =
+                        convertirSegundos(horaActual);
+
+                    const segundosTrabajados =
+                        segundosSalida - segundosEntrada;
+
+                    if (segundosTrabajados <= 0) {
+                        return res.status(400).json({
+                            mensaje:
+                                "La hora de salida debe ser posterior a la hora de entrada"
+                        });
+                    }
+
+                    const horasReales =
+                        segundosTrabajados / 3600;
+
+                    // Máximo permitido: 3 horas por día
+                    const horasContabilizadas =
+                        Math.min(horasReales, 3);
+
+                    const horasRedondeadas =
+                        Number(
+                            horasContabilizadas.toFixed(2)
+                        );
+
+                    // ==========================================
+                    // ACTUALIZAR ASISTENCIA
+                    // ==========================================
 
                     const sqlUpdate = `
                         UPDATE asistencias
@@ -300,22 +358,87 @@ const registrarSalida = (req, res) => {
                                 });
                             }
 
-                            registrarActividad(
-                                idUsuario,
-                                "REGISTRAR_SALIDA",
-                                `El practicante registró su salida el ${fechaActual} a las ${horaActual}`
-                            );
+                            // ==========================================
+                            // CREAR / ACTUALIZAR REGISTRO DE HORAS
+                            // ==========================================
 
-                            return res.status(200).json({
-                                mensaje:
-                                    "Salida registrada correctamente",
-                                id_asistencia:
+                            const sqlHoras = `
+                                INSERT INTO registros_horas (
+                                    id_practicante,
+                                    id_asistencia,
+                                    fecha,
+                                    horas,
+                                    descripcion
+                                )
+                                VALUES (?, ?, ?, ?, ?)
+
+                                ON DUPLICATE KEY UPDATE
+                                    fecha = VALUES(fecha),
+                                    horas = VALUES(horas),
+                                    descripcion = VALUES(descripcion)
+                            `;
+
+                            const descripcion =
+                                horasReales > 3
+                                    ? `Horas generadas por asistencia. Tiempo real: ${horasReales.toFixed(
+                                          2
+                                      )} h. Se aplicó el límite diario de 3 horas.`
+                                    : "Horas generadas automáticamente por asistencia.";
+
+                            db.query(
+                                sqlHoras,
+                                [
+                                    idPracticante,
                                     asistencia.id_asistencia,
-                                fecha: fechaActual,
-                                hora_entrada:
-                                    asistencia.hora_entrada_real,
-                                hora_salida: horaActual
-                            });
+                                    fechaActual,
+                                    horasRedondeadas,
+                                    descripcion
+                                ],
+                                (errorHoras) => {
+                                    if (errorHoras) {
+                                        console.error(
+                                            "Error registrando horas:",
+                                            errorHoras
+                                        );
+
+                                        return res.status(500).json({
+                                            mensaje:
+                                                "La salida fue registrada, pero hubo un error al calcular las horas"
+                                        });
+                                    }
+
+                                    registrarActividad(
+                                        idUsuario,
+                                        "REGISTRAR_SALIDA",
+                                        `El practicante registró su salida el ${fechaActual} a las ${horaActual}. Horas contabilizadas: ${horasRedondeadas}`
+                                    );
+
+                                    return res
+                                        .status(200)
+                                        .json({
+                                            mensaje:
+                                                "Salida registrada correctamente",
+                                            id_asistencia:
+                                                asistencia.id_asistencia,
+                                            fecha:
+                                                fechaActual,
+                                            hora_entrada:
+                                                asistencia.hora_entrada_real,
+                                            hora_salida:
+                                                horaActual,
+                                            horas_reales:
+                                                Number(
+                                                    horasReales.toFixed(
+                                                        2
+                                                    )
+                                                ),
+                                            horas_contabilizadas:
+                                                horasRedondeadas,
+                                            limite_diario:
+                                                3
+                                        });
+                                }
+                            );
                         }
                     );
                 }

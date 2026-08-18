@@ -3,91 +3,61 @@ const path = require("path");
 const fs = require("fs");
 const registrarActividad = require("../utils/registrarActividad");
 
-/// ==========================================
+// ==========================================
 // SUBIR BITÁCORA
 // ==========================================
 
 const subirBitacora = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
+    const { id_actividad } = req.body || {};
 
-    const {
-        numero_semana,
-        fecha_inicio,
-        fecha_fin
-    } = req.body;
-
-    // Función auxiliar para eliminar el archivo
-    // si Multer ya lo guardó pero ocurre un error después.
     const eliminarArchivoSubido = () => {
         if (req.file?.path && fs.existsSync(req.file.path)) {
             try {
                 fs.unlinkSync(req.file.path);
             } catch (error) {
                 console.error(
-                    "Error eliminando archivo temporal:",
+                    "Error eliminando archivo subido:",
                     error
                 );
             }
         }
     };
 
-    // Validar campos obligatorios
     if (
-        !numero_semana ||
-        !fecha_inicio ||
-        !fecha_fin ||
+        id_actividad === undefined ||
+        id_actividad === null ||
+        id_actividad === "" ||
         !req.file
     ) {
         eliminarArchivoSubido();
 
         return res.status(400).json({
             mensaje:
-                "Semana, fechas y archivo PDF son obligatorios"
+                "La actividad de bitácora y el archivo PDF son obligatorios"
         });
     }
 
-    // Validar número de semana
-    const semana = Number(numero_semana);
+    const idActividad = Number(id_actividad);
 
     if (
-        !Number.isInteger(semana) ||
-        semana <= 0
+        !Number.isInteger(idActividad) ||
+        idActividad <= 0
     ) {
         eliminarArchivoSubido();
 
         return res.status(400).json({
             mensaje:
-                "El número de semana debe ser un entero mayor a 0"
+                "El id de la actividad de bitácora es inválido"
         });
     }
 
-    // Validar fechas
-    const inicio = new Date(fecha_inicio);
-    const fin = new Date(fecha_fin);
-
-    if (
-        Number.isNaN(inicio.getTime()) ||
-        Number.isNaN(fin.getTime())
-    ) {
-        eliminarArchivoSubido();
-
-        return res.status(400).json({
-            mensaje: "Las fechas proporcionadas no son válidas"
-        });
-    }
-
-    if (fin < inicio) {
-        eliminarArchivoSubido();
-
-        return res.status(400).json({
-            mensaje:
-                "La fecha de fin no puede ser anterior a la fecha de inicio"
-        });
-    }
-
-    // Buscar practicante
     db.query(
-        "SELECT id_practicante FROM practicantes WHERE id_usuario = ?",
+        `
+            SELECT id_practicante
+            FROM practicantes
+            WHERE id_usuario = ?
+        `,
         [idUsuario],
         (errorPracticante, resultadosPracticante) => {
             if (errorPracticante) {
@@ -116,97 +86,283 @@ const subirBitacora = (req, res) => {
             const idPracticante =
                 resultadosPracticante[0].id_practicante;
 
-            // Verificar que no exista otra bitácora
-            // para la misma semana.
-            const sqlDuplicada = `
-                SELECT id_bitacora
-                FROM bitacoras
-                WHERE id_practicante = ?
-                  AND numero_semana = ?
+            const sqlActividad = `
+                SELECT
+                    id_actividad,
+                    numero_semana,
+                    titulo,
+                    descripcion,
+                    fecha_inicio,
+                    fecha_fin,
+                    fecha_limite,
+                    activa
+                FROM actividades_bitacora
+                WHERE id_actividad = ?
                 LIMIT 1
             `;
 
             db.query(
-                sqlDuplicada,
-                [idPracticante, semana],
-                (errorDuplicada, resultadosDuplicada) => {
-                    if (errorDuplicada) {
+                sqlActividad,
+                [idActividad],
+                (errorActividad, resultadosActividad) => {
+                    if (errorActividad) {
                         console.error(
-                            "Error verificando bitácora duplicada:",
-                            errorDuplicada
+                            "Error consultando actividad de bitácora:",
+                            errorActividad
                         );
 
                         eliminarArchivoSubido();
 
                         return res.status(500).json({
                             mensaje:
-                                "Error al verificar la bitácora"
+                                "Error al consultar la actividad de bitácora"
                         });
                     }
 
-                    if (resultadosDuplicada.length > 0) {
+                    if (resultadosActividad.length === 0) {
                         eliminarArchivoSubido();
 
-                        return res.status(409).json({
+                        return res.status(404).json({
                             mensaje:
-                                "Ya existe una bitácora registrada para esa semana"
+                                "Actividad de bitácora no encontrada"
                         });
                     }
 
-                    const sql = `
-                        INSERT INTO bitacoras (
-                            id_practicante,
-                            numero_semana,
-                            fecha_inicio,
-                            fecha_fin,
-                            nombre_archivo,
-                            ruta_archivo,
-                            estado
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')
+                    const actividad =
+                        resultadosActividad[0];
+
+                    if (Number(actividad.activa) !== 1) {
+                        eliminarArchivoSubido();
+
+                        return res.status(400).json({
+                            mensaje:
+                                "La actividad de bitácora se encuentra desactivada"
+                        });
+                    }
+
+                    const semana =
+                        Number(actividad.numero_semana);
+
+                    const sqlDuplicada = `
+                        SELECT id_bitacora
+                        FROM bitacoras
+                        WHERE id_practicante = ?
+                          AND (
+                                id_actividad = ?
+                                OR (
+                                    id_actividad IS NULL
+                                    AND numero_semana = ?
+                                )
+                              )
+                        LIMIT 1
                     `;
 
                     db.query(
-                        sql,
+                        sqlDuplicada,
                         [
                             idPracticante,
-                            semana,
-                            fecha_inicio,
-                            fecha_fin,
-                            req.file.originalname,
-                            req.file.filename
+                            idActividad,
+                            semana
                         ],
-                        (errorInsert, resultado) => {
-                            if (errorInsert) {
+                        (
+                            errorDuplicada,
+                            resultadosDuplicada
+                        ) => {
+                            if (errorDuplicada) {
                                 console.error(
-                                    "Error registrando bitácora:",
-                                    errorInsert
+                                    "Error verificando bitácora duplicada:",
+                                    errorDuplicada
                                 );
 
                                 eliminarArchivoSubido();
 
                                 return res.status(500).json({
                                     mensaje:
-                                        "Error al registrar la bitácora"
+                                        "Error al verificar la entrega de la bitácora"
                                 });
                             }
 
-                            registrarActividad(
-                                idUsuario,
-                                "SUBIR_BITACORA",
-                                `El practicante subió la bitácora de la semana ${semana}: ${req.file.originalname}`
-                            );
+                            if (
+                                resultadosDuplicada.length > 0
+                            ) {
+                                eliminarArchivoSubido();
 
-                            return res.status(201).json({
-                                mensaje:
-                                    "Bitácora subida correctamente",
-                                id_bitacora:
-                                    resultado.insertId,
-                                archivo:
-                                    req.file.originalname
-                            });
+                                return res.status(409).json({
+                                    mensaje:
+                                        "Ya entregaste la bitácora correspondiente a esta actividad"
+                                });
+                            }
+
+                            const sqlInsert = `
+                                INSERT INTO bitacoras (
+                                    id_practicante,
+                                    id_actividad,
+                                    numero_semana,
+                                    fecha_inicio,
+                                    fecha_fin,
+                                    nombre_archivo,
+                                    ruta_archivo,
+                                    estado
+                                )
+                                VALUES (?, ?, ?, ?, ?, ?, ?, 'Pendiente')
+                            `;
+
+                            db.query(
+                                sqlInsert,
+                                [
+                                    idPracticante,
+                                    idActividad,
+                                    semana,
+                                    actividad.fecha_inicio,
+                                    actividad.fecha_fin,
+                                    req.file.originalname,
+                                    req.file.filename
+                                ],
+                                (
+                                    errorInsert,
+                                    resultadoInsert
+                                ) => {
+                                    if (errorInsert) {
+                                        console.error(
+                                            "Error registrando bitácora:",
+                                            errorInsert
+                                        );
+
+                                        eliminarArchivoSubido();
+
+                                        return res.status(500).json({
+                                            mensaje:
+                                                "Error al registrar la bitácora"
+                                        });
+                                    }
+
+                                    registrarActividad(
+                                        idUsuario,
+                                        "SUBIR_BITACORA",
+                                        `El practicante subió la bitácora de la semana ${semana}: ${req.file.originalname}`
+                                    );
+
+                                    return res.status(201).json({
+                                        mensaje:
+                                            "Bitácora subida correctamente",
+                                        id_bitacora:
+                                            resultadoInsert.insertId,
+                                        id_actividad:
+                                            idActividad,
+                                        numero_semana:
+                                            semana,
+                                        titulo_actividad:
+                                            actividad.titulo,
+                                        archivo:
+                                            req.file.originalname
+                                    });
+                                }
+                            );
                         }
                     );
+                }
+            );
+        }
+    );
+};
+
+// ==========================================
+// OBTENER ACTIVIDADES DISPONIBLES
+// ==========================================
+
+const obtenerActividadesDisponibles = (req, res) => {
+    const idUsuario = req.usuario.id_usuario;
+
+    const sqlPracticante = `
+        SELECT id_practicante
+        FROM practicantes
+        WHERE id_usuario = ?
+    `;
+
+    db.query(
+        sqlPracticante,
+        [idUsuario],
+        (errorPracticante, resultadosPracticante) => {
+            if (errorPracticante) {
+                console.error(
+                    "Error consultando practicante:",
+                    errorPracticante
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al consultar el practicante"
+                });
+            }
+
+            if (resultadosPracticante.length === 0) {
+                return res.status(404).json({
+                    mensaje:
+                        "Practicante no encontrado"
+                });
+            }
+
+            const idPracticante =
+                resultadosPracticante[0].id_practicante;
+
+            const sql = `
+                SELECT
+                    a.id_actividad,
+                    a.numero_semana,
+                    a.titulo,
+                    a.descripcion,
+                    a.fecha_inicio,
+                    a.fecha_fin,
+                    a.fecha_limite,
+                    a.activa,
+                    a.fecha_creacion,
+                    b.id_bitacora,
+                    b.estado AS estado_entrega,
+                    b.observaciones,
+                    b.fecha_envio,
+                    b.fecha_revision,
+                    CASE
+                        WHEN b.id_bitacora IS NULL THEN 0
+                        ELSE 1
+                    END AS entregada
+                FROM actividades_bitacora a
+                LEFT JOIN bitacoras b
+                    ON b.id_actividad = a.id_actividad
+                   AND b.id_practicante = ?
+                WHERE a.activa = 1
+                ORDER BY
+                    a.numero_semana ASC,
+                    a.id_actividad ASC
+            `;
+
+            db.query(
+                sql,
+                [idPracticante],
+                (error, resultados) => {
+                    if (error) {
+                        console.error(
+                            "Error obteniendo actividades disponibles:",
+                            error
+                        );
+
+                        return res.status(500).json({
+                            mensaje:
+                                "Error al consultar las actividades de bitácora"
+                        });
+                    }
+
+                    const actividades =
+                        resultados.map((actividad) => ({
+                            ...actividad,
+                            entregada:
+                                Number(actividad.entregada) === 1
+                        }));
+
+                    return res.status(200).json({
+                        total_actividades:
+                            actividades.length,
+                        actividades
+                    });
                 }
             );
         }
@@ -223,6 +379,7 @@ const obtenerBitacoras = (req, res) => {
     const sql = `
         SELECT
             b.id_bitacora,
+            b.id_actividad,
             b.numero_semana,
             b.fecha_inicio,
             b.fecha_fin,
@@ -231,37 +388,52 @@ const obtenerBitacoras = (req, res) => {
             b.estado,
             b.observaciones,
             b.fecha_envio,
-            b.fecha_revision
+            b.fecha_revision,
+            a.titulo AS titulo_actividad,
+            a.descripcion AS descripcion_actividad,
+            a.fecha_limite
         FROM bitacoras b
         INNER JOIN practicantes p
             ON b.id_practicante = p.id_practicante
+        LEFT JOIN actividades_bitacora a
+            ON b.id_actividad = a.id_actividad
         WHERE p.id_usuario = ?
-        ORDER BY b.fecha_envio DESC, b.id_bitacora DESC
+        ORDER BY
+            b.numero_semana DESC,
+            b.fecha_envio DESC,
+            b.id_bitacora DESC
     `;
 
-    db.query(sql, [idUsuario], (error, resultados) => {
-        if (error) {
-            console.error(
-                "Error obteniendo bitácoras:",
-                error
-            );
+    db.query(
+        sql,
+        [idUsuario],
+        (error, resultados) => {
+            if (error) {
+                console.error(
+                    "Error obteniendo bitácoras:",
+                    error
+                );
 
-            return res.status(500).json({
-                mensaje: "Error al consultar las bitácoras"
+                return res.status(500).json({
+                    mensaje:
+                        "Error al consultar las bitácoras"
+                });
+            }
+
+            const bitacoras =
+                resultados.map((bitacora) => ({
+                    ...bitacora,
+                    url_archivo:
+                        `/api/practicantes/bitacoras/${bitacora.id_bitacora}/archivo`
+                }));
+
+            return res.status(200).json({
+                total_bitacoras:
+                    bitacoras.length,
+                bitacoras
             });
         }
-
-        const bitacoras = resultados.map((bitacora) => ({
-            ...bitacora,
-            url_archivo:
-                `/api/practicantes/bitacoras/${bitacora.id_bitacora}/archivo`
-        }));
-
-        return res.status(200).json({
-            total_bitacoras: bitacoras.length,
-            bitacoras
-        });
-    });
+    );
 };
 
 // ==========================================
@@ -283,54 +455,62 @@ const obtenerArchivoBitacora = (req, res) => {
           AND p.id_usuario = ?
     `;
 
-    db.query(sql, [id, idUsuario], (error, resultados) => {
-        if (error) {
-            console.error(
-                "Error consultando archivo de bitácora:",
-                error
+    db.query(
+        sql,
+        [id, idUsuario],
+        (error, resultados) => {
+            if (error) {
+                console.error(
+                    "Error consultando archivo de bitácora:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al consultar la bitácora"
+                });
+            }
+
+            if (resultados.length === 0) {
+                return res.status(404).json({
+                    mensaje:
+                        "Bitácora no encontrada"
+                });
+            }
+
+            const bitacora = resultados[0];
+
+            const rutaCompleta = path.join(
+                __dirname,
+                "../uploads/bitacoras",
+                bitacora.ruta_archivo
             );
 
-            return res.status(500).json({
-                mensaje: "Error al consultar la bitácora"
-            });
+            if (!fs.existsSync(rutaCompleta)) {
+                return res.status(404).json({
+                    mensaje:
+                        "Archivo PDF no encontrado"
+                });
+            }
+
+            res.setHeader(
+                "Content-Type",
+                "application/pdf"
+            );
+
+            res.setHeader(
+                "Content-Disposition",
+                `inline; filename="${bitacora.nombre_archivo}"`
+            );
+
+            return res.sendFile(rutaCompleta);
         }
-
-        if (resultados.length === 0) {
-            return res.status(404).json({
-                mensaje: "Bitácora no encontrada"
-            });
-        }
-
-        const bitacora = resultados[0];
-
-        const rutaCompleta = path.join(
-            __dirname,
-            "../uploads/bitacoras",
-            bitacora.ruta_archivo
-        );
-
-        if (!fs.existsSync(rutaCompleta)) {
-            return res.status(404).json({
-                mensaje: "Archivo PDF no encontrado"
-            });
-        }
-
-        res.setHeader(
-            "Content-Type",
-            "application/pdf"
-        );
-
-        res.setHeader(
-            "Content-Disposition",
-            `inline; filename="${bitacora.nombre_archivo}"`
-        );
-
-        return res.sendFile(rutaCompleta);
-    });
+    );
 };
 
 module.exports = {
     subirBitacora,
+    obtenerActividadesDisponibles,
     obtenerBitacoras,
     obtenerArchivoBitacora
 };

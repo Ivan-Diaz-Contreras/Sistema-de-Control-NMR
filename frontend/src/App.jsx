@@ -4,7 +4,8 @@ import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
 import "./App.css";
 
-const API = `${import.meta.env.VITE_API_URL}/api`;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API = `${API_URL}/api`;
 
 function App() {
   const [perfil, setPerfil] = useState(null);
@@ -15,6 +16,16 @@ function App() {
   );
   const [procesandoAsistencia, setProcesandoAsistencia] = useState(false);
   const [seccion, setSeccion] = useState("dashboard");
+
+  // ==========================================
+  // BITÁCORAS DEL PRACTICANTE
+  // ==========================================
+
+  const [actividadesBitacora, setActividadesBitacora] = useState([]);
+  const [bitacoras, setBitacoras] = useState([]);
+  const [cargandoBitacoras, setCargandoBitacoras] = useState(false);
+  const [subiendoBitacora, setSubiendoBitacora] = useState(null);
+  const [archivoBitacora, setArchivoBitacora] = useState(null);
 
   const [token, setToken] = useState(
   localStorage.getItem("token")
@@ -74,7 +85,7 @@ const cargarDatos = async () => {
 
       setMensaje(
         error.response?.data?.mensaje ||
-          "Tu sesi�n ya no es v�lida. Inicia sesi�n nuevamente."
+          "Tu sesión ya no es válida. Inicia sesión nuevamente."
       );
     } else {
       setMensaje(
@@ -160,6 +171,198 @@ const registrarSalida = async () => {
   }
 };
 
+const cargarBitacorasPracticante = async () => {
+  if (!token || Number(usuario?.id_rol) !== 1) {
+    return;
+  }
+
+  try {
+    setCargandoBitacoras(true);
+    setMensaje("");
+
+    const [actividadesResponse, bitacorasResponse] = await Promise.all([
+      axios.get(
+        `${API}/practicantes/bitacoras/actividades`,
+        { headers }
+      ),
+      axios.get(
+        `${API}/practicantes/bitacoras`,
+        { headers }
+      ),
+    ]);
+
+    setActividadesBitacora(
+      actividadesResponse.data.actividades || []
+    );
+
+    setBitacoras(
+      bitacorasResponse.data.bitacoras || []
+    );
+  } catch (error) {
+    console.error(
+      "Error cargando bitácoras del practicante:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudieron cargar las actividades de bitácora."
+    );
+  } finally {
+    setCargandoBitacoras(false);
+  }
+};
+
+useEffect(() => {
+  if (
+    seccion === "bitacoras" &&
+    token &&
+    Number(usuario?.id_rol) === 1
+  ) {
+    cargarBitacorasPracticante();
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [seccion, token, usuario?.id_rol]);
+
+const seleccionarArchivoBitacora = (
+  idActividad,
+  archivo
+) => {
+  setSubiendoBitacora(idActividad);
+  setArchivoBitacora(archivo || null);
+  setMensaje("");
+};
+
+const subirPdfBitacora = async (
+  idActividad
+) => {
+  if (!archivoBitacora) {
+    setMensaje(
+      "Selecciona un archivo PDF antes de subir la bitácora."
+    );
+    return;
+  }
+
+  try {
+    setMensaje("");
+
+    const formData = new FormData();
+
+    formData.append(
+      "id_actividad",
+      String(idActividad)
+    );
+
+    formData.append(
+      "archivo",
+      archivoBitacora
+    );
+
+    const response = await axios.post(
+      `${API}/practicantes/bitacoras`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setMensaje(
+      response.data.mensaje ||
+        "Bitácora subida correctamente."
+    );
+
+    setSubiendoBitacora(null);
+    setArchivoBitacora(null);
+
+    await cargarBitacorasPracticante();
+  } catch (error) {
+    console.error(
+      "Error subiendo bitácora:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo subir la bitácora."
+    );
+  }
+};
+
+const abrirPdfBitacora = async (
+  idBitacora
+) => {
+  try {
+    const response = await axios.get(
+      `${API}/practicantes/bitacoras/${idBitacora}/archivo`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: "blob",
+      }
+    );
+
+    const url = URL.createObjectURL(
+      new Blob([response.data], {
+        type: "application/pdf",
+      })
+    );
+
+    window.open(url, "_blank");
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 60000);
+  } catch (error) {
+    console.error(
+      "Error abriendo PDF:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo abrir el archivo PDF."
+    );
+  }
+};
+
+const formatearFechaBitacora = (fecha) => {
+  if (!fecha) {
+    return "—";
+  }
+
+  const valor = String(fecha).slice(0, 10);
+  const [anio, mes, dia] = valor.split("-");
+
+  return anio && mes && dia
+    ? `${dia}/${mes}/${anio}`
+    : valor;
+};
+
+const formatearFechaHoraBitacora = (fecha) => {
+  if (!fecha) {
+    return "—";
+  }
+
+  const fechaObj = new Date(fecha);
+
+  if (Number.isNaN(fechaObj.getTime())) {
+    return "—";
+  }
+
+  return fechaObj.toLocaleString("es-MX", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
   const cerrarSesion = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("usuario");
@@ -213,7 +416,7 @@ const registrarSalida = async () => {
 
           <div>
             <h1>NMR</h1>
-            <span>Control de Pr�cticas</span>
+            <span>Control de Prácticas</span>
           </div>
         </div>
 
@@ -224,7 +427,7 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("dashboard")}
           >
-            <span>�</span>
+            <span>⌂</span>
             Dashboard
           </button>
 
@@ -234,7 +437,7 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("perfil")}
           >
-            <span>??</span>
+            <span>👤</span>
             Mi perfil
           </button>
 
@@ -244,7 +447,7 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("asistencia")}
           >
-            <span>??</span>
+            <span>🕘</span>
             Asistencia
           </button>
 
@@ -254,7 +457,7 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("horas")}
           >
-            <span>?</span>
+            <span>⏱️</span>
             Mis horas
           </button>
 
@@ -264,24 +467,15 @@ const registrarSalida = async () => {
             }`}
             onClick={() => setSeccion("bitacoras")}
           >
-            <span>??</span>
-            Bit�coras
+            <span>📋</span>
+            Bitácoras
           </button>
 
-          <button
-            className={`nav-item ${
-              seccion === "evidencias" ? "active" : ""
-            }`}
-            onClick={() => setSeccion("evidencias")}
-          >
-            <span>??</span>
-            Evidencias
-          </button>
         </nav>
 
         <button className="logout-button" onClick={cerrarSesion}>
-          <span>?</span>
-          Cerrar sesi�n
+          <span>↪</span>
+          Cerrar sesión
         </button>
       </aside>
 
@@ -300,7 +494,7 @@ const registrarSalida = async () => {
                 : seccion === "horas"
                 ? "Mis horas"
                 : seccion === "bitacoras"
-                ? "Bit�coras"
+                ? "Bitácoras"
                 : "Evidencias"}
             </h2>
           </div>
@@ -331,12 +525,12 @@ const registrarSalida = async () => {
                 <p className="section-label">BIENVENIDO</p>
 
                 <h1>
-                  Hola, {perfil?.nombre || usuario?.nombre || "Samuel"} ??
+                  Hola, {perfil?.nombre || usuario?.nombre || "Samuel"} 👋
                 </h1>
 
                 <p>
-                  Aqu� puedes consultar tu progreso y administrar tus
-                  actividades de pr�cticas profesionales.
+                  Aquí puedes consultar tu progreso y administrar tus
+                  actividades de prácticas profesionales.
                 </p>
               </div>
 
@@ -345,7 +539,7 @@ const registrarSalida = async () => {
 
             <section className="stats-grid">
               <div className="stat-card">
-                <span className="stat-icon">?</span>
+                <span className="stat-icon">⏱️</span>
 
                 <div>
                   <p>Horas acumuladas</p>
@@ -357,7 +551,7 @@ const registrarSalida = async () => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">??</span>
+                <span className="stat-icon">📊</span>
 
                 <div>
                   <p>Avance</p>
@@ -367,7 +561,7 @@ const registrarSalida = async () => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">??</span>
+                <span className="stat-icon">📊</span>
 
                 <div>
                   <p>Horas restantes</p>
@@ -387,7 +581,7 @@ const registrarSalida = async () => {
                     <h3>Control de asistencia</h3>
                   </div>
 
-                  <span className="status-dot">? Disponible</span>
+                  <span className="status-dot">● Disponible</span>
                 </div>
 
                 <p className="panel-description">
@@ -401,7 +595,7 @@ const registrarSalida = async () => {
                     onClick={registrarEntrada}
                     disabled={procesandoAsistencia}
                   >
-                    <span>?</span>
+                    <span>→</span>
                     Registrar entrada
                   </button>
 
@@ -410,7 +604,7 @@ const registrarSalida = async () => {
                     onClick={registrarSalida}
                     disabled={procesandoAsistencia}
                   >
-                    <span>?</span>
+                    <span>←</span>
                     Registrar salida
                   </button>
                 </div>
@@ -419,7 +613,7 @@ const registrarSalida = async () => {
               <div className="panel">
                 <div className="panel-header">
                   <div>
-                    <p className="section-label">MI INFORMACI�N</p>
+                    <p className="section-label">MI INFORMACIÓN</p>
                     <h3>Perfil</h3>
                   </div>
                 </div>
@@ -440,7 +634,7 @@ const registrarSalida = async () => {
                     </div>
 
                     <div>
-                      <span>Matr�cula</span>
+                      <span>Matrícula</span>
                       <strong>
                         {perfil.matricula || "No registrada"}
                       </strong>
@@ -468,7 +662,7 @@ const registrarSalida = async () => {
               <div className="progress-header">
                 <div>
                   <p className="section-label">PROGRESO</p>
-                  <h3>Avance de pr�cticas profesionales</h3>
+                  <h3>Avance de prácticas profesionales</h3>
                 </div>
 
                 <strong>{porcentaje}%</strong>
@@ -500,7 +694,7 @@ const registrarSalida = async () => {
           <section className="panel">
             <div className="panel-header">
               <div>
-                <p className="section-label">INFORMACI�N PERSONAL</p>
+                <p className="section-label">INFORMACIÓN PERSONAL</p>
                 <h3>Mi perfil</h3>
               </div>
             </div>
@@ -516,12 +710,12 @@ const registrarSalida = async () => {
                 </div>
 
                 <div>
-                  <span>Correo electr�nico</span>
+                  <span>Correo electrónico</span>
                   <strong>{perfil.correo}</strong>
                 </div>
 
                 <div>
-                  <span>Matr�cula</span>
+                  <span>Matrícula</span>
                   <strong>
                     {perfil.matricula || "No registrada"}
                   </strong>
@@ -540,7 +734,7 @@ const registrarSalida = async () => {
                 </div>
 
                 <div>
-                  <span>Tel�fono</span>
+                  <span>Teléfono</span>
                   <strong>
                     {perfil.telefono || "No registrado"}
                   </strong>
@@ -560,7 +754,7 @@ const registrarSalida = async () => {
                 <h3>Asistencia</h3>
               </div>
 
-              <span className="status-dot">? Disponible</span>
+              <span className="status-dot">● Disponible</span>
             </div>
 
             <p className="panel-description">
@@ -573,7 +767,7 @@ const registrarSalida = async () => {
                 onClick={registrarEntrada}
                 disabled={procesandoAsistencia}
               >
-                <span>?</span>
+                <span>→</span>
                 Registrar entrada
               </button>
 
@@ -582,7 +776,7 @@ const registrarSalida = async () => {
                 onClick={registrarSalida}
                 disabled={procesandoAsistencia}
               >
-                <span>?</span>
+                <span>←</span>
                 Registrar salida
               </button>
             </div>
@@ -600,7 +794,7 @@ const registrarSalida = async () => {
 
             <div className="stats-grid">
               <div className="stat-card">
-                <span className="stat-icon">?</span>
+                <span className="stat-icon">⏱️</span>
                 <div>
                   <p>Horas acumuladas</p>
                   <strong>
@@ -611,7 +805,7 @@ const registrarSalida = async () => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">??</span>
+                <span className="stat-icon">📊</span>
                 <div>
                   <p>Horas requeridas</p>
                   <strong>
@@ -622,7 +816,7 @@ const registrarSalida = async () => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">??</span>
+                <span className="stat-icon">📊</span>
                 <div>
                   <p>Avance</p>
                   <strong>{porcentaje}%</strong>
@@ -634,40 +828,367 @@ const registrarSalida = async () => {
         )}
 
         {seccion === "bitacoras" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <p className="section-label">ACTIVIDADES</p>
-                <h3>Bit�coras</h3>
+          <>
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="section-label">
+                    ACTIVIDADES SEMANALES
+                  </p>
+                  <h3>Bitácoras</h3>
+                </div>
               </div>
-            </div>
 
-            <p className="panel-description">
-              En esta secci�n podr�s consultar y administrar tus
-              bit�coras de pr�cticas profesionales.
-            </p>
+              <p className="panel-description">
+                Consulta las actividades publicadas por el administrador
+                y sube tu archivo PDF correspondiente a cada semana.
+              </p>
 
-            <p>?? M�dulo en desarrollo.</p>
-          </section>
+              {cargandoBitacoras ? (
+                <p>Cargando actividades de bitácora...</p>
+              ) : actividadesBitacora.length === 0 ? (
+                <p>
+                  No hay actividades de bitácora activas por el momento.
+                </p>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "16px",
+                  }}
+                >
+                  {actividadesBitacora.map(
+                    (actividad) => (
+                      <div
+                        key={actividad.id_actividad}
+                        style={{
+                          border: "1px solid #e1e6ef",
+                          borderRadius: "10px",
+                          padding: "18px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent:
+                              "space-between",
+                            gap: "16px",
+                            flexWrap: "wrap",
+                            alignItems: "flex-start",
+                          }}
+                        >
+                          <div>
+                            <p
+                              className="section-label"
+                              style={{
+                                marginBottom: "4px",
+                              }}
+                            >
+                              SEMANA{" "}
+                              {
+                                actividad.numero_semana
+                              }
+                            </p>
+
+                            <h3
+                              style={{
+                                marginTop: 0,
+                              }}
+                            >
+                              {actividad.titulo}
+                            </h3>
+                          </div>
+
+                          <strong>
+                            {actividad.entregada
+                              ? actividad.estado_entrega ||
+                                "Entregada"
+                              : "Pendiente de entrega"}
+                          </strong>
+                        </div>
+
+                        <p>
+                          {actividad.descripcion}
+                        </p>
+
+                        <div
+                          className="profile-list"
+                          style={{
+                            marginTop: "14px",
+                          }}
+                        >
+                          <div>
+                            <span>
+                              Fecha de inicio
+                            </span>
+                            <strong>
+                              {formatearFechaBitacora(
+                                actividad.fecha_inicio
+                              )}
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>
+                              Fecha de fin
+                            </span>
+                            <strong>
+                              {formatearFechaBitacora(
+                                actividad.fecha_fin
+                              )}
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>
+                              Fecha límite
+                            </span>
+                            <strong>
+                              {formatearFechaHoraBitacora(
+                                actividad.fecha_limite
+                              )}
+                            </strong>
+                          </div>
+                        </div>
+
+                        {actividad.observaciones && (
+                          <div
+                            className="message"
+                            style={{
+                              marginTop: "14px",
+                            }}
+                          >
+                            Observación:{" "}
+                            {
+                              actividad.observaciones
+                            }
+                          </div>
+                        )}
+
+                        {!actividad.entregada && (
+                          <div
+                            style={{
+                              marginTop: "16px",
+                              display: "flex",
+                              gap: "10px",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                            }}
+                          >
+                            <input
+                              type="file"
+                              accept="application/pdf,.pdf"
+                              onChange={(e) =>
+                                seleccionarArchivoBitacora(
+                                  actividad.id_actividad,
+                                  e.target.files?.[0] ||
+                                    null
+                                )
+                              }
+                            />
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                subirPdfBitacora(
+                                  actividad.id_actividad
+                                )
+                              }
+                              disabled={
+                                subiendoBitacora !==
+                                  actividad.id_actividad ||
+                                !archivoBitacora
+                              }
+                            >
+                              Subir PDF
+                            </button>
+                          </div>
+                        )}
+
+                        {actividad.entregada &&
+                          actividad.id_bitacora && (
+                            <div
+                              style={{
+                                marginTop: "16px",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  abrirPdfBitacora(
+                                    actividad.id_bitacora
+                                  )
+                                }
+                              >
+                                Ver PDF enviado
+                              </button>
+                            </div>
+                          )}
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="section-label">
+                    HISTORIAL
+                  </p>
+                  <h3>Mis entregas</h3>
+                </div>
+              </div>
+
+              {cargandoBitacoras ? (
+                <p>Cargando historial...</p>
+              ) : bitacoras.length === 0 ? (
+                <p>
+                  Todavía no has enviado ninguna bitácora.
+                </p>
+              ) : (
+                <div
+                  style={{
+                    overflowX: "auto",
+                  }}
+                >
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      minWidth: "850px",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        {[
+                          "Semana",
+                          "Actividad",
+                          "Archivo",
+                          "Estado",
+                          "Observaciones",
+                          "Fecha de envío",
+                          "Acciones",
+                        ].map((titulo) => (
+                          <th
+                            key={titulo}
+                            style={{
+                              textAlign: "left",
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #d8dee9",
+                            }}
+                          >
+                            {titulo}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {bitacoras.map((bitacora) => (
+                        <tr
+                          key={
+                            bitacora.id_bitacora
+                          }
+                        >
+                          <td
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #edf0f5",
+                            }}
+                          >
+                            {
+                              bitacora.numero_semana
+                            }
+                          </td>
+
+                          <td
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #edf0f5",
+                            }}
+                          >
+                            {bitacora.titulo_actividad ||
+                              "Bitácora semanal"}
+                          </td>
+
+                          <td
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #edf0f5",
+                            }}
+                          >
+                            {
+                              bitacora.nombre_archivo
+                            }
+                          </td>
+
+                          <td
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #edf0f5",
+                            }}
+                          >
+                            {bitacora.estado}
+                          </td>
+
+                          <td
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #edf0f5",
+                            }}
+                          >
+                            {bitacora.observaciones ||
+                              "—"}
+                          </td>
+
+                          <td
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #edf0f5",
+                            }}
+                          >
+                            {formatearFechaHoraBitacora(
+                              bitacora.fecha_envio
+                            )}
+                          </td>
+
+                          <td
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #edf0f5",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                abrirPdfBitacora(
+                                  bitacora.id_bitacora
+                                )
+                              }
+                            >
+                              Ver PDF
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
         )}
 
-        {seccion === "evidencias" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <p className="section-label">DOCUMENTACI�N</p>
-                <h3>Evidencias</h3>
-              </div>
-            </div>
-
-            <p className="panel-description">
-              En esta secci�n podr�s consultar y administrar las
-              evidencias de tus actividades.
-            </p>
-
-            <p>?? M�dulo en desarrollo.</p>
-          </section>
-        )}
       </main>
     </div>
   );

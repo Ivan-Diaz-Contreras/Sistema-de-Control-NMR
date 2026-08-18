@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
-const API = `${import.meta.env.VITE_API_URL}/api`;
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:3000";
+
+const API = `${API_URL}/api`;
 
 function AdminPanel({ usuario, onLogout }) {
   const [seccion, setSeccion] = useState("dashboard");
@@ -16,11 +20,49 @@ function AdminPanel({ usuario, onLogout }) {
   const [filtroCarrera, setFiltroCarrera] = useState("");
   const [carreras, setCarreras] = useState([]);
 
+  // ==========================================
+  // ADMINISTRACIÓN DE CARRERAS
+  // ==========================================
+
+  const [cargandoCarreras, setCargandoCarreras] = useState(false);
+  const [mostrandoFormularioCarrera, setMostrandoFormularioCarrera] = useState(false);
+  const [editandoCarrera, setEditandoCarrera] = useState(null);
+  const [guardandoCarrera, setGuardandoCarrera] = useState(false);
+  const [nombreCarrera, setNombreCarrera] = useState("");
+
   const [practicanteSeleccionado, setPracticanteSeleccionado] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
   const [editandoPracticante, setEditandoPracticante] = useState(null);
   const [guardandoPracticante, setGuardandoPracticante] = useState(false);
+
+  // ==========================================
+  // REGISTROS DE HORAS DEL PRACTICANTE
+  // ==========================================
+
+  const [registrosHoras, setRegistrosHoras] = useState([]);
+  const [cargandoHoras, setCargandoHoras] = useState(false);
+  const [editandoRegistroHoras, setEditandoRegistroHoras] = useState(null);
+  const [guardandoRegistroHoras, setGuardandoRegistroHoras] = useState(false);
+
+  // ==========================================
+  // HORARIO SEMANAL DEL PRACTICANTE
+  // ==========================================
+
+  const [horariosPracticante, setHorariosPracticante] = useState([]);
+  const [cargandoHorarios, setCargandoHorarios] = useState(false);
+  const [mostrandoFormularioHorario, setMostrandoFormularioHorario] = useState(false);
+  const [editandoHorario, setEditandoHorario] = useState(null);
+  const [guardandoHorario, setGuardandoHorario] = useState(false);
+
+  const horarioInicial = {
+    dia_semana: "Lunes",
+    hora_entrada: "",
+    hora_salida: "",
+    activo: 1,
+  };
+
+  const [formHorario, setFormHorario] = useState(horarioInicial);
 
   // ==========================================
   // ACTIVIDADES SEMANALES DE BITÁCORA
@@ -42,6 +84,36 @@ function AdminPanel({ usuario, onLogout }) {
   };
 
   const [formActividad, setFormActividad] = useState(actividadInicial);
+
+  // ==========================================
+  // ENTREGAS DE BITÁCORAS DE PRACTICANTES
+  // ==========================================
+
+  const [entregasBitacoras, setEntregasBitacoras] = useState([]);
+  const [cargandoEntregas, setCargandoEntregas] = useState(false);
+  const [filtroEstadoBitacora, setFiltroEstadoBitacora] = useState("");
+  const [busquedaEntrega, setBusquedaEntrega] = useState("");
+  const [revisandoBitacora, setRevisandoBitacora] = useState(null);
+
+  // ==========================================
+  // ASISTENCIAS
+  // ==========================================
+
+  const [asistencias, setAsistencias] = useState([]);
+  const [cargandoAsistencias, setCargandoAsistencias] = useState(false);
+  const [busquedaAsistencia, setBusquedaAsistencia] = useState("");
+  const [filtroEstadoAsistencia, setFiltroEstadoAsistencia] = useState("");
+  const [editandoAsistencia, setEditandoAsistencia] = useState(null);
+  const [guardandoAsistencia, setGuardandoAsistencia] = useState(false);
+
+  // ==========================================
+  // HISTORIAL DE ACTIVIDADES
+  // ==========================================
+
+  const [historial, setHistorial] = useState([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [busquedaHistorial, setBusquedaHistorial] = useState("");
+  const [filtroAccionHistorial, setFiltroAccionHistorial] = useState("");
 
   const token = localStorage.getItem("token");
 
@@ -80,11 +152,13 @@ function AdminPanel({ usuario, onLogout }) {
   };
 
   // ==========================================
-  // CARGAR CARRERAS
+  // CARGAR Y ADMINISTRAR CARRERAS
   // ==========================================
 
   const cargarCarreras = async () => {
     try {
+      setCargandoCarreras(true);
+
       const response = await axios.get(
         `${API}/admin/carreras`,
         { headers }
@@ -95,6 +169,151 @@ function AdminPanel({ usuario, onLogout }) {
       console.error(
         "Error cargando carreras:",
         error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudieron cargar las carreras."
+      );
+    } finally {
+      setCargandoCarreras(false);
+    }
+  };
+
+  const abrirNuevaCarrera = () => {
+    setEditandoCarrera(null);
+    setNombreCarrera("");
+    setMostrandoFormularioCarrera(true);
+    setMensaje("");
+  };
+
+  const abrirEdicionCarrera = (carrera) => {
+    setEditandoCarrera(carrera);
+    setNombreCarrera(carrera.nombre || "");
+    setMostrandoFormularioCarrera(true);
+    setMensaje("");
+  };
+
+  const cancelarEdicionCarrera = () => {
+    setEditandoCarrera(null);
+    setNombreCarrera("");
+    setMostrandoFormularioCarrera(false);
+  };
+
+  const guardarCarrera = async (e) => {
+    e.preventDefault();
+
+    const nombre = nombreCarrera.trim();
+
+    if (!nombre) {
+      setMensaje("Escribe el nombre de la carrera.");
+      return;
+    }
+
+    try {
+      setGuardandoCarrera(true);
+      setMensaje("");
+
+      let response;
+
+      if (editandoCarrera) {
+        response = await axios.put(
+          `${API}/admin/carreras/${editandoCarrera.id_carrera}`,
+          {
+            nombre,
+            activa:
+              editandoCarrera.activa ??
+              editandoCarrera.activo ??
+              1,
+          },
+          { headers }
+        );
+      } else {
+        response = await axios.post(
+          `${API}/admin/carreras`,
+          { nombre },
+          { headers }
+        );
+      }
+
+      setMensaje(
+        response.data.mensaje ||
+          (editandoCarrera
+            ? "Carrera actualizada correctamente."
+            : "Carrera creada correctamente.")
+      );
+
+      cancelarEdicionCarrera();
+
+      await Promise.all([
+        cargarCarreras(),
+        cargarEstadisticas(),
+      ]);
+    } catch (error) {
+      console.error(
+        "Error guardando carrera:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo guardar la carrera."
+      );
+    } finally {
+      setGuardandoCarrera(false);
+    }
+  };
+
+  const cambiarEstadoCarrera = async (carrera) => {
+    const estadoActual = Number(
+      carrera.activa ?? carrera.activo ?? 1
+    );
+
+    const nuevoEstado =
+      estadoActual === 1 ? 0 : 1;
+
+    const accion =
+      nuevoEstado === 1 ? "activar" : "desactivar";
+
+    const confirmar = window.confirm(
+      `¿Deseas ${accion} la carrera "${carrera.nombre}"?`
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      setMensaje("");
+
+      const response = await axios.put(
+        `${API}/admin/carreras/${carrera.id_carrera}`,
+        {
+          nombre: carrera.nombre,
+          activa: nuevoEstado,
+        },
+        { headers }
+      );
+
+      setMensaje(
+        response.data.mensaje ||
+          `Carrera ${nuevoEstado === 1 ? "activada" : "desactivada"} correctamente.`
+      );
+
+      await Promise.all([
+        cargarCarreras(),
+        cargarPracticantes(filtroCarrera),
+        cargarEstadisticas(),
+      ]);
+    } catch (error) {
+      console.error(
+        "Error cambiando estado de carrera:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo actualizar el estado de la carrera."
       );
     }
   };
@@ -211,6 +430,12 @@ function AdminPanel({ usuario, onLogout }) {
       );
 
       setEditandoPracticante(null);
+      setEditandoRegistroHoras(null);
+
+      await Promise.all([
+        cargarHorasPracticante(idPracticante),
+        cargarHorarioPracticante(idPracticante),
+      ]);
     } catch (error) {
       console.error(
         "Error cargando practicante:",
@@ -352,6 +577,358 @@ function AdminPanel({ usuario, onLogout }) {
   };
 
   // ==========================================
+  // HORARIO SEMANAL DEL PRACTICANTE
+  // ==========================================
+
+  const cargarHorarioPracticante = async (idPracticante) => {
+    try {
+      setCargandoHorarios(true);
+
+      const response = await axios.get(
+        `${API}/admin/practicantes/${idPracticante}/horario`,
+        { headers }
+      );
+
+      setHorariosPracticante(
+        response.data.horarios ||
+          response.data.horario ||
+          response.data.resultados ||
+          []
+      );
+    } catch (error) {
+      console.error(
+        "Error cargando horario del practicante:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo cargar el horario del practicante."
+      );
+
+      setHorariosPracticante([]);
+    } finally {
+      setCargandoHorarios(false);
+    }
+  };
+
+  const abrirNuevoHorario = () => {
+    setEditandoHorario(null);
+    setFormHorario(horarioInicial);
+    setMostrandoFormularioHorario(true);
+    setMensaje("");
+  };
+
+  const abrirEdicionHorario = (horario) => {
+    setEditandoHorario(horario);
+
+    setFormHorario({
+      dia_semana: horario.dia_semana || "Lunes",
+      hora_entrada: horario.hora_entrada
+        ? String(horario.hora_entrada).slice(0, 5)
+        : "",
+      hora_salida: horario.hora_salida
+        ? String(horario.hora_salida).slice(0, 5)
+        : "",
+      activo: Number(horario.activo) === 1 ? 1 : 0,
+    });
+
+    setMostrandoFormularioHorario(true);
+    setMensaje("");
+  };
+
+  const cancelarHorario = () => {
+    setEditandoHorario(null);
+    setFormHorario(horarioInicial);
+    setMostrandoFormularioHorario(false);
+  };
+
+  const cambiarCampoHorario = (e) => {
+    const { name, value } = e.target;
+
+    setFormHorario((actual) => ({
+      ...actual,
+      [name]: name === "activo" ? Number(value) : value,
+    }));
+  };
+
+  const guardarHorario = async (e) => {
+    e.preventDefault();
+
+    if (!practicanteSeleccionado) {
+      return;
+    }
+
+    if (!formHorario.hora_entrada || !formHorario.hora_salida) {
+      setMensaje("Selecciona la hora de entrada y la hora de salida.");
+      return;
+    }
+
+    if (formHorario.hora_salida <= formHorario.hora_entrada) {
+      setMensaje("La hora de salida debe ser posterior a la hora de entrada.");
+      return;
+    }
+
+    try {
+      setGuardandoHorario(true);
+      setMensaje("");
+
+      const payload = {
+        dia_semana: formHorario.dia_semana,
+        hora_entrada: formHorario.hora_entrada,
+        hora_salida: formHorario.hora_salida,
+        activo: Number(formHorario.activo),
+      };
+
+      let response;
+
+      if (editandoHorario) {
+        response = await axios.put(
+          `${API}/admin/horarios/${editandoHorario.id_horario}`,
+          payload,
+          { headers }
+        );
+      } else {
+        response = await axios.post(
+          `${API}/admin/practicantes/${practicanteSeleccionado.id_practicante}/horario`,
+          payload,
+          { headers }
+        );
+      }
+
+      setMensaje(
+        response.data.mensaje ||
+          (editandoHorario
+            ? "Horario actualizado correctamente."
+            : "Horario creado correctamente.")
+      );
+
+      cancelarHorario();
+
+      await cargarHorarioPracticante(
+        practicanteSeleccionado.id_practicante
+      );
+    } catch (error) {
+      console.error("Error guardando horario:", error);
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo guardar el horario."
+      );
+    } finally {
+      setGuardandoHorario(false);
+    }
+  };
+
+  const cambiarEstadoHorario = async (horario) => {
+    const nuevoEstado =
+      Number(horario.activo) === 1 ? 0 : 1;
+
+    const accion =
+      nuevoEstado === 1 ? "activar" : "desactivar";
+
+    const confirmar = window.confirm(
+      `¿Deseas ${accion} el horario del ${horario.dia_semana}?`
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      setMensaje("");
+
+      const response = await axios.put(
+        `${API}/admin/horarios/${horario.id_horario}`,
+        {
+          dia_semana: horario.dia_semana,
+          hora_entrada: String(horario.hora_entrada).slice(0, 5),
+          hora_salida: String(horario.hora_salida).slice(0, 5),
+          activo: nuevoEstado,
+        },
+        { headers }
+      );
+
+      setMensaje(
+        response.data.mensaje ||
+          `Horario ${nuevoEstado === 1 ? "activado" : "desactivado"} correctamente.`
+      );
+
+      await cargarHorarioPracticante(
+        practicanteSeleccionado.id_practicante
+      );
+    } catch (error) {
+      console.error(
+        "Error cambiando estado del horario:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo actualizar el estado del horario."
+      );
+    }
+  };
+
+  // ==========================================
+  // REGISTROS DE HORAS DEL PRACTICANTE
+  // ==========================================
+
+  const cargarHorasPracticante = async (idPracticante) => {
+    try {
+      setCargandoHoras(true);
+      setMensaje("");
+
+      const response = await axios.get(
+        `${API}/admin/practicantes/${idPracticante}/horas`,
+        { headers }
+      );
+
+      setRegistrosHoras(
+        response.data.registros || []
+      );
+    } catch (error) {
+      console.error(
+        "Error cargando registros de horas:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudieron cargar los registros de horas."
+      );
+
+      setRegistrosHoras([]);
+    } finally {
+      setCargandoHoras(false);
+    }
+  };
+
+  const abrirEdicionRegistroHoras = (registro) => {
+    setEditandoRegistroHoras({
+      ...registro,
+      fecha: registro.fecha
+        ? String(registro.fecha).slice(0, 10)
+        : "",
+      horas: registro.horas ?? "",
+      descripcion: registro.descripcion || "",
+    });
+
+    setMensaje("");
+  };
+
+  const cambiarCampoRegistroHoras = (e) => {
+    const { name, value } = e.target;
+
+    setEditandoRegistroHoras((actual) => ({
+      ...actual,
+      [name]: value,
+    }));
+  };
+
+  const guardarRegistroHoras = async (e) => {
+    e.preventDefault();
+
+    if (!editandoRegistroHoras) {
+      return;
+    }
+
+    try {
+      setGuardandoRegistroHoras(true);
+      setMensaje("");
+
+      const response = await axios.put(
+        `${API}/admin/horas/${editandoRegistroHoras.id_registro}`,
+        {
+          fecha: editandoRegistroHoras.fecha,
+          horas: Number(editandoRegistroHoras.horas),
+          descripcion:
+            editandoRegistroHoras.descripcion.trim() || null,
+        },
+        { headers }
+      );
+
+      setMensaje(
+        response.data.mensaje ||
+          "Registro de horas actualizado correctamente."
+      );
+
+      const idPracticante =
+        practicanteSeleccionado?.id_practicante;
+
+      setEditandoRegistroHoras(null);
+
+      if (idPracticante) {
+        await cargarHorasPracticante(idPracticante);
+        await verPracticante(idPracticante);
+        await cargarEstadisticas();
+      }
+    } catch (error) {
+      console.error(
+        "Error actualizando registro de horas:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo actualizar el registro de horas."
+      );
+    } finally {
+      setGuardandoRegistroHoras(false);
+    }
+  };
+
+  const eliminarRegistroHorasAdmin = async (registro) => {
+    const confirmar = window.confirm(
+      `¿Deseas eliminar el registro de ${registro.horas} horas?`
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      setMensaje("");
+
+      const response = await axios.delete(
+        `${API}/admin/horas/${registro.id_registro}`,
+        { headers }
+      );
+
+      setMensaje(
+        response.data.mensaje ||
+          "Registro de horas eliminado correctamente."
+      );
+
+      const idPracticante =
+        practicanteSeleccionado?.id_practicante;
+
+      if (
+        editandoRegistroHoras?.id_registro ===
+        registro.id_registro
+      ) {
+        setEditandoRegistroHoras(null);
+      }
+
+      if (idPracticante) {
+        await cargarHorasPracticante(idPracticante);
+        await verPracticante(idPracticante);
+        await cargarEstadisticas();
+      }
+    } catch (error) {
+      console.error(
+        "Error eliminando registro de horas:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo eliminar el registro de horas."
+      );
+    }
+  };
+
+  // ==========================================
   // ACTIVAR / DESACTIVAR PRACTICANTE
   // ==========================================
 
@@ -414,254 +991,851 @@ function AdminPanel({ usuario, onLogout }) {
     }
   };
 
+ // ==========================================
+// ACTIVIDADES SEMANALES DE BITÁCORA
+// ==========================================
+
+// ==========================================
+// ACTIVIDADES SEMANALES DE BITÁCORA
+// ==========================================
+
+const cargarActividadesBitacora = async () => {
+  try {
+    setCargandoActividades(true);
+    setMensaje("");
+
+    const response = await axios.get(
+      `${API}/admin/actividades-bitacora`,
+      { headers }
+    );
+
+    setActividadesBitacora(
+      response.data.actividades || []
+    );
+  } catch (error) {
+    console.error(
+      "Error cargando actividades de bitácora:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudieron cargar las actividades de bitácora."
+    );
+  } finally {
+    setCargandoActividades(false);
+  }
+};
+
+// Cargar actividades cada vez que se entra a la sección Bitácoras
+useEffect(() => {
+  if (seccion === "bitacoras") {
+    cargarActividadesBitacora();
+    cargarEntregasBitacoras();
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [seccion, token]);
+
+const abrirNuevaActividad = () => {
+  setEditandoActividad(null);
+  setFormActividad(actividadInicial);
+  setMostrandoFormularioActividad(true);
+  setMensaje("");
+};
+
+const abrirEdicionActividad = (actividad) => {
+  const fechaLimite = actividad.fecha_limite
+    ? String(actividad.fecha_limite)
+        .replace("Z", "")
+        .slice(0, 16)
+    : "";
+
+  setEditandoActividad(actividad);
+
+  setFormActividad({
+    numero_semana: actividad.numero_semana ?? "",
+    titulo: actividad.titulo || "",
+    descripcion: actividad.descripcion || "",
+    fecha_inicio: actividad.fecha_inicio
+      ? String(actividad.fecha_inicio).slice(0, 10)
+      : "",
+    fecha_fin: actividad.fecha_fin
+      ? String(actividad.fecha_fin).slice(0, 10)
+      : "",
+    fecha_limite: fechaLimite,
+  });
+
+  setMostrandoFormularioActividad(true);
+  setMensaje("");
+};
+
+const cambiarCampoActividad = (e) => {
+  const { name, value } = e.target;
+
+  setFormActividad((actual) => ({
+    ...actual,
+    [name]: value,
+  }));
+};
+
+const guardarActividadBitacora = async (e) => {
+  e.preventDefault();
+
+  try {
+    setGuardandoActividad(true);
+    setMensaje("");
+
+    const payload = {
+      numero_semana: Number(
+        formActividad.numero_semana
+      ),
+      titulo: formActividad.titulo.trim(),
+      descripcion:
+        formActividad.descripcion.trim(),
+      fecha_inicio:
+        formActividad.fecha_inicio,
+      fecha_fin:
+        formActividad.fecha_fin,
+      fecha_limite:
+        formActividad.fecha_limite
+          ? `${formActividad.fecha_limite.replace(
+              "T",
+              " "
+            )}:00`
+          : "",
+    };
+
+    let response;
+
+    if (editandoActividad) {
+      response = await axios.put(
+        `${API}/admin/actividades-bitacora/${editandoActividad.id_actividad}`,
+        payload,
+        { headers }
+      );
+    } else {
+      response = await axios.post(
+        `${API}/admin/actividades-bitacora`,
+        payload,
+        { headers }
+      );
+    }
+
+    setMensaje(
+      response.data.mensaje ||
+        (editandoActividad
+          ? "Actividad actualizada correctamente."
+          : "Actividad creada correctamente.")
+    );
+
+    setMostrandoFormularioActividad(false);
+    setEditandoActividad(null);
+    setFormActividad(actividadInicial);
+
+    await cargarActividadesBitacora();
+  } catch (error) {
+    console.error(
+      "Error guardando actividad de bitácora:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo guardar la actividad de bitácora."
+    );
+  } finally {
+    setGuardandoActividad(false);
+  }
+};
+
+const cambiarEstadoActividad = async (
+  actividad
+) => {
+  const nuevoEstado =
+    Number(actividad.activa) === 1 ? 0 : 1;
+
+  const accion =
+    nuevoEstado === 1
+      ? "activar"
+      : "desactivar";
+
+  const confirmar = window.confirm(
+    `¿Deseas ${accion} la actividad de la semana ${actividad.numero_semana}?`
+  );
+
+  if (!confirmar) {
+    return;
+  }
+
+  try {
+    setMensaje("");
+
+    const response = await axios.put(
+      `${API}/admin/actividades-bitacora/${actividad.id_actividad}/estado`,
+      {
+        activa: nuevoEstado,
+      },
+      { headers }
+    );
+
+    setMensaje(
+      response.data.mensaje ||
+        "Estado de la actividad actualizado correctamente."
+    );
+
+    await cargarActividadesBitacora();
+  } catch (error) {
+    console.error(
+      "Error cambiando estado de actividad:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo actualizar el estado de la actividad."
+    );
+  }
+};
+
+const eliminarActividadBitacora = async (
+  actividad
+) => {
+  const confirmar = window.confirm(
+    `¿Deseas eliminar la actividad "${actividad.titulo}" de la semana ${actividad.numero_semana}?`
+  );
+
+  if (!confirmar) {
+    return;
+  }
+
+  try {
+    setMensaje("");
+
+    const response = await axios.delete(
+      `${API}/admin/actividades-bitacora/${actividad.id_actividad}`,
+      { headers }
+    );
+
+    setMensaje(
+      response.data.mensaje ||
+        "Actividad eliminada correctamente."
+    );
+
+    if (
+      editandoActividad?.id_actividad ===
+      actividad.id_actividad
+    ) {
+      setMostrandoFormularioActividad(false);
+      setEditandoActividad(null);
+      setFormActividad(actividadInicial);
+    }
+
+    await cargarActividadesBitacora();
+  } catch (error) {
+    console.error(
+      "Error eliminando actividad de bitácora:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo eliminar la actividad. Si ya tiene entregas asociadas, desactívala en lugar de eliminarla."
+    );
+  }
+};
+
+const formatearFecha = (fecha) => {
+  if (!fecha) {
+    return "—";
+  }
+
+  const valor = String(fecha).slice(0, 10);
+  const [anio, mes, dia] = valor.split("-");
+
+  return anio && mes && dia
+    ? `${dia}/${mes}/${anio}`
+    : valor;
+};
+
+const formatearFechaHora = (fecha) => {
+  if (!fecha) {
+    return "—";
+  }
+
+  const fechaObj = new Date(fecha);
+
+  if (Number.isNaN(fechaObj.getTime())) {
+    return "—";
+  }
+
+  return fechaObj.toLocaleString("es-MX", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
+
   // ==========================================
-  // ACTIVIDADES SEMANALES DE BITÁCORA
+  // ENTREGAS DE BITÁCORAS DE PRACTICANTES
   // ==========================================
 
-  const cargarActividadesBitacora = async () => {
+  const cargarEntregasBitacoras = async () => {
     try {
-      setCargandoActividades(true);
+      setCargandoEntregas(true);
       setMensaje("");
 
-      const response = await axios.get(
-        `${API}/admin/actividades-bitacora`,
+      // Consultamos nuevamente los practicantes para no depender
+      // de que el estado "practicantes" ya haya terminado de cargar.
+      const practicantesResponse = await axios.get(
+        `${API}/admin/practicantes`,
         { headers }
       );
 
-      setActividadesBitacora(
-        response.data.actividades || []
+      const listaPracticantes =
+        practicantesResponse.data.practicantes || [];
+
+      if (listaPracticantes.length === 0) {
+        setEntregasBitacoras([]);
+        return;
+      }
+
+      const respuestas = await Promise.all(
+        listaPracticantes.map(async (practicante) => {
+          try {
+            const response = await axios.get(
+              `${API}/admin/practicantes/${practicante.id_practicante}/bitacoras`,
+              { headers }
+            );
+
+            const bitacoras =
+              response.data.bitacoras ||
+              response.data.resultados ||
+              [];
+
+            return bitacoras.map((bitacora) => ({
+              ...bitacora,
+              id_practicante: practicante.id_practicante,
+              nombre_practicante: [
+                practicante.nombre,
+                practicante.apellido_paterno,
+                practicante.apellido_materno,
+              ]
+                .filter(Boolean)
+                .join(" "),
+              correo_practicante:
+                practicante.correo || "",
+              matricula_practicante:
+                practicante.matricula || "",
+              carrera_practicante:
+                practicante.carrera || "",
+            }));
+          } catch (error) {
+            console.error(
+              `Error cargando bitácoras del practicante ${practicante.id_practicante}:`,
+              error
+            );
+
+            return [];
+          }
+        })
       );
+
+      const entregas = respuestas
+        .flat()
+        .sort((a, b) => {
+          const fechaA = new Date(
+            a.fecha_envio || a.fecha_creacion || 0
+          ).getTime();
+
+          const fechaB = new Date(
+            b.fecha_envio || b.fecha_creacion || 0
+          ).getTime();
+
+          return fechaB - fechaA;
+        });
+
+      setEntregasBitacoras(entregas);
     } catch (error) {
       console.error(
-        "Error cargando actividades de bitácora:",
+        "Error cargando entregas de bitácoras:",
         error
       );
 
       setMensaje(
         error.response?.data?.mensaje ||
-          "No se pudieron cargar las actividades de bitácora."
+          "No se pudieron cargar las entregas de bitácoras."
       );
     } finally {
-      setCargandoActividades(false);
+      setCargandoEntregas(false);
     }
   };
 
-  const abrirNuevaActividad = () => {
-    setEditandoActividad(null);
-    setFormActividad(actividadInicial);
-    setMostrandoFormularioActividad(true);
-    setMensaje("");
-  };
+  const entregasFiltradas = useMemo(() => {
+    const texto =
+      busquedaEntrega.trim().toLowerCase();
 
-  const abrirEdicionActividad = (actividad) => {
-    const fechaLimite = actividad.fecha_limite
-      ? String(actividad.fecha_limite)
-          .replace("Z", "")
-          .slice(0, 16)
-      : "";
+    return entregasBitacoras.filter((entrega) => {
+      const coincideEstado =
+        !filtroEstadoBitacora ||
+        String(entrega.estado || "")
+          .toLowerCase() ===
+          filtroEstadoBitacora.toLowerCase();
 
-    setEditandoActividad(actividad);
-    setFormActividad({
-      numero_semana: actividad.numero_semana ?? "",
-      titulo: actividad.titulo || "",
-      descripcion: actividad.descripcion || "",
-      fecha_inicio: actividad.fecha_inicio
-        ? String(actividad.fecha_inicio).slice(0, 10)
-        : "",
-      fecha_fin: actividad.fecha_fin
-        ? String(actividad.fecha_fin).slice(0, 10)
-        : "",
-      fecha_limite: fechaLimite,
+      if (!coincideEstado) {
+        return false;
+      }
+
+      if (!texto) {
+        return true;
+      }
+
+      return (
+        String(entrega.nombre_practicante || "")
+          .toLowerCase()
+          .includes(texto) ||
+        String(entrega.correo_practicante || "")
+          .toLowerCase()
+          .includes(texto) ||
+        String(entrega.matricula_practicante || "")
+          .toLowerCase()
+          .includes(texto) ||
+        String(entrega.numero_semana || "")
+          .toLowerCase()
+          .includes(texto) ||
+        String(entrega.nombre_archivo || "")
+          .toLowerCase()
+          .includes(texto)
+      );
     });
-    setMostrandoFormularioActividad(true);
+  }, [
+    entregasBitacoras,
+    busquedaEntrega,
+    filtroEstadoBitacora,
+  ]);
+
+  const abrirArchivoBitacoraAdmin = async (
+    idBitacora
+  ) => {
+    try {
+      setMensaje("");
+
+      const response = await axios.get(
+        `${API}/admin/bitacoras/${idBitacora}/archivo`,
+        {
+          headers,
+          responseType: "blob",
+        }
+      );
+
+      const url = URL.createObjectURL(
+        new Blob([response.data], {
+          type: "application/pdf",
+        })
+      );
+
+      window.open(url, "_blank");
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 60000);
+    } catch (error) {
+      console.error(
+        "Error abriendo PDF de bitácora:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo abrir el archivo PDF."
+      );
+    }
+  };
+
+  const revisarEntregaBitacora = async (
+    entrega,
+    nuevoEstado
+  ) => {
+    const esRechazo =
+      nuevoEstado === "Rechazada";
+
+    const observaciones = window.prompt(
+      esRechazo
+        ? "Escribe el motivo del rechazo:"
+        : "Observaciones de la revisión (opcional):",
+      entrega.observaciones || ""
+    );
+
+    if (observaciones === null) {
+      return;
+    }
+
+    if (
+      esRechazo &&
+      observaciones.trim() === ""
+    ) {
+      setMensaje(
+        "Debes escribir una observación para rechazar la bitácora."
+      );
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Confirmas marcar esta bitácora como ${nuevoEstado}?`
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      setRevisandoBitacora(
+        entrega.id_bitacora
+      );
+      setMensaje("");
+
+      const response = await axios.put(
+        `${API}/admin/bitacoras/${entrega.id_bitacora}/revision`,
+        {
+          estado: nuevoEstado,
+          observaciones:
+            observaciones.trim() || null,
+        },
+        { headers }
+      );
+
+      setMensaje(
+        response.data.mensaje ||
+          `Bitácora ${nuevoEstado.toLowerCase()} correctamente.`
+      );
+
+      await Promise.all([
+        cargarEntregasBitacoras(),
+        cargarEstadisticas(),
+      ]);
+    } catch (error) {
+      console.error(
+        "Error revisando bitácora:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo actualizar la revisión de la bitácora."
+      );
+    } finally {
+      setRevisandoBitacora(null);
+    }
+  };
+
+  // ==========================================
+  // ASISTENCIAS
+  // ==========================================
+
+  const cargarAsistencias = async () => {
+    try {
+      setCargandoAsistencias(true);
+      setMensaje("");
+
+      const response = await axios.get(
+        `${API}/admin/asistencias`,
+        { headers }
+      );
+
+      setAsistencias(
+        response.data.asistencias || []
+      );
+    } catch (error) {
+      console.error(
+        "Error cargando asistencias:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudieron cargar las asistencias."
+      );
+
+      setAsistencias([]);
+    } finally {
+      setCargandoAsistencias(false);
+    }
+  };
+
+  const abrirEdicionAsistencia = (asistencia) => {
+    setEditandoAsistencia({
+      ...asistencia,
+      hora_entrada_real: asistencia.hora_entrada_real
+        ? String(asistencia.hora_entrada_real).slice(0, 5)
+        : "",
+      hora_salida_real: asistencia.hora_salida_real
+        ? String(asistencia.hora_salida_real).slice(0, 5)
+        : "",
+      observaciones: asistencia.observaciones || "",
+    });
+
     setMensaje("");
   };
 
-  const cambiarCampoActividad = (e) => {
+  const cambiarCampoAsistencia = (e) => {
     const { name, value } = e.target;
 
-    setFormActividad((actual) => ({
+    setEditandoAsistencia((actual) => ({
       ...actual,
       [name]: value,
     }));
   };
 
-  const guardarActividadBitacora = async (e) => {
+  const guardarAsistencia = async (e) => {
     e.preventDefault();
 
-    try {
-      setGuardandoActividad(true);
-      setMensaje("");
-
-      const payload = {
-        numero_semana: Number(formActividad.numero_semana),
-        titulo: formActividad.titulo.trim(),
-        descripcion: formActividad.descripcion.trim(),
-        fecha_inicio: formActividad.fecha_inicio,
-        fecha_fin: formActividad.fecha_fin,
-        fecha_limite: formActividad.fecha_limite,
-      };
-
-      let response;
-
-      if (editandoActividad) {
-        response = await axios.put(
-          `${API}/admin/actividades-bitacora/${editandoActividad.id_actividad}`,
-          payload,
-          { headers }
-        );
-      } else {
-        response = await axios.post(
-          `${API}/admin/actividades-bitacora`,
-          payload,
-          { headers }
-        );
-      }
-
-      setMensaje(
-        response.data.mensaje ||
-          (editandoActividad
-            ? "Actividad actualizada correctamente."
-            : "Actividad creada correctamente.")
-      );
-
-      setMostrandoFormularioActividad(false);
-      setEditandoActividad(null);
-      setFormActividad(actividadInicial);
-
-      await cargarActividadesBitacora();
-    } catch (error) {
-      console.error(
-        "Error guardando actividad de bitácora:",
-        error
-      );
-
-      setMensaje(
-        error.response?.data?.mensaje ||
-          "No se pudo guardar la actividad de bitácora."
-      );
-    } finally {
-      setGuardandoActividad(false);
+    if (!editandoAsistencia) {
+      return;
     }
-  };
 
-  const cambiarEstadoActividad = async (actividad) => {
-    const nuevoEstado =
-      Number(actividad.activa) === 1 ? 0 : 1;
-
-    const accion =
-      nuevoEstado === 1 ? "activar" : "desactivar";
-
-    const confirmar = window.confirm(
-      `¿Deseas ${accion} la actividad de la semana ${actividad.numero_semana}?`
-    );
-
-    if (!confirmar) {
+    if (
+      editandoAsistencia.hora_entrada_real &&
+      editandoAsistencia.hora_salida_real &&
+      editandoAsistencia.hora_salida_real <=
+        editandoAsistencia.hora_entrada_real
+    ) {
+      setMensaje(
+        "La hora de salida debe ser posterior a la hora de entrada."
+      );
       return;
     }
 
     try {
+      setGuardandoAsistencia(true);
       setMensaje("");
 
       const response = await axios.put(
-        `${API}/admin/actividades-bitacora/${actividad.id_actividad}/estado`,
-        { activa: nuevoEstado },
+        `${API}/admin/asistencias/${editandoAsistencia.id_asistencia}`,
+        {
+          hora_entrada_real:
+            editandoAsistencia.hora_entrada_real || null,
+          hora_salida_real:
+            editandoAsistencia.hora_salida_real || null,
+          observaciones:
+            editandoAsistencia.observaciones.trim() || null,
+        },
         { headers }
       );
 
       setMensaje(
         response.data.mensaje ||
-          "Estado de la actividad actualizado correctamente."
+          "Asistencia actualizada correctamente."
       );
 
-      await cargarActividadesBitacora();
+      setEditandoAsistencia(null);
+
+      await Promise.all([
+        cargarAsistencias(),
+        cargarEstadisticas(),
+        cargarHistorial(),
+      ]);
+
+      if (practicanteSeleccionado?.id_practicante) {
+        await cargarHorasPracticante(
+          practicanteSeleccionado.id_practicante
+        );
+      }
     } catch (error) {
       console.error(
-        "Error cambiando estado de actividad:",
+        "Error actualizando asistencia:",
         error
       );
 
       setMensaje(
         error.response?.data?.mensaje ||
-          "No se pudo actualizar el estado de la actividad."
+          "No se pudo actualizar la asistencia."
       );
+    } finally {
+      setGuardandoAsistencia(false);
     }
   };
 
-  const eliminarActividadBitacora = async (actividad) => {
-    const confirmar = window.confirm(
-      `¿Deseas eliminar la actividad "${actividad.titulo}" de la semana ${actividad.numero_semana}?`
-    );
-
-    if (!confirmar) {
-      return;
+  const formatearHora = (hora) => {
+    if (!hora) {
+      return "—";
     }
 
+    return String(hora).slice(0, 5);
+  };
+
+  const calcularTiempoReal = (
+    horaEntrada,
+    horaSalida
+  ) => {
+    if (!horaEntrada || !horaSalida) {
+      return "—";
+    }
+
+    const convertirMinutos = (hora) => {
+      const [h, m] = String(hora)
+        .split(":")
+        .map(Number);
+
+      return h * 60 + m;
+    };
+
+    const minutos =
+      convertirMinutos(horaSalida) -
+      convertirMinutos(horaEntrada);
+
+    if (!Number.isFinite(minutos) || minutos < 0) {
+      return "—";
+    }
+
+    const horas = Math.floor(minutos / 60);
+    const minutosRestantes = minutos % 60;
+
+    return `${horas} h ${String(
+      minutosRestantes
+    ).padStart(2, "0")} min`;
+  };
+
+  const asistenciasFiltradas = useMemo(() => {
+    const texto =
+      busquedaAsistencia.trim().toLowerCase();
+
+    return asistencias.filter((asistencia) => {
+      const coincideEstado =
+        !filtroEstadoAsistencia ||
+        String(asistencia.estado || "")
+          .toLowerCase() ===
+          filtroEstadoAsistencia.toLowerCase();
+
+      if (!coincideEstado) {
+        return false;
+      }
+
+      if (!texto) {
+        return true;
+      }
+
+      return (
+        String(asistencia.nombre_practicante || "")
+          .toLowerCase()
+          .includes(texto) ||
+        String(asistencia.matricula || "")
+          .toLowerCase()
+          .includes(texto) ||
+        String(asistencia.carrera || "")
+          .toLowerCase()
+          .includes(texto) ||
+        String(asistencia.fecha || "")
+          .toLowerCase()
+          .includes(texto)
+      );
+    });
+  }, [
+    asistencias,
+    busquedaAsistencia,
+    filtroEstadoAsistencia,
+  ]);
+
+  // ==========================================
+  // HISTORIAL DE ACTIVIDADES
+  // ==========================================
+
+  const cargarHistorial = async () => {
     try {
+      setCargandoHistorial(true);
       setMensaje("");
 
-      const response = await axios.delete(
-        `${API}/admin/actividades-bitacora/${actividad.id_actividad}`,
+      const response = await axios.get(
+        `${API}/admin/historial`,
         { headers }
       );
 
+      setHistorial(
+        response.data.historial ||
+          response.data.actividades ||
+          response.data.resultados ||
+          []
+      );
+    } catch (error) {
+      console.error("Error cargando historial:", error);
+
       setMensaje(
-        response.data.mensaje ||
-          "Actividad eliminada correctamente."
+        error.response?.data?.mensaje ||
+          "No se pudo cargar el historial de actividades."
+      );
+    } finally {
+      setCargandoHistorial(false);
+    }
+  };
+
+  const obtenerValorHistorial = (registro, campos) => {
+    for (const campo of campos) {
+      const valor = registro?.[campo];
+
+      if (
+        valor !== undefined &&
+        valor !== null &&
+        String(valor).trim() !== ""
+      ) {
+        return valor;
+      }
+    }
+
+    return "";
+  };
+
+  const historialFiltrado = useMemo(() => {
+    const texto = busquedaHistorial.trim().toLowerCase();
+
+    return historial.filter((registro) => {
+      const accion = String(
+        obtenerValorHistorial(registro, [
+          "accion",
+          "tipo_accion",
+          "actividad",
+          "tipo_actividad",
+        ])
       );
 
       if (
-        editandoActividad?.id_actividad ===
-        actividad.id_actividad
+        filtroAccionHistorial &&
+        accion.toLowerCase() !==
+          filtroAccionHistorial.toLowerCase()
       ) {
-        setMostrandoFormularioActividad(false);
-        setEditandoActividad(null);
-        setFormActividad(actividadInicial);
+        return false;
       }
 
-      await cargarActividadesBitacora();
-    } catch (error) {
-      console.error(
-        "Error eliminando actividad de bitácora:",
-        error
+      if (!texto) {
+        return true;
+      }
+
+      return Object.values(registro).some((valor) =>
+        String(valor ?? "").toLowerCase().includes(texto)
       );
+    });
+  }, [historial, busquedaHistorial, filtroAccionHistorial]);
 
-      setMensaje(
-        error.response?.data?.mensaje ||
-          "No se pudo eliminar la actividad. Si ya tiene entregas asociadas, desactívala en lugar de eliminarla."
-      );
-    }
-  };
-
-  const formatearFecha = (fecha) => {
-    if (!fecha) {
-      return "—";
-    }
-
-    const valor = String(fecha).slice(0, 10);
-    const [anio, mes, dia] = valor.split("-");
-
-    return anio && mes && dia
-      ? `${dia}/${mes}/${anio}`
-      : valor;
-  };
-
-  const formatearFechaHora = (fecha) => {
-    if (!fecha) {
-      return "—";
-    }
-
-    const valor = String(fecha);
-    const fechaParte = valor.slice(0, 10);
-    const horaParte =
-      valor.includes("T")
-        ? valor.slice(11, 16)
-        : valor.slice(11, 16);
-
-    return `${formatearFecha(fechaParte)}${
-      horaParte ? ` ${horaParte}` : ""
-    }`;
-  };
+  const accionesHistorial = useMemo(() => {
+    return [
+      ...new Set(
+        historial
+          .map((registro) =>
+            String(
+              obtenerValorHistorial(registro, [
+                "accion",
+                "tipo_accion",
+                "actividad",
+                "tipo_actividad",
+              ])
+            ).trim()
+          )
+          .filter(Boolean)
+      ),
+    ].sort((a, b) => a.localeCompare(b, "es"));
+  }, [historial]);
 
   // ==========================================
   // TÍTULO DE LA SECCIÓN
@@ -673,6 +1847,8 @@ function AdminPanel({ usuario, onLogout }) {
         return "Dashboard";
       case "practicantes":
         return "Practicantes";
+      case "asistencia":
+        return "Asistencia";
       case "bitacoras":
         return "Bitácoras";
       case "carreras":
@@ -725,11 +1901,25 @@ function AdminPanel({ usuario, onLogout }) {
 
           <button
             className={`nav-item ${
+              seccion === "asistencia" ? "active" : ""
+            }`}
+            onClick={() => {
+              setSeccion("asistencia");
+              cargarAsistencias();
+            }}
+          >
+            <span>🕐</span>
+            Asistencia
+          </button>
+
+          <button
+            className={`nav-item ${
               seccion === "bitacoras" ? "active" : ""
             }`}
             onClick={() => {
               setSeccion("bitacoras");
               cargarActividadesBitacora();
+              cargarEntregasBitacoras();
             }}
           >
             <span>📋</span>
@@ -740,7 +1930,10 @@ function AdminPanel({ usuario, onLogout }) {
             className={`nav-item ${
               seccion === "carreras" ? "active" : ""
             }`}
-            onClick={() => setSeccion("carreras")}
+            onClick={() => {
+              setSeccion("carreras");
+              cargarCarreras();
+            }}
           >
             <span>🎓</span>
             Carreras
@@ -760,7 +1953,10 @@ function AdminPanel({ usuario, onLogout }) {
             className={`nav-item ${
               seccion === "historial" ? "active" : ""
             }`}
-            onClick={() => setSeccion("historial")}
+            onClick={() => {
+              setSeccion("historial");
+              cargarHistorial();
+            }}
           >
             <span>🕘</span>
             Historial
@@ -1317,6 +2513,570 @@ function AdminPanel({ usuario, onLogout }) {
                 </section>
               )}
 
+            {practicanteSeleccionado &&
+              !cargandoDetalle && (
+                <section className="panel">
+                  <div className="panel-header">
+                    <div>
+                      <p className="section-label">
+                        HORARIO
+                      </p>
+                      <h3>Horario semanal</h3>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={abrirNuevoHorario}
+                    >
+                      + Agregar horario
+                    </button>
+                  </div>
+
+                  <p className="panel-description">
+                    Define los días y horas en los que el practicante
+                    puede registrar su entrada y salida. Debe existir
+                    un horario activo para el día correspondiente.
+                  </p>
+
+                  {mostrandoFormularioHorario && (
+                    <form
+                      onSubmit={guardarHorario}
+                      style={{
+                        marginBottom: "24px",
+                        padding: "18px",
+                        border: "1px solid #e1e6ef",
+                        borderRadius: "10px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: "12px",
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <h4 style={{ margin: 0 }}>
+                          {editandoHorario
+                            ? "Editar horario"
+                            : "Nuevo horario"}
+                        </h4>
+
+                        <button
+                          type="button"
+                          onClick={cancelarHorario}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(190px, 1fr))",
+                          gap: "16px",
+                        }}
+                      >
+                        <label>
+                          Día
+                          <select
+                            name="dia_semana"
+                            value={formHorario.dia_semana}
+                            onChange={cambiarCampoHorario}
+                            required
+                          >
+                            {[
+                              "Lunes",
+                              "Martes",
+                              "Miércoles",
+                              "Jueves",
+                              "Viernes",
+                              "Sábado",
+                              "Domingo",
+                            ].map((dia) => (
+                              <option key={dia} value={dia}>
+                                {dia}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label>
+                          Hora de entrada
+                          <input
+                            type="time"
+                            name="hora_entrada"
+                            value={formHorario.hora_entrada}
+                            onChange={cambiarCampoHorario}
+                            required
+                          />
+                        </label>
+
+                        <label>
+                          Hora de salida
+                          <input
+                            type="time"
+                            name="hora_salida"
+                            value={formHorario.hora_salida}
+                            onChange={cambiarCampoHorario}
+                            required
+                          />
+                        </label>
+
+                        <label>
+                          Estado
+                          <select
+                            name="activo"
+                            value={formHorario.activo}
+                            onChange={cambiarCampoHorario}
+                          >
+                            <option value={1}>Activo</option>
+                            <option value={0}>Inactivo</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <div style={{ marginTop: "18px" }}>
+                        <button
+                          type="submit"
+                          disabled={guardandoHorario}
+                        >
+                          {guardandoHorario
+                            ? "Guardando..."
+                            : editandoHorario
+                              ? "Guardar cambios"
+                              : "Crear horario"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {cargandoHorarios ? (
+                    <p>Cargando horario...</p>
+                  ) : horariosPracticante.length === 0 ? (
+                    <p>
+                      Este practicante todavía no tiene un horario
+                      asignado.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: "auto" }}>
+                      <table
+                        style={{
+                          width: "100%",
+                          borderCollapse: "collapse",
+                          minWidth: "700px",
+                        }}
+                      >
+                        <thead>
+                          <tr>
+                            {[
+                              "Día",
+                              "Entrada",
+                              "Salida",
+                              "Estado",
+                              "Acciones",
+                            ].map((titulo) => (
+                              <th
+                                key={titulo}
+                                style={{
+                                  textAlign: "left",
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #d8dee9",
+                                }}
+                              >
+                                {titulo}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {horariosPracticante.map((horario) => (
+                            <tr key={horario.id_horario}>
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                {horario.dia_semana}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                {String(
+                                  horario.hora_entrada || ""
+                                ).slice(0, 5)}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                {String(
+                                  horario.hora_salida || ""
+                                ).slice(0, 5)}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                {Number(horario.activo) === 1
+                                  ? "Activo"
+                                  : "Inactivo"}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "8px",
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      abrirEdicionHorario(horario)
+                                    }
+                                  >
+                                    Editar
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      cambiarEstadoHorario(horario)
+                                    }
+                                  >
+                                    {Number(horario.activo) === 1
+                                      ? "Desactivar"
+                                      : "Activar"}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              )}
+
+            {practicanteSeleccionado &&
+              !cargandoDetalle && (
+                <section className="panel">
+                  <div className="panel-header">
+                    <div>
+                      <p className="section-label">
+                        HORAS
+                      </p>
+                      <h3>Registros de horas</h3>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        cargarHorasPracticante(
+                          practicanteSeleccionado.id_practicante
+                        )
+                      }
+                      disabled={cargandoHoras}
+                    >
+                      {cargandoHoras
+                        ? "Actualizando..."
+                        : "Actualizar horas"}
+                    </button>
+                  </div>
+
+                  <p className="panel-description">
+                    Consulta, corrige o elimina los registros de horas
+                    de este practicante. Los cambios se reflejarán en
+                    sus horas acumuladas y en su porcentaje de avance.
+                  </p>
+
+                  {editandoRegistroHoras && (
+                    <form
+                      onSubmit={guardarRegistroHoras}
+                      style={{
+                        marginBottom: "24px",
+                        padding: "18px",
+                        border: "1px solid #e1e6ef",
+                        borderRadius: "10px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: "12px",
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <h4 style={{ margin: 0 }}>
+                          Editar registro de horas
+                        </h4>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditandoRegistroHoras(null)
+                          }
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit, minmax(220px, 1fr))",
+                          gap: "16px",
+                        }}
+                      >
+                        <label>
+                          Fecha
+                          <input
+                            type="date"
+                            name="fecha"
+                            value={
+                              editandoRegistroHoras.fecha ||
+                              ""
+                            }
+                            onChange={
+                              cambiarCampoRegistroHoras
+                            }
+                            required
+                          />
+                        </label>
+
+                        <label>
+                          Horas
+                          <input
+                            type="number"
+                            name="horas"
+                            min="0.01"
+                            step="0.01"
+                            value={
+                              editandoRegistroHoras.horas ??
+                              ""
+                            }
+                            onChange={
+                              cambiarCampoRegistroHoras
+                            }
+                            required
+                          />
+                        </label>
+
+                        <label
+                          style={{
+                            gridColumn: "1 / -1",
+                          }}
+                        >
+                          Descripción
+                          <textarea
+                            name="descripcion"
+                            rows="4"
+                            value={
+                              editandoRegistroHoras.descripcion ||
+                              ""
+                            }
+                            onChange={
+                              cambiarCampoRegistroHoras
+                            }
+                            style={{
+                              width: "100%",
+                              boxSizing: "border-box",
+                              resize: "vertical",
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      <div style={{ marginTop: "18px" }}>
+                        <button
+                          type="submit"
+                          disabled={guardandoRegistroHoras}
+                        >
+                          {guardandoRegistroHoras
+                            ? "Guardando..."
+                            : "Guardar cambios"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {cargandoHoras ? (
+                    <p>Cargando registros de horas...</p>
+                  ) : registrosHoras.length === 0 ? (
+                    <p>
+                      Este practicante todavía no tiene registros de horas.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: "auto" }}>
+                      <table
+                        style={{
+                          width: "100%",
+                          borderCollapse: "collapse",
+                          minWidth: "850px",
+                        }}
+                      >
+                        <thead>
+                          <tr>
+                            {[
+                              "ID",
+                              "Fecha",
+                              "Horas",
+                              "Descripción",
+                              "Fecha de registro",
+                              "Acciones",
+                            ].map((titulo) => (
+                              <th
+                                key={titulo}
+                                style={{
+                                  textAlign: "left",
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #d8dee9",
+                                }}
+                              >
+                                {titulo}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {registrosHoras.map((registro) => (
+                            <tr key={registro.id_registro}>
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                {registro.id_registro}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                {formatearFecha(registro.fecha)}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                <strong>
+                                  {Number(registro.horas).toFixed(2)}
+                                </strong>
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                  maxWidth: "320px",
+                                  whiteSpace: "normal",
+                                }}
+                              >
+                                {registro.descripcion || "—"}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                {formatearFechaHora(
+                                  registro.fecha_creacion
+                                )}
+                              </td>
+
+                              <td
+                                style={{
+                                  padding: "12px",
+                                  borderBottom:
+                                    "1px solid #edf0f5",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "8px",
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      abrirEdicionRegistroHoras(
+                                        registro
+                                      )
+                                    }
+                                  >
+                                    Editar
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      eliminarRegistroHorasAdmin(
+                                        registro
+                                      )
+                                    }
+                                  >
+                                    Eliminar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              )}
+
+
             {editandoPracticante &&
               !cargandoDetalle && (
                 <section className="panel">
@@ -1556,6 +3316,433 @@ function AdminPanel({ usuario, onLogout }) {
                   </form>
                 </section>
               )}
+          </>
+        )}
+
+        {/* ==========================================
+            ASISTENCIA
+        ========================================== */}
+
+        {seccion === "asistencia" && (
+          <>
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="section-label">
+                    CONTROL DE ASISTENCIA
+                  </p>
+                  <h3>Registros de entrada y salida</h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={cargarAsistencias}
+                  disabled={cargandoAsistencias}
+                >
+                  {cargandoAsistencias
+                    ? "Actualizando..."
+                    : "Actualizar"}
+                </button>
+              </div>
+
+              <p className="panel-description">
+                Consulta las entradas y salidas reales de los
+                practicantes. Al corregir una asistencia, las horas
+                contabilizadas se recalculan automáticamente con un
+                máximo de 3 horas por día.
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  marginBottom: "20px",
+                }}
+              >
+                <input
+                  type="text"
+                  value={busquedaAsistencia}
+                  onChange={(e) =>
+                    setBusquedaAsistencia(e.target.value)
+                  }
+                  placeholder="Buscar por practicante, matrícula, carrera o fecha"
+                  style={{
+                    flex: "1 1 340px",
+                    padding: "12px",
+                    border: "1px solid #d8dee9",
+                    borderRadius: "8px",
+                  }}
+                />
+
+                <select
+                  value={filtroEstadoAsistencia}
+                  onChange={(e) =>
+                    setFiltroEstadoAsistencia(e.target.value)
+                  }
+                  style={{
+                    minWidth: "220px",
+                    padding: "12px",
+                    border: "1px solid #d8dee9",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <option value="">
+                    Todos los estados
+                  </option>
+                  <option value="Pendiente">
+                    Pendiente
+                  </option>
+                  <option value="A tiempo">
+                    A tiempo
+                  </option>
+                  <option value="Retardo">
+                    Retardo
+                  </option>
+                  <option value="Incompleta">
+                    Incompleta
+                  </option>
+                </select>
+              </div>
+
+              {editandoAsistencia && (
+                <form
+                  onSubmit={guardarAsistencia}
+                  style={{
+                    marginBottom: "24px",
+                    padding: "18px",
+                    border: "1px solid #e1e6ef",
+                    borderRadius: "10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ margin: 0 }}>
+                        Editar asistencia
+                      </h4>
+                      <small>
+                        {editandoAsistencia.nombre_practicante ||
+                          "Practicante"}{" "}
+                        ·{" "}
+                        {formatearFecha(
+                          editandoAsistencia.fecha
+                        )}
+                      </small>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditandoAsistencia(null)
+                      }
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: "16px",
+                    }}
+                  >
+                    <label>
+                      Entrada real
+                      <input
+                        type="time"
+                        name="hora_entrada_real"
+                        value={
+                          editandoAsistencia.hora_entrada_real ||
+                          ""
+                        }
+                        onChange={cambiarCampoAsistencia}
+                      />
+                    </label>
+
+                    <label>
+                      Salida real
+                      <input
+                        type="time"
+                        name="hora_salida_real"
+                        value={
+                          editandoAsistencia.hora_salida_real ||
+                          ""
+                        }
+                        onChange={cambiarCampoAsistencia}
+                      />
+                    </label>
+
+                    <label
+                      style={{
+                        gridColumn: "1 / -1",
+                      }}
+                    >
+                      Observaciones
+                      <textarea
+                        name="observaciones"
+                        rows="4"
+                        value={
+                          editandoAsistencia.observaciones ||
+                          ""
+                        }
+                        onChange={cambiarCampoAsistencia}
+                        style={{
+                          width: "100%",
+                          boxSizing: "border-box",
+                          resize: "vertical",
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "18px",
+                      display: "flex",
+                      gap: "12px",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      type="submit"
+                      disabled={guardandoAsistencia}
+                    >
+                      {guardandoAsistencia
+                        ? "Guardando..."
+                        : "Guardar cambios"}
+                    </button>
+
+                    <span>
+                      Tiempo real calculado:{" "}
+                      <strong>
+                        {calcularTiempoReal(
+                          editandoAsistencia.hora_entrada_real,
+                          editandoAsistencia.hora_salida_real
+                        )}
+                      </strong>
+                    </span>
+                  </div>
+                </form>
+              )}
+
+              {cargandoAsistencias ? (
+                <p>Cargando asistencias...</p>
+              ) : asistenciasFiltradas.length === 0 ? (
+                <p>
+                  No se encontraron registros de asistencia.
+                </p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      minWidth: "1200px",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        {[
+                          "Practicante",
+                          "Matrícula",
+                          "Fecha",
+                          "Entrada esperada",
+                          "Entrada real",
+                          "Salida esperada",
+                          "Salida real",
+                          "Tiempo real",
+                          "Horas contabilizadas",
+                          "Estado",
+                          "Acciones",
+                        ].map((titulo) => (
+                          <th
+                            key={titulo}
+                            style={{
+                              textAlign: "left",
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #d8dee9",
+                            }}
+                          >
+                            {titulo}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {asistenciasFiltradas.map(
+                        (asistencia) => (
+                          <tr
+                            key={asistencia.id_asistencia}
+                          >
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              <strong>
+                                {asistencia.nombre_practicante ||
+                                  "—"}
+                              </strong>
+                              {asistencia.carrera && (
+                                <div>
+                                  <small>
+                                    {asistencia.carrera}
+                                  </small>
+                                </div>
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {asistencia.matricula || "—"}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {formatearFecha(
+                                asistencia.fecha
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {formatearHora(
+                                asistencia.hora_entrada_esperada
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {formatearHora(
+                                asistencia.hora_entrada_real
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {formatearHora(
+                                asistencia.hora_salida_esperada
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {formatearHora(
+                                asistencia.hora_salida_real
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {calcularTiempoReal(
+                                asistencia.hora_entrada_real,
+                                asistencia.hora_salida_real
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {asistencia.horas_contabilizadas !==
+                              null &&
+                              asistencia.horas_contabilizadas !==
+                                undefined
+                                ? Number(
+                                    asistencia.horas_contabilizadas
+                                  ).toFixed(2)
+                                : "—"}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {asistencia.estado || "—"}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  abrirEdicionAsistencia(
+                                    asistencia
+                                  )
+                                }
+                              >
+                                Editar
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           </>
         )}
 
@@ -1919,18 +4106,287 @@ function AdminPanel({ usuario, onLogout }) {
                   </p>
                   <h3>Bitácoras de practicantes</h3>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={cargarEntregasBitacoras}
+                  disabled={cargandoEntregas}
+                >
+                  {cargandoEntregas
+                    ? "Actualizando..."
+                    : "Actualizar entregas"}
+                </button>
               </div>
 
               <p className="panel-description">
-                En esta sección conectaremos las entregas PDF de
-                los practicantes para visualizarlas, aprobarlas o
-                rechazarlas.
+                Consulta las bitácoras enviadas por los practicantes,
+                abre el PDF y aprueba o rechaza cada entrega.
               </p>
 
-              <p>
-                Las actividades semanales ya pueden administrarse
-                desde este panel.
-              </p>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                  marginBottom: "20px",
+                }}
+              >
+                <input
+                  type="text"
+                  value={busquedaEntrega}
+                  onChange={(e) =>
+                    setBusquedaEntrega(e.target.value)
+                  }
+                  placeholder="Buscar por practicante, correo, matrícula, semana o archivo"
+                  style={{
+                    flex: "1 1 360px",
+                    padding: "12px",
+                    border: "1px solid #d8dee9",
+                    borderRadius: "8px",
+                  }}
+                />
+
+                <select
+                  value={filtroEstadoBitacora}
+                  onChange={(e) =>
+                    setFiltroEstadoBitacora(
+                      e.target.value
+                    )
+                  }
+                  style={{
+                    minWidth: "220px",
+                    padding: "12px",
+                    border: "1px solid #d8dee9",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <option value="">
+                    Todos los estados
+                  </option>
+                  <option value="Pendiente">
+                    Pendientes
+                  </option>
+                  <option value="Aprobada">
+                    Aprobadas
+                  </option>
+                  <option value="Rechazada">
+                    Rechazadas
+                  </option>
+                </select>
+              </div>
+
+              {cargandoEntregas ? (
+                <p>
+                  Cargando entregas de bitácoras...
+                </p>
+              ) : entregasFiltradas.length === 0 ? (
+                <p>
+                  No se encontraron entregas de bitácoras.
+                </p>
+              ) : (
+                <div
+                  style={{
+                    overflowX: "auto",
+                  }}
+                >
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      minWidth: "1200px",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        {[
+                          "Practicante",
+                          "Matrícula",
+                          "Semana",
+                          "Archivo",
+                          "Estado",
+                          "Fecha de envío",
+                          "Observaciones",
+                          "Acciones",
+                        ].map((titulo) => (
+                          <th
+                            key={titulo}
+                            style={{
+                              textAlign: "left",
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #d8dee9",
+                            }}
+                          >
+                            {titulo}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {entregasFiltradas.map(
+                        (entrega) => (
+                          <tr
+                            key={
+                              entrega.id_bitacora
+                            }
+                          >
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              <strong>
+                                {
+                                  entrega.nombre_practicante
+                                }
+                              </strong>
+                              <div>
+                                {
+                                  entrega.correo_practicante
+                                }
+                              </div>
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {entrega.matricula_practicante ||
+                                "—"}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {
+                                entrega.numero_semana
+                              }
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {entrega.nombre_archivo ||
+                                "PDF"}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              <strong>
+                                {entrega.estado ||
+                                  "Pendiente"}
+                              </strong>
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {formatearFechaHora(
+                                entrega.fecha_envio
+                              )}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                                maxWidth: "260px",
+                                whiteSpace: "normal",
+                              }}
+                            >
+                              {entrega.observaciones ||
+                                "—"}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "8px",
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    abrirArchivoBitacoraAdmin(
+                                      entrega.id_bitacora
+                                    )
+                                  }
+                                >
+                                  Ver PDF
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    revisarEntregaBitacora(
+                                      entrega,
+                                      "Aprobada"
+                                    )
+                                  }
+                                  disabled={
+                                    revisandoBitacora ===
+                                    entrega.id_bitacora
+                                  }
+                                >
+                                  Aprobar
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    revisarEntregaBitacora(
+                                      entrega,
+                                      "Rechazada"
+                                    )
+                                  }
+                                  disabled={
+                                    revisandoBitacora ===
+                                    entrega.id_bitacora
+                                  }
+                                >
+                                  Rechazar
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
           </>
         )}
@@ -1940,23 +4396,225 @@ function AdminPanel({ usuario, onLogout }) {
         ========================================== */}
 
         {seccion === "carreras" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <p className="section-label">
-                  CONFIGURACIÓN
-                </p>
-                <h3>Carreras</h3>
+          <>
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="section-label">
+                    CONFIGURACIÓN
+                  </p>
+                  <h3>Administración de carreras</h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={abrirNuevaCarrera}
+                >
+                  + Nueva carrera
+                </button>
               </div>
-            </div>
 
-            <p className="panel-description">
-              Aquí podrás crear, editar, activar
-              y desactivar carreras.
-            </p>
+              <p className="panel-description">
+                Crea, edita, activa o desactiva las carreras
+                disponibles para los practicantes.
+              </p>
 
-            <p>🚧 Módulo en desarrollo.</p>
-          </section>
+              {mostrandoFormularioCarrera && (
+                <form
+                  onSubmit={guardarCarrera}
+                  style={{
+                    marginBottom: "24px",
+                    padding: "18px",
+                    border: "1px solid #e1e6ef",
+                    borderRadius: "10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    <h4 style={{ margin: 0 }}>
+                      {editandoCarrera
+                        ? "Editar carrera"
+                        : "Nueva carrera"}
+                    </h4>
+
+                    <button
+                      type="button"
+                      onClick={cancelarEdicionCarrera}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+
+                  <label>
+                    Nombre de la carrera
+                    <input
+                      type="text"
+                      value={nombreCarrera}
+                      onChange={(e) =>
+                        setNombreCarrera(e.target.value)
+                      }
+                      placeholder="Ej. Ingeniería en Sistemas Computacionales"
+                      required
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        marginTop: "8px",
+                      }}
+                    />
+                  </label>
+
+                  <div style={{ marginTop: "18px" }}>
+                    <button
+                      type="submit"
+                      disabled={guardandoCarrera}
+                    >
+                      {guardandoCarrera
+                        ? "Guardando..."
+                        : editandoCarrera
+                          ? "Actualizar carrera"
+                          : "Crear carrera"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {cargandoCarreras ? (
+                <p>Cargando carreras...</p>
+              ) : carreras.length === 0 ? (
+                <p>
+                  Todavía no hay carreras registradas.
+                </p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      minWidth: "650px",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        {[
+                          "ID",
+                          "Carrera",
+                          "Estado",
+                          "Acciones",
+                        ].map((titulo) => (
+                          <th
+                            key={titulo}
+                            style={{
+                              textAlign: "left",
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #d8dee9",
+                            }}
+                          >
+                            {titulo}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {carreras.map((carrera) => {
+                        const activa = Number(
+                          carrera.activa ??
+                            carrera.activo ??
+                            1
+                        );
+
+                        return (
+                          <tr key={carrera.id_carrera}>
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {carrera.id_carrera}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              <strong>
+                                {carrera.nombre}
+                              </strong>
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              {activa === 1
+                                ? "Activa"
+                                : "Inactiva"}
+                            </td>
+
+                            <td
+                              style={{
+                                padding: "12px",
+                                borderBottom:
+                                  "1px solid #edf0f5",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "8px",
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    abrirEdicionCarrera(
+                                      carrera
+                                    )
+                                  }
+                                >
+                                  Editar
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    cambiarEstadoCarrera(
+                                      carrera
+                                    )
+                                  }
+                                >
+                                  {activa === 1
+                                    ? "Desactivar"
+                                    : "Activar"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
         )}
 
         {/* ==========================================
@@ -2045,19 +4703,176 @@ function AdminPanel({ usuario, onLogout }) {
                 <p className="section-label">
                   ACTIVIDAD
                 </p>
-                <h3>
-                  Historial de actividades
-                </h3>
+                <h3>Historial de actividades</h3>
               </div>
+
+              <button
+                type="button"
+                onClick={cargarHistorial}
+                disabled={cargandoHistorial}
+              >
+                {cargandoHistorial
+                  ? "Actualizando..."
+                  : "Actualizar"}
+              </button>
             </div>
 
             <p className="panel-description">
-              Aquí podrás consultar los cambios y
-              actividades realizadas dentro del
-              sistema.
+              Consulta los cambios y actividades realizadas
+              dentro del sistema.
             </p>
 
-            <p>🚧 Módulo en desarrollo.</p>
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                flexWrap: "wrap",
+                marginBottom: "20px",
+              }}
+            >
+              <input
+                type="text"
+                value={busquedaHistorial}
+                onChange={(e) =>
+                  setBusquedaHistorial(e.target.value)
+                }
+                placeholder="Buscar en el historial"
+                style={{
+                  flex: "1 1 320px",
+                  padding: "12px",
+                  border: "1px solid #d8dee9",
+                  borderRadius: "8px",
+                }}
+              />
+
+              <select
+                value={filtroAccionHistorial}
+                onChange={(e) =>
+                  setFiltroAccionHistorial(e.target.value)
+                }
+                style={{
+                  minWidth: "220px",
+                  padding: "12px",
+                  border: "1px solid #d8dee9",
+                  borderRadius: "8px",
+                }}
+              >
+                <option value="">Todas las acciones</option>
+
+                {accionesHistorial.map((accion) => (
+                  <option key={accion} value={accion}>
+                    {accion}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {cargandoHistorial ? (
+              <p>Cargando historial...</p>
+            ) : historialFiltrado.length === 0 ? (
+              <p>No se encontraron actividades registradas.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    minWidth: "850px",
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      {[
+                        "ID",
+                        "Usuario",
+                        "Acción",
+                        "Descripción",
+                        "Fecha y hora",
+                      ].map((titulo) => (
+                        <th
+                          key={titulo}
+                          style={{
+                            textAlign: "left",
+                            padding: "12px",
+                            borderBottom: "1px solid #d8dee9",
+                          }}
+                        >
+                          {titulo}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {historialFiltrado.map((registro, indice) => {
+                      const id =
+                        obtenerValorHistorial(registro, [
+                          "id_historial",
+                          "id_actividad",
+                          "id",
+                        ]) || indice + 1;
+
+                      const usuarioHistorial =
+                        obtenerValorHistorial(registro, [
+                          "usuario",
+                          "nombre_usuario",
+                          "administrador",
+                          "nombre",
+                          "correo",
+                        ]) || "Sistema";
+
+                      const accion =
+                        obtenerValorHistorial(registro, [
+                          "accion",
+                          "tipo_accion",
+                          "actividad",
+                          "tipo_actividad",
+                        ]) || "Actividad";
+
+                      const descripcion =
+                        obtenerValorHistorial(registro, [
+                          "descripcion",
+                          "detalle",
+                          "detalles",
+                          "mensaje",
+                        ]) || "—";
+
+                      const fecha = obtenerValorHistorial(
+                        registro,
+                        [
+                          "fecha",
+                          "fecha_hora",
+                          "fecha_creacion",
+                          "created_at",
+                        ]
+                      );
+
+                      return (
+                        <tr key={`${id}-${indice}`}>
+                          <td style={{ padding: "12px", borderBottom: "1px solid #edf0f5" }}>
+                            {id}
+                          </td>
+                          <td style={{ padding: "12px", borderBottom: "1px solid #edf0f5" }}>
+                            {usuarioHistorial}
+                          </td>
+                          <td style={{ padding: "12px", borderBottom: "1px solid #edf0f5" }}>
+                            <strong>{accion}</strong>
+                          </td>
+                          <td style={{ padding: "12px", borderBottom: "1px solid #edf0f5" }}>
+                            {descripcion}
+                          </td>
+                          <td style={{ padding: "12px", borderBottom: "1px solid #edf0f5" }}>
+                            {fecha
+                              ? formatearFechaHora(fecha)
+                              : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         )}
       </main>

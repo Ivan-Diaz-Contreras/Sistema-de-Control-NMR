@@ -11,6 +11,7 @@ const {
     actualizarEstadoPracticante,
     obtenerHorarioPracticante,
     obtenerAsistenciasPracticante,
+    obtenerAsistenciasGeneral,
     actualizarAsistencia,
     crearHorarioPracticante,
     actualizarHorario,
@@ -98,6 +99,14 @@ router.get(
 // ASISTENCIAS
 // ==========================================
 
+// Consultar todas las asistencias
+router.get(
+    "/asistencias",
+    verificarToken,
+    verificarAdmin,
+    obtenerAsistenciasGeneral
+);
+
 // Actualizar una asistencia
 router.put(
     "/asistencias/:id",
@@ -177,6 +186,7 @@ router.get(
     obtenerArchivoBitacoraAdmin
 );
 
+
 // ==========================================
 // ACTIVIDADES DE BITÁCORA
 // ==========================================
@@ -212,6 +222,15 @@ router.put(
     verificarAdmin,
     actualizarEstadoActividadBitacora
 );
+
+// Eliminar actividad de bitácora
+router.delete(
+    "/actividades-bitacora/:id",
+    verificarToken,
+    verificarAdmin,
+    eliminarActividadBitacora
+);
+
 
 // ==========================================
 // CARRERAS
@@ -265,14 +284,6 @@ router.get(
     verificarToken,
     verificarAdmin,
     obtenerHistorialActividades
-);
-
-//Elimina las bitacoras
-router.delete(
-    "/actividades-bitacora/:id",
-    verificarToken,
-    verificarAdmin,
-    eliminarActividadBitacora
 );
 
 module.exports = router;

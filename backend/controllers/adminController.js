@@ -277,69 +277,395 @@ const actualizarAsistencia = (req, res) => {
     const {
         hora_entrada_real,
         hora_salida_real,
-        estado,
         observaciones
     } = req.body || {};
 
-    const estadosPermitidos = [
-        "Pendiente",
-        "A tiempo",
-        "Retardo",
-        "Incompleta"
-    ];
+    // ==========================================
+    // OBTENER ASISTENCIA Y HORARIO
+    // ==========================================
 
-    if (estado && !estadosPermitidos.includes(estado)) {
-        return res.status(400).json({
-            mensaje: "Estado de asistencia inválido"
-        });
-    }
-
-    const sql = `
-        UPDATE asistencias
-        SET
-            hora_entrada_real = COALESCE(?, hora_entrada_real),
-            hora_salida_real = COALESCE(?, hora_salida_real),
-            estado = COALESCE(?, estado),
-            observaciones = COALESCE(?, observaciones)
-        WHERE id_asistencia = ?
+    const sqlBuscar = `
+        SELECT
+            a.id_asistencia,
+            a.id_practicante,
+            a.id_horario,
+            a.fecha,
+            a.hora_entrada_real,
+            a.hora_salida_real,
+            h.hora_entrada AS hora_entrada_esperada,
+            h.hora_salida AS hora_salida_esperada
+        FROM asistencias a
+        INNER JOIN horarios h
+            ON a.id_horario = h.id_horario
+        WHERE a.id_asistencia = ?
     `;
 
     db.query(
-        sql,
-        [
-            hora_entrada_real || null,
-            hora_salida_real || null,
-            estado || null,
-            observaciones || null,
-            id
-        ],
-        (error, resultado) => {
-            if (error) {
+        sqlBuscar,
+        [id],
+        (errorBuscar, resultados) => {
+            if (errorBuscar) {
                 console.error(
-                    "Error actualizando asistencia:",
-                    error
+                    "Error consultando asistencia:",
+                    errorBuscar
                 );
 
                 return res.status(500).json({
-                    mensaje: "Error al actualizar la asistencia"
+                    mensaje:
+                        "Error al consultar la asistencia"
                 });
             }
 
-            if (resultado.affectedRows === 0) {
+            if (resultados.length === 0) {
                 return res.status(404).json({
-                    mensaje: "Asistencia no encontrada"
+                    mensaje:
+                        "Asistencia no encontrada"
                 });
             }
-            
-            registrarActividad(
-                idUsuario,
-                "ACTUALIZAR_ASISTENCIA",
-                `El administrador actualizó la asistencia ${id}`
-            );
 
-            return res.status(200).json({
-                mensaje: "Asistencia actualizada correctamente"
-            });
+            const asistenciaActual =
+                resultados[0];
+
+            const nuevaEntrada =
+                hora_entrada_real ??
+                asistenciaActual.hora_entrada_real;
+
+            const nuevaSalida =
+                hora_salida_real ??
+                asistenciaActual.hora_salida_real;
+
+            // ==========================================
+            // FUNCIÓN PARA CONVERTIR HORA A SEGUNDOS
+            // ==========================================
+
+            const convertirSegundos = (hora) => {
+                if (!hora) {
+                    return null;
+                }
+
+                const [h, m, s = 0] =
+                    String(hora)
+                        .split(":")
+                        .map(Number);
+
+                return (
+                    h * 3600 +
+                    m * 60 +
+                    s
+                );
+            };
+
+            // ==========================================
+            // VALIDAR ENTRADA Y SALIDA
+            // ==========================================
+
+            if (
+                nuevaEntrada &&
+                nuevaSalida
+            ) {
+                const segundosEntrada =
+                    convertirSegundos(
+                        nuevaEntrada
+                    );
+
+                const segundosSalida =
+                    convertirSegundos(
+                        nuevaSalida
+                    );
+
+                if (
+                    segundosSalida <=
+                    segundosEntrada
+                ) {
+                    return res
+                        .status(400)
+                        .json({
+                            mensaje:
+                                "La hora de salida debe ser posterior a la hora de entrada"
+                        });
+                }
+            }
+
+            // ==========================================
+            // CALCULAR ESTADO AUTOMÁTICAMENTE
+            // ==========================================
+
+            let nuevoEstado =
+                "Pendiente";
+
+            if (
+                nuevaEntrada &&
+                !nuevaSalida
+            ) {
+                const entradaReal =
+                    convertirSegundos(
+                        nuevaEntrada
+                    );
+
+                const entradaEsperada =
+                    convertirSegundos(
+                        asistenciaActual
+                            .hora_entrada_esperada
+                    );
+
+                nuevoEstado =
+                    entradaReal <=
+                    entradaEsperada
+                        ? "A tiempo"
+                        : "Retardo";
+            }
+
+            if (
+                nuevaEntrada &&
+                nuevaSalida
+            ) {
+                const entradaReal =
+                    convertirSegundos(
+                        nuevaEntrada
+                    );
+
+                const entradaEsperada =
+                    convertirSegundos(
+                        asistenciaActual
+                            .hora_entrada_esperada
+                    );
+
+                nuevoEstado =
+                    entradaReal <=
+                    entradaEsperada
+                        ? "A tiempo"
+                        : "Retardo";
+            }
+
+            if (
+                !nuevaEntrada &&
+                nuevaSalida
+            ) {
+                nuevoEstado =
+                    "Incompleta";
+            }
+
+            // ==========================================
+            // ACTUALIZAR ASISTENCIA
+            // ==========================================
+
+            const sqlActualizar = `
+                UPDATE asistencias
+                SET
+                    hora_entrada_real =
+                        COALESCE(
+                            ?,
+                            hora_entrada_real
+                        ),
+
+                    hora_salida_real =
+                        COALESCE(
+                            ?,
+                            hora_salida_real
+                        ),
+
+                    estado = ?,
+
+                    observaciones =
+                        COALESCE(
+                            ?,
+                            observaciones
+                        )
+
+                WHERE id_asistencia = ?
+            `;
+
+            db.query(
+                sqlActualizar,
+                [
+                    hora_entrada_real ??
+                        null,
+
+                    hora_salida_real ??
+                        null,
+
+                    nuevoEstado,
+
+                    observaciones ??
+                        null,
+
+                    id
+                ],
+                (errorActualizar) => {
+                    if (
+                        errorActualizar
+                    ) {
+                        console.error(
+                            "Error actualizando asistencia:",
+                            errorActualizar
+                        );
+
+                        return res
+                            .status(500)
+                            .json({
+                                mensaje:
+                                    "Error al actualizar la asistencia"
+                            });
+                    }
+
+                    // ==========================================
+                    // RECALCULAR HORAS
+                    // ==========================================
+
+                    if (
+                        nuevaEntrada &&
+                        nuevaSalida
+                    ) {
+                        const segundosTrabajados =
+                            convertirSegundos(
+                                nuevaSalida
+                            ) -
+                            convertirSegundos(
+                                nuevaEntrada
+                            );
+
+                        const horasReales =
+                            segundosTrabajados /
+                            3600;
+
+                        // Máximo permitido:
+                        // 3 horas por día
+                        const horasContabilizadas =
+                            Math.min(
+                                horasReales,
+                                3
+                            );
+
+                        const horasRedondeadas =
+                            Number(
+                                horasContabilizadas
+                                    .toFixed(2)
+                            );
+
+                        const descripcion =
+                            horasReales > 3
+                                ? `Horas recalculadas por corrección de asistencia. Tiempo real: ${horasReales.toFixed(
+                                      2
+                                  )} h. Se aplicó el límite diario de 3 horas.`
+                                : "Horas recalculadas automáticamente por corrección de asistencia.";
+
+                        const sqlHoras = `
+                            INSERT INTO registros_horas (
+                                id_practicante,
+                                id_asistencia,
+                                fecha,
+                                horas,
+                                descripcion
+                            )
+                            VALUES (?, ?, ?, ?, ?)
+
+                            ON DUPLICATE KEY UPDATE
+                                fecha =
+                                    VALUES(fecha),
+
+                                horas =
+                                    VALUES(horas),
+
+                                descripcion =
+                                    VALUES(
+                                        descripcion
+                                    )
+                        `;
+
+                        db.query(
+                            sqlHoras,
+                            [
+                                asistenciaActual
+                                    .id_practicante,
+
+                                asistenciaActual
+                                    .id_asistencia,
+
+                                asistenciaActual
+                                    .fecha,
+
+                                horasRedondeadas,
+
+                                descripcion
+                            ],
+                            (
+                                errorHoras
+                            ) => {
+                                if (
+                                    errorHoras
+                                ) {
+                                    console.error(
+                                        "Error recalculando horas:",
+                                        errorHoras
+                                    );
+
+                                    return res
+                                        .status(
+                                            500
+                                        )
+                                        .json({
+                                            mensaje:
+                                                "La asistencia fue actualizada, pero ocurrió un error al recalcular las horas"
+                                        });
+                                }
+
+                                registrarActividad(
+                                    idUsuario,
+                                    "ACTUALIZAR_ASISTENCIA",
+                                    `El administrador actualizó la asistencia ${id}. Estado: ${nuevoEstado}. Horas recalculadas: ${horasRedondeadas}`
+                                );
+
+                                return res
+                                    .status(
+                                        200
+                                    )
+                                    .json({
+                                        mensaje:
+                                            "Asistencia y horas actualizadas correctamente",
+
+                                        estado:
+                                            nuevoEstado,
+
+                                        horas_reales:
+                                            Number(
+                                                horasReales.toFixed(
+                                                    2
+                                                )
+                                            ),
+
+                                        horas_contabilizadas:
+                                            horasRedondeadas,
+
+                                        limite_diario:
+                                            3
+                                    });
+                            }
+                        );
+
+                        return;
+                    }
+
+                    // ==========================================
+                    // SIN SALIDA COMPLETA
+                    // ==========================================
+
+                    registrarActividad(
+                        idUsuario,
+                        "ACTUALIZAR_ASISTENCIA",
+                        `El administrador actualizó la asistencia ${id}. Estado: ${nuevoEstado}`
+                    );
+
+                    return res
+                        .status(200)
+                        .json({
+                            mensaje:
+                                "Asistencia actualizada correctamente",
+
+                            estado:
+                                nuevoEstado
+                        });
+                }
+            );
         }
     );
 };
@@ -1902,12 +2228,106 @@ const eliminarActividadBitacora = (req, res) => {
     );
 };
 
+// ==========================================
+// OBTENER TODAS LAS ASISTENCIAS
+// ==========================================
+
+const obtenerAsistenciasGeneral = (req, res) => {
+    const sql = `
+        SELECT
+            a.id_asistencia,
+            a.id_practicante,
+            a.fecha,
+
+            a.hora_entrada_real,
+            a.hora_salida_real,
+
+            h.hora_entrada AS hora_entrada_esperada,
+            h.hora_salida AS hora_salida_esperada,
+
+            a.estado,
+            a.observaciones,
+
+            p.matricula,
+
+            u.nombre,
+            u.apellido_paterno,
+            u.apellido_materno,
+
+            c.nombre AS carrera,
+
+            rh.horas AS horas_contabilizadas
+
+        FROM asistencias a
+
+        INNER JOIN practicantes p
+            ON a.id_practicante = p.id_practicante
+
+        INNER JOIN usuarios u
+            ON p.id_usuario = u.id_usuario
+
+        INNER JOIN horarios h
+            ON a.id_horario = h.id_horario
+
+        LEFT JOIN carreras c
+            ON p.id_carrera = c.id_carrera
+
+        LEFT JOIN registros_horas rh
+            ON rh.id_asistencia = a.id_asistencia
+
+        ORDER BY
+            a.fecha DESC,
+            a.id_asistencia DESC
+    `;
+
+    db.query(sql, (error, resultados) => {
+        if (error) {
+            console.error(
+                "Error obteniendo asistencias generales:",
+                error
+            );
+
+            return res.status(500).json({
+                mensaje:
+                    "Error al consultar las asistencias"
+            });
+        }
+
+        const asistencias = resultados.map(
+            (asistencia) => ({
+                ...asistencia,
+
+                nombre_practicante: [
+                    asistencia.nombre,
+                    asistencia.apellido_paterno,
+                    asistencia.apellido_materno
+                ]
+                    .filter(Boolean)
+                    .join(" "),
+
+                horas_contabilizadas:
+                    asistencia.horas_contabilizadas !== null
+                        ? Number(
+                              asistencia.horas_contabilizadas
+                          )
+                        : null
+            })
+        );
+
+        return res.status(200).json({
+            total_asistencias: asistencias.length,
+            asistencias
+        });
+    });
+};
+
 module.exports = {
     // Practicantes
     obtenerPracticantes,
     obtenerPracticantePorId,
     actualizarEstadoPracticante,
     actualizarPracticante,
+    obtenerAsistenciasGeneral,
 
     // Horarios y asistencias
     obtenerHorarioPracticante,
