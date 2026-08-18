@@ -35,11 +35,14 @@ const verificarToken = (req, res, next) => {
 
     const sql = `
         SELECT
-            id_usuario,
-            id_rol,
-            activo
-        FROM usuarios
-        WHERE id_usuario = ?
+            u.id_usuario,
+            u.id_rol,
+            u.activo,
+            r.nombre AS rol
+        FROM usuarios u
+        INNER JOIN roles r
+            ON u.id_rol = r.id_rol
+        WHERE u.id_usuario = ?
     `;
 
     db.query(
@@ -73,7 +76,8 @@ const verificarToken = (req, res, next) => {
 
             req.usuario = {
                 id_usuario: usuario.id_usuario,
-                id_rol: usuario.id_rol
+                id_rol: usuario.id_rol,
+                rol: usuario.rol
             };
 
             next();

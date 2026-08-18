@@ -482,16 +482,19 @@ const login = async (req, res) => {
 
         const sql = `
             SELECT
-                id_usuario,
-                nombre,
-                apellido_paterno,
-                apellido_materno,
-                correo,
-                password_hash,
-                id_rol,
-                activo
-            FROM usuarios
-            WHERE correo = ?
+                u.id_usuario,
+                u.nombre,
+                u.apellido_paterno,
+                u.apellido_materno,
+                u.correo,
+                u.password_hash,
+                u.id_rol,
+                u.activo,
+                r.nombre AS rol
+            FROM usuarios u
+            INNER JOIN roles r
+                ON u.id_rol = r.id_rol
+            WHERE u.correo = ?
         `;
 
         db.query(sql, [correo], async (error, resultados) => {
@@ -553,7 +556,8 @@ const login = async (req, res) => {
                     apellido_paterno: usuario.apellido_paterno,
                     apellido_materno: usuario.apellido_materno,
                     correo: usuario.correo,
-                    id_rol: usuario.id_rol
+                    id_rol: usuario.id_rol,
+                    rol: usuario.rol
                 }
             });
         });

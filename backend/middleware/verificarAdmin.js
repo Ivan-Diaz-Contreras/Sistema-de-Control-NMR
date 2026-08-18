@@ -7,9 +7,7 @@ const verificarAdmin = (req, res, next) => {
     }
 
     // En nuestra base de datos:
-    // 1 = Practicante
-    // 2 = Administrador
-    if (req.usuario.id_rol !== 2) {
+    if (req.usuario.rol !== "Administrador") {
         return res.status(403).json({
             mensaje: "No tienes permisos de administrador"
         });

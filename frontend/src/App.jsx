@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
 import "./App.css";
+
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const API = `${API_URL}/api`;
@@ -11,9 +12,17 @@ function App() {
   const [perfil, setPerfil] = useState(null);
   const [avance, setAvance] = useState(null);
   const [mensaje, setMensaje] = useState("");
-  const [cargando, setCargando] = useState(
-  Boolean(localStorage.getItem("token"))
+  const [cargando, setCargando] = useState(() => {
+  const tokenGuardado = localStorage.getItem("token");
+  const usuarioGuardado = JSON.parse(
+    localStorage.getItem("usuario") || "null"
   );
+
+  return Boolean(
+    tokenGuardado &&
+    usuarioGuardado?.rol === "Practicante"
+  );
+});
   const [procesandoAsistencia, setProcesandoAsistencia] = useState(false);
   const [seccion, setSeccion] = useState("dashboard");
 
@@ -35,71 +44,62 @@ const [usuario, setUsuario] = useState(
   JSON.parse(localStorage.getItem("usuario") || "null")
 );
 
-  const headers = {
-    Authorization: `Bearer ${token}`,
-  };
+  //const headers = {
+  //  Authorization: `Bearer ${token}`,
+  //};
 
 useEffect(() => {
-  if (!token) {
-    setCargando(false);
+  if (!token || usuario?.rol !== "Practicante") {
     return;
   }
 
-  // Solo cargar perfil y avance si el usuario es practicante
-  if (Number(usuario?.id_rol) !== 1) {
-    setMensaje("");
-    setCargando(false);
-    return;
-  }
+  const cargarDatos = async () => {
+    try {
+      setCargando(true);
 
-const cargarDatos = async () => {
-  try {
-    setCargando(true);
-    setMensaje("");
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
 
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
+      const [perfilResponse, avanceResponse] = await Promise.all([
+        axios.get(`${API}/practicantes/perfil`, { headers }),
+        axios.get(`${API}/practicantes/avance`, { headers }),
+      ]);
 
-    const [perfilResponse, avanceResponse] = await Promise.all([
-      axios.get(`${API}/practicantes/perfil`, { headers }),
-      axios.get(`${API}/practicantes/avance`, { headers }),
-    ]);
+      setPerfil(perfilResponse.data.perfil);
+      setAvance(avanceResponse.data);
+    } catch (error) {
+      console.error(error);
 
-    setPerfil(perfilResponse.data.perfil);
-    setAvance(avanceResponse.data);
-  } catch (error) {
-    console.error(error);
+      if (
+        error.response?.status === 401 ||
+        error.response?.status === 403
+      ) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("usuario");
 
-    if (
-      error.response?.status === 401 ||
-      error.response?.status === 403
-    ) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("usuario");
+        setToken(null);
+        setUsuario(null);
+        setPerfil(null);
+        setAvance(null);
 
-      setToken(null);
-      setUsuario(null);
-      setPerfil(null);
-      setAvance(null);
-
-      setMensaje(
-        error.response?.data?.mensaje ||
-          "Tu sesión ya no es válida. Inicia sesión nuevamente."
-      );
-    } else {
-      setMensaje(
-        error.response?.data?.mensaje ||
-          "No se pudieron cargar los datos del practicante."
-      );
+        setMensaje(
+          error.response?.data?.mensaje ||
+            "Tu sesión ya no es válida. Inicia sesión nuevamente."
+        );
+      } else {
+        setMensaje(
+          error.response?.data?.mensaje ||
+            "No se pudieron cargar los datos del practicante."
+        );
+      }
+    } finally {
+      setCargando(false);
     }
-  } finally {
-    setCargando(false);
-  }
-};
+  };
 
-cargarDatos();
-}, [token, usuario?.id_rol]);
+  cargarDatos();
+}, [token, usuario?.rol]);
 
 const iniciarSesion = (nuevoToken, nuevoUsuario) => {
   setToken(nuevoToken);
@@ -171,8 +171,8 @@ const registrarSalida = async () => {
   }
 };
 
-const cargarBitacorasPracticante = async () => {
-  if (!token || Number(usuario?.id_rol) !== 1) {
+const cargarBitacorasPracticante = useCallback(async () => {
+  if (!token || usuario?.rol !== "Practicante") {
     return;
   }
 
@@ -180,16 +180,21 @@ const cargarBitacorasPracticante = async () => {
     setCargandoBitacoras(true);
     setMensaje("");
 
-    const [actividadesResponse, bitacorasResponse] = await Promise.all([
-      axios.get(
-        `${API}/practicantes/bitacoras/actividades`,
-        { headers }
-      ),
-      axios.get(
-        `${API}/practicantes/bitacoras`,
-        { headers }
-      ),
-    ]);
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    const [actividadesResponse, bitacorasResponse] =
+      await Promise.all([
+        axios.get(
+          `${API}/practicantes/bitacoras/actividades`,
+          { headers }
+        ),
+        axios.get(
+          `${API}/practicantes/bitacoras`,
+          { headers }
+        ),
+      ]);
 
     setActividadesBitacora(
       actividadesResponse.data.actividades || []
@@ -211,19 +216,23 @@ const cargarBitacorasPracticante = async () => {
   } finally {
     setCargandoBitacoras(false);
   }
-};
+}, [token, usuario?.rol]);
 
 useEffect(() => {
   if (
     seccion === "bitacoras" &&
     token &&
-    Number(usuario?.id_rol) === 1
+    usuario?.rol === "Practicante"
   ) {
     cargarBitacorasPracticante();
   }
+}, [
+  seccion,
+  token,
+  usuario?.rol,
+  cargarBitacorasPracticante,
+]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [seccion, token, usuario?.id_rol]);
 
 const seleccionarArchivoBitacora = (
   idActividad,
@@ -393,7 +402,7 @@ const formatearFechaHoraBitacora = (fecha) => {
   // PANEL DEL ADMINISTRADOR
   // ==========================================
 
-  if (Number(usuario?.id_rol) === 2) {
+  if (usuario?.rol === "Administrador") {
     return (
       <AdminPanel
         usuario={usuario}
