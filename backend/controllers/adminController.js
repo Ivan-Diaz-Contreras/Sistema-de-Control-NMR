@@ -1508,74 +1508,532 @@ const actualizarCarrera = (req, res) => {
 
 // ==========================================
 // OBTENER ESTADÍSTICAS GENERALES
+// DASHBOARD DEL ADMINISTRADOR
 // ==========================================
 
 const obtenerEstadisticas = (req, res) => {
-    const sql = `
+    const sqlEstadisticas = `
         SELECT
-            (SELECT COUNT(*)
-             FROM practicantes) AS total_practicantes,
+            -- ==========================================
+            -- PRACTICANTES
+            -- ==========================================
 
-            (SELECT COUNT(*)
-             FROM practicantes
-             WHERE fecha_fin IS NULL
-                OR fecha_fin >= CURDATE()
+            (
+                SELECT COUNT(*)
+                FROM practicantes
+            ) AS total_practicantes,
+
+            (
+                SELECT COUNT(*)
+                FROM practicantes p
+                INNER JOIN usuarios u
+                    ON p.id_usuario = u.id_usuario
+                WHERE u.activo = 1
             ) AS practicantes_activos,
 
-            (SELECT COALESCE(SUM(horas), 0)
-             FROM registros_horas
+            (
+                SELECT COUNT(*)
+                FROM practicantes p
+                INNER JOIN usuarios u
+                    ON p.id_usuario = u.id_usuario
+                WHERE u.activo = 0
+            ) AS practicantes_inactivos,
+
+            -- ==========================================
+            -- HORAS
+            -- ==========================================
+
+            (
+                SELECT COALESCE(SUM(rh.horas), 0)
+                FROM registros_horas rh
             ) AS total_horas_registradas,
 
-            (SELECT COUNT(*)
-             FROM bitacoras
-             WHERE estado = 'Pendiente'
+            (
+                SELECT COALESCE(SUM(rh.horas), 0)
+                FROM registros_horas rh
+                WHERE rh.fecha = CURDATE()
+            ) AS horas_registradas_hoy,
+
+            -- ==========================================
+            -- ASISTENCIAS DE HOY
+            -- ==========================================
+
+            (
+                SELECT COUNT(*)
+                FROM asistencias a
+                WHERE a.fecha = CURDATE()
+            ) AS asistencias_hoy,
+
+            (
+                SELECT COUNT(*)
+                FROM asistencias a
+                WHERE a.fecha = CURDATE()
+                  AND a.estado = 'A tiempo'
+            ) AS asistencias_a_tiempo_hoy,
+
+            (
+                SELECT COUNT(*)
+                FROM asistencias a
+                WHERE a.fecha = CURDATE()
+                  AND a.estado = 'Retardo'
+            ) AS retardos_hoy,
+
+            (
+                SELECT COUNT(*)
+                FROM asistencias a
+                WHERE a.fecha = CURDATE()
+                  AND a.estado = 'Incompleta'
+            ) AS asistencias_incompletas_hoy,
+
+            (
+                SELECT COUNT(*)
+                FROM asistencias a
+                WHERE a.fecha = CURDATE()
+                  AND a.estado = 'Pendiente'
+            ) AS asistencias_pendientes_hoy,
+
+            -- ==========================================
+            -- BITÁCORAS
+            -- ==========================================
+
+            (
+                SELECT COUNT(*)
+                FROM bitacoras b
+                WHERE b.estado = 'Pendiente'
             ) AS bitacoras_pendientes,
 
-            (SELECT COUNT(*)
-             FROM bitacoras
-             WHERE estado = 'Aprobada'
+            (
+                SELECT COUNT(*)
+                FROM bitacoras b
+                WHERE b.estado = 'Aprobada'
             ) AS bitacoras_aprobadas,
 
-            (SELECT COUNT(*)
-             FROM bitacoras
-             WHERE estado = 'Rechazada'
-            ) AS bitacoras_rechazadas
+            (
+                SELECT COUNT(*)
+                FROM bitacoras b
+                WHERE b.estado = 'Rechazada'
+            ) AS bitacoras_rechazadas,
+
+            -- ==========================================
+            -- CARRERAS
+            -- ==========================================
+
+            (
+                SELECT COUNT(*)
+                FROM carreras c
+                WHERE c.activa = 1
+            ) AS carreras_activas,
+
+            -- ==========================================
+            -- ACTIVIDADES DE BITÁCORA
+            -- ==========================================
+
+            (
+                SELECT COUNT(*)
+                FROM actividades_bitacora ab
+                WHERE ab.activa = 1
+            ) AS actividades_bitacora_activas
     `;
 
-    db.query(sql, (error, resultados) => {
-        if (error) {
-            console.error(
-                "Error obteniendo estadísticas:",
-                error
+    // ==========================================
+    // ACTIVIDAD DE LOS ÚLTIMOS 7 DÍAS
+    // ==========================================
+
+    const sqlUltimos7Dias = `
+        WITH dias AS (
+            SELECT CURDATE() AS fecha
+
+            UNION ALL
+
+            SELECT DATE_SUB(
+                CURDATE(),
+                INTERVAL 1 DAY
+            )
+
+            UNION ALL
+
+            SELECT DATE_SUB(
+                CURDATE(),
+                INTERVAL 2 DAY
+            )
+
+            UNION ALL
+
+            SELECT DATE_SUB(
+                CURDATE(),
+                INTERVAL 3 DAY
+            )
+
+            UNION ALL
+
+            SELECT DATE_SUB(
+                CURDATE(),
+                INTERVAL 4 DAY
+            )
+
+            UNION ALL
+
+            SELECT DATE_SUB(
+                CURDATE(),
+                INTERVAL 5 DAY
+            )
+
+            UNION ALL
+
+            SELECT DATE_SUB(
+                CURDATE(),
+                INTERVAL 6 DAY
+            )
+        ),
+
+        resumen_asistencias AS (
+            SELECT
+                a.fecha,
+
+                COUNT(*) AS asistencias,
+
+                SUM(
+                    CASE
+                        WHEN a.estado = 'A tiempo'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS a_tiempo,
+
+                SUM(
+                    CASE
+                        WHEN a.estado = 'Retardo'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS retardos,
+
+                SUM(
+                    CASE
+                        WHEN a.estado = 'Incompleta'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS incompletas,
+
+                SUM(
+                    CASE
+                        WHEN a.estado = 'Pendiente'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS pendientes
+
+            FROM asistencias a
+
+            WHERE a.fecha BETWEEN
+                DATE_SUB(
+                    CURDATE(),
+                    INTERVAL 6 DAY
+                )
+                AND CURDATE()
+
+            GROUP BY a.fecha
+        ),
+
+        resumen_horas AS (
+            SELECT
+                rh.fecha,
+                COALESCE(
+                    SUM(rh.horas),
+                    0
+                ) AS horas
+
+            FROM registros_horas rh
+
+            WHERE rh.fecha BETWEEN
+                DATE_SUB(
+                    CURDATE(),
+                    INTERVAL 6 DAY
+                )
+                AND CURDATE()
+
+            GROUP BY rh.fecha
+        )
+
+        SELECT
+            DATE_FORMAT(
+                d.fecha,
+                '%Y-%m-%d'
+            ) AS fecha,
+
+            COALESCE(
+                ra.asistencias,
+                0
+            ) AS asistencias,
+
+            COALESCE(
+                ra.a_tiempo,
+                0
+            ) AS a_tiempo,
+
+            COALESCE(
+                ra.retardos,
+                0
+            ) AS retardos,
+
+            COALESCE(
+                ra.incompletas,
+                0
+            ) AS incompletas,
+
+            COALESCE(
+                ra.pendientes,
+                0
+            ) AS pendientes,
+
+            COALESCE(
+                rh.horas,
+                0
+            ) AS horas
+
+        FROM dias d
+
+        LEFT JOIN resumen_asistencias ra
+            ON ra.fecha = d.fecha
+
+        LEFT JOIN resumen_horas rh
+            ON rh.fecha = d.fecha
+
+        ORDER BY d.fecha ASC
+    `;
+
+    db.query(
+        sqlEstadisticas,
+        (errorEstadisticas, resultados) => {
+            if (errorEstadisticas) {
+                console.error(
+                    "Error obteniendo estadísticas del dashboard:",
+                    errorEstadisticas
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al consultar las estadísticas del dashboard"
+                });
+            }
+
+            const datos =
+                resultados[0] || {};
+
+            const asistenciasHoy =
+                Number(
+                    datos.asistencias_hoy || 0
+                );
+
+            const asistenciasATiempo =
+                Number(
+                    datos.asistencias_a_tiempo_hoy ||
+                    0
+                );
+
+            const porcentajePuntualidad =
+                asistenciasHoy > 0
+                    ? Number(
+                          (
+                              (
+                                  asistenciasATiempo /
+                                  asistenciasHoy
+                              ) *
+                              100
+                          ).toFixed(2)
+                      )
+                    : 0;
+
+            // ==========================================
+            // CONSULTAR LOS ÚLTIMOS 7 DÍAS
+            // ==========================================
+
+            db.query(
+                sqlUltimos7Dias,
+                (
+                    errorActividad,
+                    resultadosActividad
+                ) => {
+                    if (errorActividad) {
+                        console.error(
+                            "Error obteniendo actividad de los últimos 7 días:",
+                            errorActividad
+                        );
+
+                        return res.status(500).json({
+                            mensaje:
+                                "Error al consultar la actividad de los últimos 7 días"
+                        });
+                    }
+
+                    const actividadUltimos7Dias =
+                        resultadosActividad.map(
+                            (registro) => ({
+                                fecha:
+                                    registro.fecha,
+
+                                asistencias:
+                                    Number(
+                                        registro.asistencias ||
+                                        0
+                                    ),
+
+                                a_tiempo:
+                                    Number(
+                                        registro.a_tiempo ||
+                                        0
+                                    ),
+
+                                retardos:
+                                    Number(
+                                        registro.retardos ||
+                                        0
+                                    ),
+
+                                incompletas:
+                                    Number(
+                                        registro.incompletas ||
+                                        0
+                                    ),
+
+                                pendientes:
+                                    Number(
+                                        registro.pendientes ||
+                                        0
+                                    ),
+
+                                horas:
+                                    Number(
+                                        registro.horas ||
+                                        0
+                                    )
+                            })
+                        );
+
+                    return res.status(200).json({
+                        // ==========================================
+                        // PRACTICANTES
+                        // ==========================================
+
+                        total_practicantes:
+                            Number(
+                                datos.total_practicantes ||
+                                0
+                            ),
+
+                        practicantes_activos:
+                            Number(
+                                datos.practicantes_activos ||
+                                0
+                            ),
+
+                        practicantes_inactivos:
+                            Number(
+                                datos.practicantes_inactivos ||
+                                0
+                            ),
+
+                        // ==========================================
+                        // HORAS
+                        // ==========================================
+
+                        total_horas_registradas:
+                            Number(
+                                datos.total_horas_registradas ||
+                                0
+                            ),
+
+                        horas_registradas_hoy:
+                            Number(
+                                datos.horas_registradas_hoy ||
+                                0
+                            ),
+
+                        // ==========================================
+                        // ASISTENCIAS DE HOY
+                        // ==========================================
+
+                        asistencias_hoy:
+                            asistenciasHoy,
+
+                        asistencias_a_tiempo_hoy:
+                            asistenciasATiempo,
+
+                        retardos_hoy:
+                            Number(
+                                datos.retardos_hoy ||
+                                0
+                            ),
+
+                        asistencias_incompletas_hoy:
+                            Number(
+                                datos.asistencias_incompletas_hoy ||
+                                0
+                            ),
+
+                        asistencias_pendientes_hoy:
+                            Number(
+                                datos.asistencias_pendientes_hoy ||
+                                0
+                            ),
+
+                        porcentaje_puntualidad_hoy:
+                            porcentajePuntualidad,
+
+                        // ==========================================
+                        // BITÁCORAS
+                        // ==========================================
+
+                        bitacoras_pendientes:
+                            Number(
+                                datos.bitacoras_pendientes ||
+                                0
+                            ),
+
+                        bitacoras_aprobadas:
+                            Number(
+                                datos.bitacoras_aprobadas ||
+                                0
+                            ),
+
+                        bitacoras_rechazadas:
+                            Number(
+                                datos.bitacoras_rechazadas ||
+                                0
+                            ),
+
+                        // ==========================================
+                        // CARRERAS
+                        // ==========================================
+
+                        carreras_activas:
+                            Number(
+                                datos.carreras_activas ||
+                                0
+                            ),
+
+                        // ==========================================
+                        // ACTIVIDADES DE BITÁCORA
+                        // ==========================================
+
+                        actividades_bitacora_activas:
+                            Number(
+                                datos.actividades_bitacora_activas ||
+                                0
+                            ),
+
+                        // ==========================================
+                        // GRÁFICA ÚLTIMOS 7 DÍAS
+                        // ==========================================
+
+                        actividad_ultimos_7_dias:
+                            actividadUltimos7Dias
+                    });
+                }
             );
-
-            return res.status(500).json({
-                mensaje: "Error al consultar las estadísticas"
-            });
         }
-
-        const datos = resultados[0];
-
-        return res.status(200).json({
-            total_practicantes:
-                Number(datos.total_practicantes),
-
-            practicantes_activos:
-                Number(datos.practicantes_activos),
-
-            total_horas_registradas:
-                Number(datos.total_horas_registradas),
-
-            bitacoras_pendientes:
-                Number(datos.bitacoras_pendientes),
-
-            bitacoras_aprobadas:
-                Number(datos.bitacoras_aprobadas),
-
-            bitacoras_rechazadas:
-                Number(datos.bitacoras_rechazadas)
-        });
-    });
+    );
 };
 
 // ==========================================
@@ -1779,6 +2237,199 @@ const actualizarPracticante = (req, res) => {
         );
     });
 };
+
+// ==========================================
+// ELIMINAR PRACTICANTE
+// SOLO SE PERMITE SI ESTÁ DESACTIVADO
+// ==========================================
+
+const eliminarPracticante = (req, res) => {
+    const { id } = req.params;
+    const idUsuarioAdmin = req.usuario.id_usuario;
+
+    const sqlBuscar = `
+        SELECT
+            p.id_practicante,
+            p.id_usuario,
+            u.nombre,
+            u.apellido_paterno,
+            u.apellido_materno,
+            u.activo
+        FROM practicantes p
+        INNER JOIN usuarios u
+            ON p.id_usuario = u.id_usuario
+        WHERE p.id_practicante = ?
+    `;
+
+    db.query(sqlBuscar, [id], (errorBuscar, resultados) => {
+        if (errorBuscar) {
+            console.error(
+                "Error buscando practicante para eliminar:",
+                errorBuscar
+            );
+
+            return res.status(500).json({
+                mensaje: "Error al consultar el practicante"
+            });
+        }
+
+        if (resultados.length === 0) {
+            return res.status(404).json({
+                mensaje: "Practicante no encontrado"
+            });
+        }
+
+        const practicante = resultados[0];
+
+        if (Number(practicante.activo) === 1) {
+            return res.status(400).json({
+                mensaje:
+                    "No puedes eliminar un practicante activo. Desactívalo primero."
+            });
+        }
+
+        const nombrePracticante = [
+            practicante.nombre,
+            practicante.apellido_paterno,
+            practicante.apellido_materno
+        ]
+            .filter(Boolean)
+            .join(" ");
+
+        const idUsuarioPracticante = practicante.id_usuario;
+
+        db.getConnection((errorConexion, connection) => {
+            if (errorConexion) {
+                console.error(
+                    "Error obteniendo conexión para eliminar practicante:",
+                    errorConexion
+                );
+
+                return res.status(500).json({
+                    mensaje: "Error al iniciar la eliminación"
+                });
+            }
+
+            connection.beginTransaction((errorTransaccion) => {
+                if (errorTransaccion) {
+                    connection.release();
+
+                    console.error(
+                        "Error iniciando transacción:",
+                        errorTransaccion
+                    );
+
+                    return res.status(500).json({
+                        mensaje: "Error al iniciar la eliminación"
+                    });
+                }
+
+                connection.query(
+                    `
+                        DELETE FROM practicantes
+                        WHERE id_practicante = ?
+                    `,
+                    [id],
+                    (errorPracticante, resultadoPracticante) => {
+                        if (errorPracticante) {
+                            return connection.rollback(() => {
+                                connection.release();
+
+                                console.error(
+                                    "Error eliminando practicante:",
+                                    errorPracticante
+                                );
+
+                                return res.status(500).json({
+                                    mensaje:
+                                        "Error al eliminar el practicante"
+                                });
+                            });
+                        }
+
+                        if (resultadoPracticante.affectedRows === 0) {
+                            return connection.rollback(() => {
+                                connection.release();
+
+                                return res.status(404).json({
+                                    mensaje: "Practicante no encontrado"
+                                });
+                            });
+                        }
+
+                        connection.query(
+                            `
+                                DELETE FROM usuarios
+                                WHERE id_usuario = ?
+                            `,
+                            [idUsuarioPracticante],
+                            (errorUsuario, resultadoUsuario) => {
+                                if (errorUsuario) {
+                                    return connection.rollback(() => {
+                                        connection.release();
+
+                                        console.error(
+                                            "Error eliminando usuario del practicante:",
+                                            errorUsuario
+                                        );
+
+                                        return res.status(500).json({
+                                            mensaje:
+                                                "Error al eliminar la cuenta del practicante"
+                                        });
+                                    });
+                                }
+
+                                if (resultadoUsuario.affectedRows === 0) {
+                                    return connection.rollback(() => {
+                                        connection.release();
+
+                                        return res.status(500).json({
+                                            mensaje:
+                                                "No se encontró la cuenta de usuario asociada al practicante"
+                                        });
+                                    });
+                                }
+
+                                connection.commit((errorCommit) => {
+                                    if (errorCommit) {
+                                        return connection.rollback(() => {
+                                            connection.release();
+
+                                            console.error(
+                                                "Error confirmando eliminación:",
+                                                errorCommit
+                                            );
+
+                                            return res.status(500).json({
+                                                mensaje:
+                                                    "Error al confirmar la eliminación"
+                                            });
+                                        });
+                                    }
+
+                                    connection.release();
+
+                                    registrarActividad(
+                                        idUsuarioAdmin,
+                                        "ELIMINAR_PRACTICANTE",
+                                        `El administrador eliminó al practicante ${nombrePracticante} con ID ${id}`
+                                    );
+
+                                    return res.status(200).json({
+                                        mensaje:
+                                            "Practicante eliminado correctamente"
+                                    });
+                                });
+                            }
+                        );
+                    }
+                );
+            });
+        });
+    });
+};
+
 
 // ==========================================
 // ACTIVAR O DESACTIVAR PRACTICANTE
@@ -2327,6 +2978,7 @@ module.exports = {
     obtenerPracticantePorId,
     actualizarEstadoPracticante,
     actualizarPracticante,
+    eliminarPracticante,
     obtenerAsistenciasGeneral,
 
     // Horarios y asistencias
