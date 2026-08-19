@@ -6,3 +6,9 @@ backend/uploads/
 
 # Respaldos locales de la base de datos
 database/*_backup.sql
+
+*.backup
+*.checkpoint-*
+*.pre-produccion.backup
+*.local-backup
+database/*.sql
