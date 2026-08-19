@@ -3,7 +3,8 @@ import axios from "axios";
 import Login from "./pages/Login";
 import AdminPanel from "./pages/AdminPanel";
 import "./App.css";
-
+import logoNMR from "./assets/logo-nmr.png";
+import { User } from "lucide-react";                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const API = `${API_URL}/api`;
@@ -421,11 +422,15 @@ const formatearFechaHoraBitacora = (fecha) => {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-icon">N</div>
+          <div className="brand-icon">
+             <img src={logoNMR} alt="NMR Consultores" />
+          </div>
 
           <div>
-            <h1>NMR</h1>
-            <span>Control de Prácticas</span>
+            <span>
+              Control de<br /> 
+              Prácticas
+              </span>
           </div>
         </div>
 
@@ -510,9 +515,7 @@ const formatearFechaHoraBitacora = (fecha) => {
 
           <div className="user-info">
             <div className="avatar">
-              {perfil?.nombre?.charAt(0) ||
-                usuario?.nombre?.charAt(0) ||
-                "S"}
+              <User size={22} />
             </div>
 
             <div>
