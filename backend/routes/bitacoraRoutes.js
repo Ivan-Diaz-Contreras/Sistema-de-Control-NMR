@@ -15,7 +15,7 @@ const {
 } = require("../controllers/bitacoraController");
 
 // ==========================================
-// SUBIR BITÁCORA PDF
+// SUBIR / REENVIAR BITÁCORA PDF
 // ==========================================
 
 router.post(
@@ -68,6 +68,7 @@ router.get(
 router.get(
     "/actividades",
     verificarToken,
+    verificarPracticante,
     obtenerActividadesDisponibles
 );
 

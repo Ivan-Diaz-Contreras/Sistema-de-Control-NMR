@@ -24,6 +24,41 @@ const subirBitacora = (req, res) => {
         }
     };
 
+    const eliminarArchivoGuardado = (nombreArchivo) => {
+        if (!nombreArchivo) {
+            return;
+        }
+
+        const carpetaBitacoras = path.resolve(
+            __dirname,
+            "../uploads/bitacoras"
+        );
+
+        const rutaSegura = path.resolve(
+            carpetaBitacoras,
+            path.basename(nombreArchivo)
+        );
+
+        if (!rutaSegura.startsWith(carpetaBitacoras)) {
+            console.error(
+                "Ruta de archivo inválida:",
+                nombreArchivo
+            );
+            return;
+        }
+
+        if (fs.existsSync(rutaSegura)) {
+            try {
+                fs.unlinkSync(rutaSegura);
+            } catch (error) {
+                console.error(
+                    "Error eliminando PDF anterior:",
+                    error
+                );
+            }
+        }
+    };
+
     if (
         id_actividad === undefined ||
         id_actividad === null ||
@@ -143,8 +178,12 @@ const subirBitacora = (req, res) => {
                     const semana =
                         Number(actividad.numero_semana);
 
-                    const sqlDuplicada = `
-                        SELECT id_bitacora
+                    const sqlExistente = `
+                        SELECT
+                            id_bitacora,
+                            estado,
+                            nombre_archivo,
+                            ruta_archivo
                         FROM bitacoras
                         WHERE id_practicante = ?
                           AND (
@@ -158,20 +197,20 @@ const subirBitacora = (req, res) => {
                     `;
 
                     db.query(
-                        sqlDuplicada,
+                        sqlExistente,
                         [
                             idPracticante,
                             idActividad,
                             semana
                         ],
                         (
-                            errorDuplicada,
-                            resultadosDuplicada
+                            errorExistente,
+                            resultadosExistente
                         ) => {
-                            if (errorDuplicada) {
+                            if (errorExistente) {
                                 console.error(
-                                    "Error verificando bitácora duplicada:",
-                                    errorDuplicada
+                                    "Error verificando bitácora existente:",
+                                    errorExistente
                                 );
 
                                 eliminarArchivoSubido();
@@ -183,14 +222,96 @@ const subirBitacora = (req, res) => {
                             }
 
                             if (
-                                resultadosDuplicada.length > 0
+                                resultadosExistente.length > 0
                             ) {
-                                eliminarArchivoSubido();
+                                const bitacoraActual =
+                                    resultadosExistente[0];
 
-                                return res.status(409).json({
-                                    mensaje:
-                                        "Ya entregaste la bitácora correspondiente a esta actividad"
-                                });
+                                if (
+                                    bitacoraActual.estado !==
+                                    "Rechazada"
+                                ) {
+                                    eliminarArchivoSubido();
+
+                                    return res.status(409).json({
+                                        mensaje:
+                                            "La bitácora ya fue entregada y solo puede reemplazarse cuando está rechazada"
+                                    });
+                                }
+
+                                const sqlReemplazar = `
+                                    UPDATE bitacoras
+                                    SET
+                                        id_actividad = ?,
+                                        numero_semana = ?,
+                                        fecha_inicio = ?,
+                                        fecha_fin = ?,
+                                        nombre_archivo = ?,
+                                        ruta_archivo = ?,
+                                        estado = 'Pendiente',
+                                        observaciones = NULL,
+                                        fecha_envio = NOW(),
+                                        fecha_revision = NULL,
+                                        revisado_por = NULL
+                                    WHERE id_bitacora = ?
+                                `;
+
+                                db.query(
+                                    sqlReemplazar,
+                                    [
+                                        idActividad,
+                                        semana,
+                                        actividad.fecha_inicio,
+                                        actividad.fecha_fin,
+                                        req.file.originalname,
+                                        req.file.filename,
+                                        bitacoraActual.id_bitacora
+                                    ],
+                                    (
+                                        errorReemplazar
+                                    ) => {
+                                        if (errorReemplazar) {
+                                            console.error(
+                                                "Error reemplazando bitácora:",
+                                                errorReemplazar
+                                            );
+
+                                            eliminarArchivoSubido();
+
+                                            return res.status(500).json({
+                                                mensaje:
+                                                    "Error al reemplazar la bitácora rechazada"
+                                            });
+                                        }
+
+                                        eliminarArchivoGuardado(
+                                            bitacoraActual.ruta_archivo
+                                        );
+
+                                        registrarActividad(
+                                            idUsuario,
+                                            "REENVIAR_BITACORA",
+                                            `El practicante reemplazó y volvió a enviar la bitácora de la semana ${semana}: ${req.file.originalname}`
+                                        );
+
+                                        return res.status(200).json({
+                                            mensaje:
+                                                "Bitácora corregida enviada nuevamente. El estado volvió a Pendiente.",
+                                            id_bitacora:
+                                                bitacoraActual.id_bitacora,
+                                            id_actividad:
+                                                idActividad,
+                                            numero_semana:
+                                                semana,
+                                            estado:
+                                                "Pendiente",
+                                            archivo:
+                                                req.file.originalname
+                                        });
+                                    }
+                                );
+
+                                return;
                             }
 
                             const sqlInsert = `
@@ -202,9 +323,14 @@ const subirBitacora = (req, res) => {
                                     fecha_fin,
                                     nombre_archivo,
                                     ruta_archivo,
-                                    estado
+                                    estado,
+                                    fecha_envio
                                 )
-                                VALUES (?, ?, ?, ?, ?, ?, ?, 'Pendiente')
+                                VALUES (
+                                    ?, ?, ?, ?, ?, ?, ?,
+                                    'Pendiente',
+                                    NOW()
+                                )
                             `;
 
                             db.query(
@@ -253,6 +379,8 @@ const subirBitacora = (req, res) => {
                                             semana,
                                         titulo_actividad:
                                             actividad.titulo,
+                                        estado:
+                                            "Pendiente",
                                         archivo:
                                             req.file.originalname
                                     });

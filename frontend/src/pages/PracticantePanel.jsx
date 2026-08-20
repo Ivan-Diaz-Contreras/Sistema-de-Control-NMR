@@ -534,20 +534,31 @@ const formatearFechaHoraBitacora = (fecha) => {
     return "—";
   }
 
-  const fechaObj = new Date(fecha);
+  const texto = String(fecha)
+    .trim()
+    .replace("T", " ")
+    .replace("Z", "")
+    .slice(0, 19);
 
-  if (Number.isNaN(fechaObj.getTime())) {
-    return "—";
+  const [parteFecha, parteHora = ""] =
+    texto.split(" ");
+
+  const [anio, mes, dia] =
+    parteFecha.split("-");
+
+  const [hora = "00", minuto = "00"] =
+    parteHora.split(":");
+
+  if (
+    anio &&
+    mes &&
+    dia &&
+    /^\d{4}$/.test(anio)
+  ) {
+    return `${dia}/${mes}/${anio}, ${hora}:${minuto}`;
   }
 
-  return fechaObj.toLocaleString("es-MX", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  return texto;
 };
 
 
@@ -1311,17 +1322,27 @@ const formatearFechaHoraBitacora = (fecha) => {
                           </div>
                         </div>
 
-                        {actividad.observaciones && (
+                        {actividad.estado_entrega ===
+                          "Rechazada" && (
                           <div
                             className="message"
                             style={{
                               marginTop: "14px",
+                              borderLeft:
+                                "4px solid #a64040",
                             }}
                           >
-                            Observación:{" "}
-                            {
-                              actividad.observaciones
-                            }
+                            <strong>
+                              Bitácora rechazada
+                            </strong>
+
+                            <p style={{ marginBottom: 0 }}>
+                              Comentario del administrador:{" "}
+                              <strong>
+                                {actividad.observaciones ||
+                                  "Sin comentario"}
+                              </strong>
+                            </p>
                           </div>
                         )}
 
@@ -1347,6 +1368,20 @@ const formatearFechaHoraBitacora = (fecha) => {
                               }
                             />
 
+                            {subiendoBitacora ===
+                              actividad.id_actividad &&
+                              archivoBitacora && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setArchivoBitacora(null);
+                                    setSubiendoBitacora(null);
+                                  }}
+                                >
+                                  Quitar PDF seleccionado
+                                </button>
+                              )}
+
                             <button
                               type="button"
                               onClick={() =>
@@ -1370,6 +1405,10 @@ const formatearFechaHoraBitacora = (fecha) => {
                             <div
                               style={{
                                 marginTop: "16px",
+                                display: "flex",
+                                gap: "10px",
+                                flexWrap: "wrap",
+                                alignItems: "center",
                               }}
                             >
                               <button
@@ -1380,8 +1419,55 @@ const formatearFechaHoraBitacora = (fecha) => {
                                   )
                                 }
                               >
-                                Ver PDF enviado
+                                Ver PDF actual
                               </button>
+
+                              {actividad.estado_entrega ===
+                                "Rechazada" && (
+                                <>
+                                  <input
+                                    type="file"
+                                    accept="application/pdf,.pdf"
+                                    onChange={(e) =>
+                                      seleccionarArchivoBitacora(
+                                        actividad.id_actividad,
+                                        e.target.files?.[0] ||
+                                          null
+                                      )
+                                    }
+                                  />
+
+                                  {subiendoBitacora ===
+                                    actividad.id_actividad &&
+                                    archivoBitacora && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setArchivoBitacora(null);
+                                          setSubiendoBitacora(null);
+                                        }}
+                                      >
+                                        Quitar PDF seleccionado
+                                      </button>
+                                    )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      subirPdfBitacora(
+                                        actividad.id_actividad
+                                      )
+                                    }
+                                    disabled={
+                                      subiendoBitacora !==
+                                        actividad.id_actividad ||
+                                      !archivoBitacora
+                                    }
+                                  >
+                                    Volver a enviar
+                                  </button>
+                                </>
+                              )}
                             </div>
                           )}
                       </div>

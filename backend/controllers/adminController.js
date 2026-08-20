@@ -3315,53 +3315,270 @@ const eliminarActividadBitacora = (req, res) => {
     const { id } = req.params;
     const idUsuarioAdmin = req.usuario.id_usuario;
 
-    const sql = `
-        DELETE FROM actividades_bitacora
-        WHERE id_actividad = ?
-    `;
+    const idActividad = Number(id);
 
-    db.query(
-        sql,
-        [id],
-        (error, resultado) => {
-            if (error) {
-                if (error.code === "ER_ROW_IS_REFERENCED_2") {
-                    return res.status(409).json({
+    if (
+        !Number.isInteger(idActividad) ||
+        idActividad <= 0
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "El id de la actividad de bitácora es inválido"
+        });
+    }
+
+    const carpetaBitacoras = path.resolve(
+        __dirname,
+        "../uploads/bitacoras"
+    );
+
+    const eliminarArchivoSeguro = (nombreArchivo) => {
+        if (!nombreArchivo) {
+            return true;
+        }
+
+        const rutaArchivo = path.resolve(
+            carpetaBitacoras,
+            path.basename(nombreArchivo)
+        );
+
+        if (!rutaArchivo.startsWith(carpetaBitacoras)) {
+            console.error(
+                "Se evitó eliminar una ruta fuera de uploads/bitacoras:",
+                nombreArchivo
+            );
+            return false;
+        }
+
+        if (!fs.existsSync(rutaArchivo)) {
+            return true;
+        }
+
+        try {
+            fs.unlinkSync(rutaArchivo);
+            return true;
+        } catch (error) {
+            console.error(
+                "Error eliminando PDF de bitácora:",
+                error
+            );
+            return false;
+        }
+    };
+
+    db.getConnection((errorConexion, connection) => {
+        if (errorConexion) {
+            console.error(
+                "Error obteniendo conexión:",
+                errorConexion
+            );
+
+            return res.status(500).json({
+                mensaje:
+                    "Error al conectar con la base de datos"
+            });
+        }
+
+        connection.beginTransaction(
+            (errorTransaccion) => {
+                if (errorTransaccion) {
+                    connection.release();
+
+                    return res.status(500).json({
                         mensaje:
-                            "No se puede eliminar la actividad porque ya tiene bitácoras asociadas"
+                            "Error al iniciar la eliminación de la actividad"
                     });
                 }
 
-                console.error(
-                    "Error eliminando actividad de bitácora:",
-                    error
+                const rollback = (
+                    status,
+                    mensaje,
+                    error = null
+                ) => {
+                    connection.rollback(() => {
+                        connection.release();
+
+                        if (error) {
+                            console.error(
+                                mensaje,
+                                error
+                            );
+                        }
+
+                        return res
+                            .status(status)
+                            .json({ mensaje });
+                    });
+                };
+
+                connection.query(
+                    `
+                        SELECT id_actividad
+                        FROM actividades_bitacora
+                        WHERE id_actividad = ?
+                        LIMIT 1
+                    `,
+                    [idActividad],
+                    (errorActividad, actividadResultado) => {
+                        if (errorActividad) {
+                            return rollback(
+                                500,
+                                "Error al consultar la actividad de bitácora",
+                                errorActividad
+                            );
+                        }
+
+                        if (
+                            actividadResultado.length === 0
+                        ) {
+                            return rollback(
+                                404,
+                                "Actividad de bitácora no encontrada"
+                            );
+                        }
+
+                        connection.query(
+                            `
+                                SELECT
+                                    id_bitacora,
+                                    ruta_archivo
+                                FROM bitacoras
+                                WHERE id_actividad = ?
+                            `,
+                            [idActividad],
+                            (
+                                errorBitacoras,
+                                bitacorasResultado
+                            ) => {
+                                if (errorBitacoras) {
+                                    return rollback(
+                                        500,
+                                        "Error al consultar las bitácoras asociadas",
+                                        errorBitacoras
+                                    );
+                                }
+
+                                connection.query(
+                                    `
+                                        DELETE FROM bitacoras
+                                        WHERE id_actividad = ?
+                                    `,
+                                    [idActividad],
+                                    (errorEliminarBitacoras) => {
+                                        if (
+                                            errorEliminarBitacoras
+                                        ) {
+                                            return rollback(
+                                                500,
+                                                "Error al eliminar las bitácoras asociadas",
+                                                errorEliminarBitacoras
+                                            );
+                                        }
+
+                                        connection.query(
+                                            `
+                                                DELETE FROM actividades_bitacora
+                                                WHERE id_actividad = ?
+                                            `,
+                                            [idActividad],
+                                            (
+                                                errorEliminarActividad,
+                                                resultadoActividad
+                                            ) => {
+                                                if (
+                                                    errorEliminarActividad
+                                                ) {
+                                                    return rollback(
+                                                        500,
+                                                        "Error al eliminar la actividad de bitácora",
+                                                        errorEliminarActividad
+                                                    );
+                                                }
+
+                                                if (
+                                                    resultadoActividad.affectedRows ===
+                                                    0
+                                                ) {
+                                                    return rollback(
+                                                        404,
+                                                        "Actividad de bitácora no encontrada"
+                                                    );
+                                                }
+
+                                                connection.commit(
+                                                    (errorCommit) => {
+                                                        if (
+                                                            errorCommit
+                                                        ) {
+                                                            return rollback(
+                                                                500,
+                                                                "Error al completar la eliminación",
+                                                                errorCommit
+                                                            );
+                                                        }
+
+                                                        connection.release();
+
+                                                        let archivosEliminados =
+                                                            0;
+
+                                                        let archivosConError =
+                                                            0;
+
+                                                        bitacorasResultado.forEach(
+                                                            (
+                                                                bitacora
+                                                            ) => {
+                                                                const eliminado =
+                                                                    eliminarArchivoSeguro(
+                                                                        bitacora.ruta_archivo
+                                                                    );
+
+                                                                if (
+                                                                    eliminado
+                                                                ) {
+                                                                    archivosEliminados +=
+                                                                        1;
+                                                                } else {
+                                                                    archivosConError +=
+                                                                        1;
+                                                                }
+                                                            }
+                                                        );
+
+                                                        registrarActividad(
+                                                            idUsuarioAdmin,
+                                                            "ELIMINAR_ACTIVIDAD_BITACORA",
+                                                            `El administrador eliminó la actividad de bitácora ${idActividad} junto con ${bitacorasResultado.length} entrega(s) asociada(s)`
+                                                        );
+
+                                                        return res
+                                                            .status(200)
+                                                            .json({
+                                                                mensaje:
+                                                                    archivosConError > 0
+                                                                        ? "Actividad y entregas eliminadas. Algunos archivos físicos no pudieron eliminarse; revisa la consola del servidor."
+                                                                        : "Actividad, entregas y archivos PDF eliminados correctamente",
+                                                                bitacoras_eliminadas:
+                                                                    bitacorasResultado.length,
+                                                                archivos_eliminados:
+                                                                    archivosEliminados,
+                                                                archivos_con_error:
+                                                                    archivosConError
+                                                            });
+                                                    }
+                                                );
+                                            }
+                                        );
+                                    }
+                                );
+                            }
+                        );
+                    }
                 );
-
-                return res.status(500).json({
-                    mensaje:
-                        "Error al eliminar la actividad de bitácora"
-                });
             }
-
-            if (resultado.affectedRows === 0) {
-                return res.status(404).json({
-                    mensaje:
-                        "Actividad de bitácora no encontrada"
-                });
-            }
-
-            registrarActividad(
-                idUsuarioAdmin,
-                "ELIMINAR_ACTIVIDAD_BITACORA",
-                `El administrador eliminó la actividad de bitácora ${id}`
-            );
-
-            return res.status(200).json({
-                mensaje:
-                    "Actividad de bitácora eliminada correctamente"
-            });
-        }
-    );
+        );
+    });
 };
 
 // ==========================================
