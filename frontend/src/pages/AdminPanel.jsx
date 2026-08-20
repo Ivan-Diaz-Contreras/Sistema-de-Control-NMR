@@ -45,6 +45,42 @@ function AdminPanel({ usuario, onLogout }) {
   const [editandoPracticante, setEditandoPracticante] = useState(null);
   const [guardandoPracticante, setGuardandoPracticante] = useState(false);
 
+  const practicanteNuevoInicial = {
+    nombre: "",
+    apellido_paterno: "",
+    apellido_materno: "",
+    correo: "",
+    password: "",
+    confirmar_password: "",
+    matricula: "",
+    telefono: "",
+    universidad: "",
+    id_carrera: "",
+    fecha_inicio: "",
+    fecha_fin: "",
+    horas_requeridas: "",
+  };
+
+  const [
+    mostrandoFormularioNuevoPracticante,
+    setMostrandoFormularioNuevoPracticante,
+  ] = useState(false);
+
+  const [
+    nuevoPracticante,
+    setNuevoPracticante,
+  ] = useState(practicanteNuevoInicial);
+
+  const [
+    guardandoNuevoPracticante,
+    setGuardandoNuevoPracticante,
+  ] = useState(false);
+
+  const [
+    credencialesCreadas,
+    setCredencialesCreadas,
+  ] = useState(null);
+
   // ==========================================
   // REGISTROS DE HORAS DEL PRACTICANTE
   // ==========================================
@@ -457,6 +493,139 @@ function AdminPanel({ usuario, onLogout }) {
       );
     } finally {
       setCargandoDetalle(false);
+    }
+  };
+
+
+  // ==========================================
+  // CREAR NUEVO PRACTICANTE
+  // ==========================================
+
+  const abrirNuevoPracticante = () => {
+    setPracticanteSeleccionado(null);
+    setEditandoPracticante(null);
+    setCredencialesCreadas(null);
+    setNuevoPracticante(practicanteNuevoInicial);
+    setMostrandoFormularioNuevoPracticante(true);
+    setMensaje("");
+  };
+
+  const cancelarNuevoPracticante = () => {
+    setMostrandoFormularioNuevoPracticante(false);
+    setNuevoPracticante(practicanteNuevoInicial);
+  };
+
+  const cambiarCampoNuevoPracticante = (e) => {
+    const { name, value } = e.target;
+
+    setNuevoPracticante((actual) => ({
+      ...actual,
+      [name]: value,
+    }));
+  };
+
+  const cerrarCredencialesCreadas = () => {
+    setCredencialesCreadas(null);
+  };
+
+  const guardarNuevoPracticante = async (e) => {
+    e.preventDefault();
+
+    if (
+      nuevoPracticante.password.length < 8
+    ) {
+      setMensaje(
+        "La contraseña temporal debe tener al menos 8 caracteres."
+      );
+      return;
+    }
+
+    if (
+      nuevoPracticante.password !==
+      nuevoPracticante.confirmar_password
+    ) {
+      setMensaje(
+        "La contraseña y su confirmación no coinciden."
+      );
+      return;
+    }
+
+    if (!nuevoPracticante.id_carrera) {
+      setMensaje("Selecciona una carrera.");
+      return;
+    }
+
+    try {
+      setGuardandoNuevoPracticante(true);
+      setMensaje("");
+
+      const payload = {
+        nombre: nuevoPracticante.nombre.trim(),
+        apellido_paterno:
+          nuevoPracticante.apellido_paterno.trim(),
+        apellido_materno:
+          nuevoPracticante.apellido_materno.trim() || null,
+        correo:
+          nuevoPracticante.correo.trim().toLowerCase(),
+        password: nuevoPracticante.password,
+        matricula:
+          nuevoPracticante.matricula.trim() || null,
+        telefono:
+          nuevoPracticante.telefono.trim() || null,
+        universidad:
+          nuevoPracticante.universidad.trim() || null,
+        id_carrera: Number(
+          nuevoPracticante.id_carrera
+        ),
+        fecha_inicio:
+          nuevoPracticante.fecha_inicio,
+        fecha_fin:
+          nuevoPracticante.fecha_fin || null,
+        horas_requeridas: Number(
+          nuevoPracticante.horas_requeridas
+        ),
+      };
+
+      const passwordTemporal =
+        nuevoPracticante.password;
+
+      const response = await axios.post(
+        `${API}/admin/practicantes`,
+        payload,
+        { headers }
+      );
+
+      setCredencialesCreadas({
+        nombre: `${payload.nombre} ${payload.apellido_paterno}`,
+        correo: payload.correo,
+        password: passwordTemporal,
+      });
+
+      setMensaje(
+        response.data.mensaje ||
+          "Practicante creado correctamente."
+      );
+
+      setMostrandoFormularioNuevoPracticante(false);
+      setNuevoPracticante(practicanteNuevoInicial);
+
+      await Promise.all([
+        cargarPracticantes(filtroCarrera),
+        cargarEstadisticas(),
+        cargarHistorial(),
+      ]);
+    } catch (error) {
+      console.error(
+        "Error creando practicante:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo crear el practicante."
+      );
+    } finally {
+      setGuardandoNuevoPracticante(false);
     }
   };
 
@@ -1960,6 +2129,7 @@ const formatearFechaHora = (fecha) => {
     abrirEdicionRegistroHoras,
     abrirNuevaActividad,
     abrirNuevaCarrera,
+    abrirNuevoPracticante,
     abrirNuevoHorario,
     accionesHistorial,
     actividadInicial,
@@ -1974,6 +2144,7 @@ const formatearFechaHora = (fecha) => {
     cambiarCampoActividad,
     cambiarCampoAsistencia,
     cambiarCampoEdicion,
+    cambiarCampoNuevoPracticante,
     cambiarCampoHorario,
     cambiarCampoRegistroHoras,
     cambiarEstadoActividad,
@@ -1982,6 +2153,7 @@ const formatearFechaHora = (fecha) => {
     cambiarEstadoPracticante,
     cambiarFiltroCarrera,
     cancelarEdicionCarrera,
+    cancelarNuevoPracticante,
     cancelarHorario,
     cargando,
     cargandoActividades,
@@ -1993,11 +2165,13 @@ const formatearFechaHora = (fecha) => {
     cargandoHorarios,
     cargandoHoras,
     cargandoPracticantes,
+    cerrarCredencialesCreadas,
     cargarAsistencias,
     cargarEntregasBitacoras,
     cargarHistorial,
     cargarHorasPracticante,
     carreras,
+    credencialesCreadas,
     editandoActividad,
     editandoAsistencia,
     editandoCarrera,
@@ -2023,12 +2197,14 @@ const formatearFechaHora = (fecha) => {
     guardandoCarrera,
     guardandoHorario,
     guardandoPracticante,
+    guardandoNuevoPracticante,
     guardandoRegistroHoras,
     guardarActividadBitacora,
     guardarAsistencia,
     guardarCarrera,
     guardarHorario,
     guardarPracticante,
+    guardarNuevoPracticante,
     guardarRegistroHoras,
     historial,
     historialFiltrado,
@@ -2038,7 +2214,9 @@ const formatearFechaHora = (fecha) => {
     mostrandoFormularioActividad,
     mostrandoFormularioCarrera,
     mostrandoFormularioHorario,
+    mostrandoFormularioNuevoPracticante,
     nombreCarrera,
+    nuevoPracticante,
     obtenerValorHistorial,
     practicanteSeleccionado,
     practicantes,

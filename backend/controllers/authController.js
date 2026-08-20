@@ -490,6 +490,7 @@ const login = async (req, res) => {
                 u.password_hash,
                 u.id_rol,
                 u.activo,
+                u.debe_cambiar_password,
                 r.nombre AS rol
             FROM usuarios u
             INNER JOIN roles r
@@ -557,7 +558,10 @@ const login = async (req, res) => {
                     apellido_materno: usuario.apellido_materno,
                     correo: usuario.correo,
                     id_rol: usuario.id_rol,
-                    rol: usuario.rol
+                    rol: usuario.rol,
+                    debe_cambiar_password: Number(
+                        usuario.debe_cambiar_password || 0
+                    )
                 }
             });
         });

@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs");
 const registrarActividad = require("../utils/registrarActividad");
@@ -76,6 +77,490 @@ const obtenerPracticantes = (req, res) => {
             total_practicantes: resultados.length,
             practicantes: resultados
         });
+    });
+};
+
+
+// ==========================================
+// CREAR PRACTICANTE DESDE ADMINISTRACIÓN
+// La contraseña enviada es temporal y solo
+// se almacena como hash.
+// ==========================================
+
+const crearPracticanteAdmin = async (req, res) => {
+    const idUsuarioAdmin = req.usuario.id_usuario;
+
+    const {
+        nombre,
+        apellido_paterno,
+        apellido_materno,
+        correo,
+        password,
+        id_carrera,
+        matricula,
+        telefono,
+        universidad,
+        fecha_inicio,
+        fecha_fin,
+        horas_requeridas
+    } = req.body || {};
+
+    if (
+        !nombre ||
+        !apellido_paterno ||
+        !correo ||
+        !password ||
+        !id_carrera ||
+        !fecha_inicio ||
+        horas_requeridas === undefined ||
+        horas_requeridas === null
+    ) {
+        return res.status(400).json({
+            mensaje: "Faltan campos obligatorios"
+        });
+    }
+
+    const correoLimpio = String(correo)
+        .trim()
+        .toLowerCase();
+
+    const matriculaLimpia =
+        matricula?.trim() || null;
+
+    const formatoCorreo =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!formatoCorreo.test(correoLimpio)) {
+        return res.status(400).json({
+            mensaje: "El correo no tiene un formato válido"
+        });
+    }
+
+    if (String(password).length < 8) {
+        return res.status(400).json({
+            mensaje:
+                "La contraseña temporal debe tener al menos 8 caracteres"
+        });
+    }
+
+    const idCarrera = Number(id_carrera);
+    const horasRequeridasNumero =
+        Number(horas_requeridas);
+
+    if (
+        !Number.isInteger(idCarrera) ||
+        idCarrera <= 0
+    ) {
+        return res.status(400).json({
+            mensaje: "La carrera seleccionada no es válida"
+        });
+    }
+
+    if (
+        !Number.isFinite(horasRequeridasNumero) ||
+        horasRequeridasNumero <= 0
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "Las horas requeridas deben ser mayores a 0"
+        });
+    }
+
+    const validarFecha = (fecha) => {
+        if (!fecha) {
+            return false;
+        }
+
+        return /^\d{4}-\d{2}-\d{2}$/.test(
+            String(fecha)
+        );
+    };
+
+    if (!validarFecha(fecha_inicio)) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha de inicio no es válida"
+        });
+    }
+
+    if (
+        fecha_fin &&
+        !validarFecha(fecha_fin)
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha de fin no es válida"
+        });
+    }
+
+    if (
+        fecha_fin &&
+        String(fecha_fin) < String(fecha_inicio)
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha de fin no puede ser anterior a la fecha de inicio"
+        });
+    }
+
+    let passwordHash;
+
+    try {
+        passwordHash = await bcrypt.hash(
+            String(password),
+            10
+        );
+    } catch (errorHash) {
+        console.error(
+            "Error generando hash de contraseña:",
+            errorHash
+        );
+
+        return res.status(500).json({
+            mensaje:
+                "Error al procesar la contraseña temporal"
+        });
+    }
+
+    db.getConnection((errorConexion, connection) => {
+        if (errorConexion) {
+            console.error(
+                "Error obteniendo conexión:",
+                errorConexion
+            );
+
+            return res.status(500).json({
+                mensaje:
+                    "Error al conectar con la base de datos"
+            });
+        }
+
+        const liberar = () => {
+            connection.release();
+        };
+
+        connection.beginTransaction(
+            (errorTransaccion) => {
+                if (errorTransaccion) {
+                    liberar();
+
+                    console.error(
+                        "Error iniciando transacción:",
+                        errorTransaccion
+                    );
+
+                    return res.status(500).json({
+                        mensaje:
+                            "Error al iniciar el registro del practicante"
+                    });
+                }
+
+                const rollback = (
+                    status,
+                    mensaje,
+                    error = null
+                ) => {
+                    connection.rollback(() => {
+                        liberar();
+
+                        if (error) {
+                            console.error(
+                                mensaje,
+                                error
+                            );
+                        }
+
+                        return res.status(status).json({
+                            mensaje
+                        });
+                    });
+                };
+
+                connection.query(
+                    `
+                        SELECT id_carrera
+                        FROM carreras
+                        WHERE id_carrera = ?
+                          AND activa = 1
+                    `,
+                    [idCarrera],
+                    (errorCarrera, carreraResultado) => {
+                        if (errorCarrera) {
+                            return rollback(
+                                500,
+                                "Error al consultar la carrera",
+                                errorCarrera
+                            );
+                        }
+
+                        if (
+                            carreraResultado.length === 0
+                        ) {
+                            return rollback(
+                                400,
+                                "La carrera seleccionada no existe o está desactivada"
+                            );
+                        }
+
+                        connection.query(
+                            `
+                                SELECT id_usuario
+                                FROM usuarios
+                                WHERE correo = ?
+                            `,
+                            [correoLimpio],
+                            (
+                                errorCorreo,
+                                correoResultado
+                            ) => {
+                                if (errorCorreo) {
+                                    return rollback(
+                                        500,
+                                        "Error al verificar el correo",
+                                        errorCorreo
+                                    );
+                                }
+
+                                if (
+                                    correoResultado.length > 0
+                                ) {
+                                    return rollback(
+                                        409,
+                                        "El correo ya está registrado"
+                                    );
+                                }
+
+                                const verificarMatricula = (
+                                    continuar
+                                ) => {
+                                    if (!matriculaLimpia) {
+                                        return continuar();
+                                    }
+
+                                    connection.query(
+                                        `
+                                            SELECT id_practicante
+                                            FROM practicantes
+                                            WHERE matricula = ?
+                                        `,
+                                        [matriculaLimpia],
+                                        (
+                                            errorMatricula,
+                                            matriculaResultado
+                                        ) => {
+                                            if (
+                                                errorMatricula
+                                            ) {
+                                                return rollback(
+                                                    500,
+                                                    "Error al verificar la matrícula",
+                                                    errorMatricula
+                                                );
+                                            }
+
+                                            if (
+                                                matriculaResultado.length >
+                                                0
+                                            ) {
+                                                return rollback(
+                                                    409,
+                                                    "La matrícula ya está registrada"
+                                                );
+                                            }
+
+                                            continuar();
+                                        }
+                                    );
+                                };
+
+                                verificarMatricula(() => {
+                                    connection.query(
+                                        `
+                                            SELECT id_rol
+                                            FROM roles
+                                            WHERE nombre = 'Practicante'
+                                            LIMIT 1
+                                        `,
+                                        (
+                                            errorRol,
+                                            rolResultado
+                                        ) => {
+                                            if (errorRol) {
+                                                return rollback(
+                                                    500,
+                                                    "Error al consultar el rol Practicante",
+                                                    errorRol
+                                                );
+                                            }
+
+                                            if (
+                                                rolResultado.length ===
+                                                0
+                                            ) {
+                                                return rollback(
+                                                    500,
+                                                    "No se encontró el rol Practicante"
+                                                );
+                                            }
+
+                                            const idRol =
+                                                rolResultado[0]
+                                                    .id_rol;
+
+                                            connection.query(
+                                                `
+                                                    INSERT INTO usuarios (
+                                                        nombre,
+                                                        apellido_paterno,
+                                                        apellido_materno,
+                                                        correo,
+                                                        password_hash,
+                                                        id_rol,
+                                                        activo,
+                                                        debe_cambiar_password
+                                                    )
+                                                    VALUES (?, ?, ?, ?, ?, ?, 1, 1)
+                                                `,
+                                                [
+                                                    nombre.trim(),
+                                                    apellido_paterno.trim(),
+                                                    apellido_materno?.trim() ||
+                                                        null,
+                                                    correoLimpio,
+                                                    passwordHash,
+                                                    idRol
+                                                ],
+                                                (
+                                                    errorUsuario,
+                                                    usuarioResultado
+                                                ) => {
+                                                    if (
+                                                        errorUsuario
+                                                    ) {
+                                                        if (
+                                                            errorUsuario.code ===
+                                                            "ER_DUP_ENTRY"
+                                                        ) {
+                                                            return rollback(
+                                                                409,
+                                                                "El correo ya está registrado"
+                                                            );
+                                                        }
+
+                                                        return rollback(
+                                                            500,
+                                                            "Error al registrar el usuario",
+                                                            errorUsuario
+                                                        );
+                                                    }
+
+                                                    const idUsuario =
+                                                        usuarioResultado.insertId;
+
+                                                    connection.query(
+                                                        `
+                                                            INSERT INTO practicantes (
+                                                                id_usuario,
+                                                                id_carrera,
+                                                                matricula,
+                                                                telefono,
+                                                                universidad,
+                                                                fecha_inicio,
+                                                                fecha_fin,
+                                                                horas_requeridas
+                                                            )
+                                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                                        `,
+                                                        [
+                                                            idUsuario,
+                                                            idCarrera,
+                                                            matriculaLimpia,
+                                                            telefono?.trim() ||
+                                                                null,
+                                                            universidad?.trim() ||
+                                                                null,
+                                                            fecha_inicio,
+                                                            fecha_fin ||
+                                                                null,
+                                                            horasRequeridasNumero
+                                                        ],
+                                                        (
+                                                            errorPracticante,
+                                                            practicanteResultado
+                                                        ) => {
+                                                            if (
+                                                                errorPracticante
+                                                            ) {
+                                                                if (
+                                                                    errorPracticante.code ===
+                                                                    "ER_DUP_ENTRY"
+                                                                ) {
+                                                                    return rollback(
+                                                                        409,
+                                                                        "La matrícula ya está registrada"
+                                                                    );
+                                                                }
+
+                                                                return rollback(
+                                                                    500,
+                                                                    "Error al crear el perfil del practicante",
+                                                                    errorPracticante
+                                                                );
+                                                            }
+
+                                                            connection.commit(
+                                                                (
+                                                                    errorCommit
+                                                                ) => {
+                                                                    if (
+                                                                        errorCommit
+                                                                    ) {
+                                                                        return rollback(
+                                                                            500,
+                                                                            "Error al completar el registro",
+                                                                            errorCommit
+                                                                        );
+                                                                    }
+
+                                                                    liberar();
+
+                                                                    registrarActividad(
+                                                                        idUsuarioAdmin,
+                                                                        "CREAR_PRACTICANTE",
+                                                                        `El administrador creó al practicante ${nombre.trim()} ${apellido_paterno.trim()}`
+                                                                    );
+
+                                                                    return res
+                                                                        .status(
+                                                                            201
+                                                                        )
+                                                                        .json(
+                                                                            {
+                                                                                mensaje:
+                                                                                    "Practicante creado correctamente",
+                                                                                id_usuario:
+                                                                                    idUsuario,
+                                                                                id_practicante:
+                                                                                    practicanteResultado.insertId,
+                                                                                debe_cambiar_password:
+                                                                                    1
+                                                                            }
+                                                                        );
+                                                                }
+                                                            );
+                                                        }
+                                                    );
+                                                }
+                                            );
+                                        }
+                                    );
+                                });
+                            }
+                        );
+                    }
+                );
+            }
+        );
     });
 };
 
@@ -2975,6 +3460,7 @@ const obtenerAsistenciasGeneral = (req, res) => {
 module.exports = {
     // Practicantes
     obtenerPracticantes,
+    crearPracticanteAdmin,
     obtenerPracticantePorId,
     actualizarEstadoPracticante,
     actualizarPracticante,

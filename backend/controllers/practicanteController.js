@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const bcrypt = require("bcrypt");
 const registrarActividad = require("../utils/registrarActividad");
 
 const obtenerPerfil = (req, res) => {
@@ -11,6 +12,7 @@ const obtenerPerfil = (req, res) => {
             u.apellido_paterno,
             u.apellido_materno,
             u.correo,
+            u.debe_cambiar_password,
             p.id_practicante,
             p.matricula,
             p.telefono,
@@ -47,6 +49,210 @@ const obtenerPerfil = (req, res) => {
             perfil: resultados[0]
         });
     });
+};
+
+
+// ==========================================
+// CAMBIAR CONTRASEÑA DEL PRACTICANTE
+// El administrador nunca recibe la nueva
+// contraseña. Solo se guarda su hash.
+// ==========================================
+
+const cambiarPassword = async (req, res) => {
+    const idUsuario = req.usuario.id_usuario;
+
+    const {
+        password_actual,
+        password_nueva,
+        confirmar_password
+    } = req.body || {};
+
+    if (
+        !password_actual ||
+        !password_nueva ||
+        !confirmar_password
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "Debes escribir la contraseña actual, la nueva contraseña y su confirmación"
+        });
+    }
+
+    if (
+        password_nueva !==
+        confirmar_password
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La nueva contraseña y su confirmación no coinciden"
+        });
+    }
+
+    if (password_nueva.length < 8) {
+        return res.status(400).json({
+            mensaje:
+                "La nueva contraseña debe tener al menos 8 caracteres"
+        });
+    }
+
+    const tieneMayuscula = /[A-Z]/.test(
+        password_nueva
+    );
+
+    const tieneMinuscula = /[a-z]/.test(
+        password_nueva
+    );
+
+    const tieneNumero = /\d/.test(
+        password_nueva
+    );
+
+    if (
+        !tieneMayuscula ||
+        !tieneMinuscula ||
+        !tieneNumero
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La nueva contraseña debe incluir al menos una mayúscula, una minúscula y un número"
+        });
+    }
+
+    const sqlBuscar = `
+        SELECT
+            password_hash
+        FROM usuarios
+        WHERE id_usuario = ?
+        LIMIT 1
+    `;
+
+    db.query(
+        sqlBuscar,
+        [idUsuario],
+        async (errorBuscar, resultados) => {
+            if (errorBuscar) {
+                console.error(
+                    "Error consultando contraseña:",
+                    errorBuscar
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al consultar la cuenta"
+                });
+            }
+
+            if (resultados.length === 0) {
+                return res.status(404).json({
+                    mensaje:
+                        "Usuario no encontrado"
+                });
+            }
+
+            try {
+                const usuario = resultados[0];
+
+                const passwordCorrecta =
+                    await bcrypt.compare(
+                        password_actual,
+                        usuario.password_hash
+                    );
+
+                if (!passwordCorrecta) {
+                    return res.status(401).json({
+                        mensaje:
+                            "La contraseña actual es incorrecta"
+                    });
+                }
+
+                const esMismaPassword =
+                    await bcrypt.compare(
+                        password_nueva,
+                        usuario.password_hash
+                    );
+
+                if (esMismaPassword) {
+                    return res.status(400).json({
+                        mensaje:
+                            "La nueva contraseña debe ser diferente a la contraseña actual"
+                    });
+                }
+
+                const nuevoHash =
+                    await bcrypt.hash(
+                        password_nueva,
+                        10
+                    );
+
+                const sqlActualizar = `
+                    UPDATE usuarios
+                    SET
+                        password_hash = ?,
+                        debe_cambiar_password = 0
+                    WHERE id_usuario = ?
+                `;
+
+                db.query(
+                    sqlActualizar,
+                    [
+                        nuevoHash,
+                        idUsuario
+                    ],
+                    (errorActualizar, resultado) => {
+                        if (errorActualizar) {
+                            console.error(
+                                "Error actualizando contraseña:",
+                                errorActualizar
+                            );
+
+                            return res
+                                .status(500)
+                                .json({
+                                    mensaje:
+                                        "Error al actualizar la contraseña"
+                                });
+                        }
+
+                        if (
+                            resultado.affectedRows === 0
+                        ) {
+                            return res
+                                .status(404)
+                                .json({
+                                    mensaje:
+                                        "Usuario no encontrado"
+                                });
+                        }
+
+                        registrarActividad(
+                            idUsuario,
+                            "CAMBIAR_PASSWORD",
+                            "El practicante actualizó su contraseña"
+                        );
+
+                        return res
+                            .status(200)
+                            .json({
+                                mensaje:
+                                    "Contraseña actualizada correctamente",
+                                debe_cambiar_password:
+                                    0
+                            });
+                    }
+                );
+            } catch (errorPassword) {
+                console.error(
+                    "Error procesando contraseña:",
+                    errorPassword
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al procesar la contraseña"
+                });
+            }
+        }
+    );
 };
 
 // ==========================================
@@ -663,6 +869,7 @@ const actualizarPerfil = (req, res) => {
 
 module.exports = {
     obtenerPerfil,
+    cambiarPassword,
     registrarHoras,
     obtenerAvance,
     obtenerHoras,

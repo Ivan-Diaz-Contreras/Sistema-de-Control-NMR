@@ -1,4 +1,64 @@
-function PracticantesAdmin({abrirEdicionHorario, abrirEdicionRegistroHoras, abrirNuevoHorario, busqueda, cambiarCampoEdicion, cambiarCampoHorario, cambiarCampoRegistroHoras, cambiarEstadoHorario, cambiarEstadoPracticante, cambiarFiltroCarrera, cancelarHorario, cargandoDetalle, cargandoHorarios, cargandoHoras, cargandoPracticantes, cargarHorasPracticante, carreras, editandoHorario, editandoPracticante, editandoRegistroHoras, eliminarPracticanteAdmin, eliminarRegistroHorasAdmin, filtroCarrera, formHorario, formatearFecha, formatearFechaHora, guardandoHorario, guardandoPracticante, guardandoRegistroHoras, guardarHorario, guardarPracticante, guardarRegistroHoras, horariosPracticante, iniciarEdicion, mostrandoFormularioHorario, practicanteSeleccionado, practicantes, practicantesFiltrados, registrosHoras, setBusqueda, setEditandoPracticante, setEditandoRegistroHoras, setPracticanteSeleccionado, verPracticante}) {
+import { useState } from "react";
+function PracticantesAdmin({
+  abrirEdicionHorario,
+  abrirEdicionRegistroHoras,
+  abrirNuevoHorario,
+  abrirNuevoPracticante,
+  busqueda,
+  cambiarCampoEdicion,
+  cambiarCampoHorario,
+  cambiarCampoNuevoPracticante,
+  cambiarCampoRegistroHoras,
+  cambiarEstadoHorario,
+  cambiarEstadoPracticante,
+  cambiarFiltroCarrera,
+  cancelarHorario,
+  cancelarNuevoPracticante,
+  cargandoDetalle,
+  cargandoHorarios,
+  cargandoHoras,
+  cargandoPracticantes,
+  cargarHorasPracticante,
+  carreras,
+  cerrarCredencialesCreadas,
+  credencialesCreadas,
+  editandoHorario,
+  editandoPracticante,
+  editandoRegistroHoras,
+  eliminarPracticanteAdmin,
+  eliminarRegistroHorasAdmin,
+  filtroCarrera,
+  formHorario,
+  formatearFecha,
+  formatearFechaHora,
+  guardandoHorario,
+  guardandoNuevoPracticante,
+  guardandoPracticante,
+  guardandoRegistroHoras,
+  guardarHorario,
+  guardarNuevoPracticante,
+  guardarPracticante,
+  guardarRegistroHoras,
+  horariosPracticante,
+  iniciarEdicion,
+  mostrandoFormularioHorario,
+  mostrandoFormularioNuevoPracticante,
+  nuevoPracticante,
+  practicanteSeleccionado,
+  practicantes,
+  practicantesFiltrados,
+  registrosHoras,
+  setBusqueda,
+  setEditandoPracticante,
+  setEditandoRegistroHoras,
+  setPracticanteSeleccionado,
+  verPracticante,
+}) {
+  const [
+    mostrarPasswordTemporal,
+    setMostrarPasswordTemporal,
+  ] = useState(false);
+
   return (
           <>
             <section className="panel">
@@ -9,12 +69,324 @@ function PracticantesAdmin({abrirEdicionHorario, abrirEdicionRegistroHoras, abri
                   </p>
                   <h3>Practicantes registrados</h3>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={abrirNuevoPracticante}
+                >
+                  + Nuevo practicante
+                </button>
               </div>
 
               <p className="panel-description">
                 Consulta, filtra y administra los
                 practicantes registrados en el sistema.
               </p>
+
+
+              {credencialesCreadas && (
+                <div className="message">
+                  <strong>
+                    Cuenta creada: {credencialesCreadas.nombre}
+                  </strong>
+
+                  <p>
+                    Correo:{" "}
+                    <strong>
+                      {credencialesCreadas.correo}
+                    </strong>
+                  </p>
+
+                  <p>
+                    Contraseña temporal:{" "}
+                    <strong>
+                      {credencialesCreadas.password}
+                    </strong>
+                  </p>
+
+                  <p>
+                    Guarda o entrega estos datos ahora. La
+                    contraseña no volverá a mostrarse desde
+                    el sistema después de cerrar este aviso.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={cerrarCredencialesCreadas}
+                  >
+                    Entendido
+                  </button>
+                </div>
+              )}
+
+              {mostrandoFormularioNuevoPracticante && (
+                <form
+                  onSubmit={guardarNuevoPracticante}
+                  className="admin-inline-form"
+                >
+                  <div className="admin-form-header">
+                    <div>
+                      <h4 className="admin-form-title">
+                        Nuevo practicante
+                      </h4>
+                      <small>
+                        La contraseña será temporal y el
+                        practicante deberá cambiarla.
+                      </small>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={cancelarNuevoPracticante}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+
+                  <div className="admin-form-grid">
+                    <label>
+                      Nombre *
+                      <input
+                        name="nombre"
+                        value={nuevoPracticante.nombre}
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Apellido paterno *
+                      <input
+                        name="apellido_paterno"
+                        value={
+                          nuevoPracticante.apellido_paterno
+                        }
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Apellido materno
+                      <input
+                        name="apellido_materno"
+                        value={
+                          nuevoPracticante.apellido_materno
+                        }
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Correo *
+                      <input
+                        type="email"
+                        name="correo"
+                        value={nuevoPracticante.correo}
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Contraseña temporal *
+                      <input
+                        type={
+                          mostrarPasswordTemporal
+                            ? "text"
+                            : "password"
+                        }
+                        name="password"
+                        minLength="8"
+                        value={nuevoPracticante.password}
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Confirmar contraseña *
+                      <input
+                        type={
+                          mostrarPasswordTemporal
+                            ? "text"
+                            : "password"
+                        }
+                        name="confirmar_password"
+                        minLength="8"
+                        value={
+                          nuevoPracticante.confirmar_password
+                        }
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      <span>
+                        <input
+                          type="checkbox"
+                          checked={
+                            mostrarPasswordTemporal
+                          }
+                          onChange={(e) =>
+                            setMostrarPasswordTemporal(
+                              e.target.checked
+                            )
+                          }
+                        />{" "}
+                        Mostrar contraseña temporal
+                      </span>
+                    </label>
+
+                    <label>
+                      Matrícula
+                      <input
+                        name="matricula"
+                        value={nuevoPracticante.matricula}
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Teléfono
+                      <input
+                        name="telefono"
+                        value={nuevoPracticante.telefono}
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Universidad
+                      <input
+                        name="universidad"
+                        value={
+                          nuevoPracticante.universidad
+                        }
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Carrera *
+                      <select
+                        name="id_carrera"
+                        value={
+                          nuevoPracticante.id_carrera
+                        }
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                        required
+                      >
+                        <option value="">
+                          Selecciona una carrera
+                        </option>
+
+                        {carreras
+                          .filter(
+                            (carrera) =>
+                              Number(
+                                carrera.activa ??
+                                  carrera.activo ??
+                                  1
+                              ) === 1
+                          )
+                          .map((carrera) => (
+                            <option
+                              key={
+                                carrera.id_carrera
+                              }
+                              value={
+                                carrera.id_carrera
+                              }
+                            >
+                              {carrera.nombre}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+
+                    <label>
+                      Fecha de inicio *
+                      <input
+                        type="date"
+                        name="fecha_inicio"
+                        value={
+                          nuevoPracticante.fecha_inicio
+                        }
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Fecha de fin
+                      <input
+                        type="date"
+                        name="fecha_fin"
+                        value={
+                          nuevoPracticante.fecha_fin
+                        }
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                      />
+                    </label>
+
+                    <label>
+                      Horas requeridas *
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        name="horas_requeridas"
+                        value={
+                          nuevoPracticante.horas_requeridas
+                        }
+                        onChange={
+                          cambiarCampoNuevoPracticante
+                        }
+                        required
+                      />
+                    </label>
+                  </div>
+
+                  <div className="admin-form-actions">
+                    <button
+                      type="submit"
+                      disabled={
+                        guardandoNuevoPracticante
+                      }
+                    >
+                      {guardandoNuevoPracticante
+                        ? "Creando..."
+                        : "Crear practicante"}
+                    </button>
+                  </div>
+                </form>
+              )}
 
               <div className="practicantes-toolbar">
                 <input
@@ -226,6 +598,8 @@ function PracticantesAdmin({abrirEdicionHorario, abrirEdicionRegistroHoras, abri
                                   Eliminar
                                 </button>
                                 */}
+
+
                               </div>
                             </td>
                           </tr>

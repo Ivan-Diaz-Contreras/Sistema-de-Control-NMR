@@ -1434,3 +1434,107 @@ CSS_restaurar_grafica_dashboard.txt
     height: 145px;
   }
 }
+
+/* ==========================================
+   SEGURIDAD DEL PRACTICANTE
+   AGREGAR AL FINAL DE App.css
+========================================== */
+
+.password-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e3e7ed;
+}
+
+.password-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.password-section-header h3 {
+  margin: 5px 0 0;
+}
+
+.password-required-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff4df;
+  color: #8a6420;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.password-form {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.password-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #4f5c72;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.password-form input[type="password"],
+.password-form input[type="text"] {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 11px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+}
+
+.password-form input:focus {
+  outline: none;
+  border-color: #73809a;
+  box-shadow:
+    0 0 0 3px rgba(23, 39, 70, 0.08);
+}
+
+.password-show-option {
+  grid-column: 1 / -1;
+  flex-direction: row !important;
+  align-items: center;
+  font-weight: 500 !important;
+}
+
+.password-show-option input {
+  width: auto;
+}
+
+.password-form .admin-form-actions {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .password-form {
+    grid-template-columns: 1fr;
+  }
+
+  .password-show-option,
+  .password-form .admin-form-actions {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 650px) {
+  .password-section-header {
+    flex-direction: column;
+  }
+}

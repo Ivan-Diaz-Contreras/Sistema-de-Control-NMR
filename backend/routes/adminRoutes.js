@@ -8,6 +8,7 @@ const verificarAdmin = require("../middleware/verificarAdmin");
 
 const {
     obtenerPracticantes,
+    crearPracticanteAdmin,
     obtenerPracticantePorId,
     actualizarPracticante,
     actualizarEstadoPracticante,
@@ -49,6 +50,15 @@ router.get(
     verificarToken,
     verificarAdmin,
     obtenerPracticantes
+);
+
+
+// Crear un nuevo practicante
+router.post(
+    "/practicantes",
+    verificarToken,
+    verificarAdmin,
+    crearPracticanteAdmin
 );
 
 
