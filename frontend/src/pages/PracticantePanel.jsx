@@ -6,7 +6,16 @@ import {
 import axios from "axios";
 import "../App.css";
 import logoNMR from "../assets/logo-nmr.png";
-import { User } from "lucide-react";
+import {
+  User,
+  Clock3,
+  Target,
+  Hourglass,
+  TrendingUp,
+  CalendarDays,
+  ChartNoAxesColumnIncreasing,
+  ListChecks,
+} from "lucide-react";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
@@ -28,6 +37,8 @@ function PracticantePanel({
   const [procesandoAsistencia, setProcesandoAsistencia] = useState(false);
   const [seccion, setSeccion] = useState("dashboard");
   const [horario, setHorario] = useState(null);
+  const [registrosHoras, setRegistrosHoras] = useState([]);
+  const [filtroPeriodoHoras, setFiltroPeriodoHoras] = useState("todos");
 
   // ==========================================
   // SEGURIDAD / CAMBIO DE CONTRASEÑA
@@ -74,9 +85,14 @@ useEffect(() => {
         Authorization: `Bearer ${token}`,
       };
 
-      const [perfilResponse, avanceResponse] = await Promise.all([
+      const [
+        perfilResponse,
+        avanceResponse,
+        horasResponse,
+      ] = await Promise.all([
         axios.get(`${API}/practicantes/perfil`, { headers }),
         axios.get(`${API}/practicantes/avance`, { headers }),
+        axios.get(`${API}/practicantes/horas`, { headers }),
       ]);
 
       const perfilCargado =
@@ -84,6 +100,9 @@ useEffect(() => {
 
       setPerfil(perfilCargado);
       setAvance(avanceResponse.data);
+      setRegistrosHoras(
+        horasResponse.data.registros || []
+      );
 
       if (
         Number(
@@ -576,6 +595,87 @@ const formatearFechaHoraBitacora = (fecha) => {
   }
 
   const porcentaje = avance?.porcentaje_avance || 0;
+
+  const convertirFechaHoras = (fecha) => {
+    const valor = String(fecha || "").slice(0, 10);
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+      return null;
+    }
+
+    return new Date(`${valor}T12:00:00`);
+  };
+
+  const hoyHoras = new Date();
+  hoyHoras.setHours(12, 0, 0, 0);
+
+  const inicioSemanaHoras = new Date(hoyHoras);
+  const diasDesdeLunes =
+    (inicioSemanaHoras.getDay() + 6) % 7;
+
+  inicioSemanaHoras.setDate(
+    inicioSemanaHoras.getDate() - diasDesdeLunes
+  );
+
+  const inicioMesHoras = new Date(
+    hoyHoras.getFullYear(),
+    hoyHoras.getMonth(),
+    1,
+    12
+  );
+
+  const registrosHorasFiltrados =
+    registrosHoras.filter((registro) => {
+      const fechaRegistro =
+        convertirFechaHoras(registro.fecha);
+
+      if (!fechaRegistro) {
+        return filtroPeriodoHoras === "todos";
+      }
+
+      if (filtroPeriodoHoras === "semana") {
+        return (
+          fechaRegistro >= inicioSemanaHoras &&
+          fechaRegistro <= hoyHoras
+        );
+      }
+
+      if (filtroPeriodoHoras === "mes") {
+        return (
+          fechaRegistro >= inicioMesHoras &&
+          fechaRegistro <= hoyHoras
+        );
+      }
+
+      return true;
+    });
+
+  const horasEstaSemana = registrosHoras.reduce(
+    (total, registro) => {
+      const fechaRegistro =
+        convertirFechaHoras(registro.fecha);
+
+      if (
+        fechaRegistro &&
+        fechaRegistro >= inicioSemanaHoras &&
+        fechaRegistro <= hoyHoras
+      ) {
+        return total + Number(registro.horas || 0);
+      }
+
+      return total;
+    },
+    0
+  );
+
+  const promedioHoras =
+    registrosHoras.length > 0
+      ? registrosHoras.reduce(
+          (total, registro) =>
+            total + Number(registro.horas || 0),
+          0
+        ) / registrosHoras.length
+      : 0;
 
   return (
     <div className="app">
@@ -1155,47 +1255,242 @@ const formatearFechaHoraBitacora = (fecha) => {
         )}
 
         {seccion === "horas" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <p className="section-label">CONTROL DE HORAS</p>
-                <h3>Mis horas</h3>
-              </div>
-            </div>
-
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span className="stat-icon">⏱️</span>
+          <>
+            <section className="panel">
+              <div className="panel-header">
                 <div>
-                  <p>Horas acumuladas</p>
-                  <strong>
-                    {avance?.horas_acumuladas?.toFixed(2) || "0.00"}
-                  </strong>
-                  <small>horas</small>
+                  <p className="section-label">
+                    CONTROL DE HORAS
+                  </p>
+                  <h3>Mis horas</h3>
                 </div>
               </div>
 
-              <div className="stat-card">
-                <span className="stat-icon">📊</span>
-                <div>
-                  <p>Horas requeridas</p>
-                  <strong>
-                    {avance?.horas_requeridas?.toFixed(2) || "0.00"}
-                  </strong>
-                  <small>horas</small>
+              <p className="panel-description">
+                Consulta tu avance y el historial de horas
+                contabilizadas durante tus pr&aacute;cticas.
+              </p>
+
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <span className="stat-icon"><Clock3 size={22} /></span>
+                  <div>
+                    <p>Horas acumuladas</p>
+                    <strong>
+                      {avance?.horas_acumuladas?.toFixed(2) ||
+                        "0.00"}
+                    </strong>
+                    <small>horas</small>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <span className="stat-icon"><Target size={22} /></span>
+                  <div>
+                    <p>Horas requeridas</p>
+                    <strong>
+                      {avance?.horas_requeridas?.toFixed(2) ||
+                        "0.00"}
+                    </strong>
+                    <small>horas</small>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <span className="stat-icon"><Hourglass size={22} /></span>
+                  <div>
+                    <p>Horas restantes</p>
+                    <strong>
+                      {avance?.horas_restantes?.toFixed(2) ||
+                        "0.00"}
+                    </strong>
+                    <small>horas</small>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <span className="stat-icon"><TrendingUp size={22} /></span>
+                  <div>
+                    <p>Avance</p>
+                    <strong>{porcentaje}%</strong>
+                    <small>completado</small>
+                  </div>
                 </div>
               </div>
 
-              <div className="stat-card">
-                <span className="stat-icon">📊</span>
-                <div>
-                  <p>Avance</p>
-                  <strong>{porcentaje}%</strong>
-                  <small>completado</small>
+              <div
+                className="progress-card"
+                style={{ marginTop: "20px" }}
+              >
+                <div className="progress-header">
+                  <div>
+                    <p className="section-label">
+                      PROGRESO GENERAL
+                    </p>
+                    <h3>{porcentaje}% completado</h3>
+                  </div>
+                </div>
+
+                <div className="progress-track">
+                  <div
+                    className="progress-bar"
+                    style={{
+                      width: `${Math.min(
+                        Number(porcentaje),
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="progress-footer">
+                  <span>
+                    {avance?.horas_acumuladas?.toFixed(2) ||
+                      "0.00"}{" "}
+                    horas acumuladas
+                  </span>
+
+                  <span>
+                    {avance?.horas_requeridas?.toFixed(2) ||
+                      "0.00"}{" "}
+                    horas requeridas
+                  </span>
                 </div>
               </div>
-            </div>
-          </section>
+
+              <div
+                className="stats-grid"
+                style={{ marginTop: "20px" }}
+              >
+                <div className="stat-card">
+                  <span className="stat-icon"><CalendarDays size={22} /></span>
+                  <div>
+                    <p>Esta semana</p>
+                    <strong>
+                      {horasEstaSemana.toFixed(2)}
+                    </strong>
+                    <small>horas</small>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <span className="stat-icon"><ChartNoAxesColumnIncreasing size={22} /></span>
+                  <div>
+                    <p>Promedio por registro</p>
+                    <strong>
+                      {promedioHoras.toFixed(2)}
+                    </strong>
+                    <small>horas</small>
+                  </div>
+                </div>
+
+                <div className="stat-card">
+                  <span className="stat-icon"><ListChecks size={22} /></span>
+                  <div>
+                    <p>Total de registros</p>
+                    <strong>
+                      {registrosHoras.length}
+                    </strong>
+                    <small>registros</small>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="section-label">
+                    DETALLE DE HORAS
+                  </p>
+                  <h3>Historial de registros</h3>
+                </div>
+
+                <select
+                  value={filtroPeriodoHoras}
+                  onChange={(e) =>
+                    setFiltroPeriodoHoras(e.target.value)
+                  }
+                  className="asistencia-filter"
+                >
+                  <option value="todos">
+                    Todos los registros
+                  </option>
+
+                  <option value="semana">
+                    Esta semana
+                  </option>
+
+                  <option value="mes">
+                    Este mes
+                  </option>
+                </select>
+              </div>
+
+              <p className="panel-description">
+                Mostrando{" "}
+                <strong>
+                  {registrosHorasFiltrados.length}
+                </strong>{" "}
+                de <strong>{registrosHoras.length}</strong>{" "}
+                registros.
+              </p>
+
+              {registrosHorasFiltrados.length === 0 ? (
+                <p>
+                  No hay registros de horas para el periodo
+                  seleccionado.
+                </p>
+              ) : (
+                <div className="admin-table-wrapper">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th className="admin-table-heading">
+                          Fecha
+                        </th>
+
+                        <th className="admin-table-heading">
+                          Horas
+                        </th>
+
+                        <th className="admin-table-heading">
+                          Descripci&oacute;n
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {registrosHorasFiltrados.map(
+                        (registro) => (
+                          <tr key={registro.id_registro}>
+                            <td className="admin-table-cell">
+                              {formatearFechaBitacora(
+                                registro.fecha
+                              )}
+                            </td>
+
+                            <td className="admin-table-cell">
+                              <strong>
+                                {Number(
+                                  registro.horas || 0
+                                ).toFixed(2)}
+                              </strong>
+                            </td>
+
+                            <td className="admin-table-cell">
+                              {registro.descripcion ||
+                                "Sin descripción"}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
         )}
 
         {seccion === "bitacoras" && (
