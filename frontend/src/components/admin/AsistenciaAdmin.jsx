@@ -1,4 +1,27 @@
-function AsistenciaAdmin({abrirEdicionAsistencia, asistencias, asistenciasFiltradas, busquedaAsistencia, calcularTiempoReal, cambiarCampoAsistencia, cargandoAsistencias, cargarAsistencias, editandoAsistencia, filtroEstadoAsistencia, formatearFecha, formatearHora, guardandoAsistencia, guardarAsistencia, practicantes, setBusquedaAsistencia, setEditandoAsistencia, setFiltroEstadoAsistencia}) {
+function AsistenciaAdmin({
+  abrirEdicionAsistencia,
+  asistencias,
+  asistenciasFiltradas,
+  busquedaAsistencia,
+  calcularTiempoReal,
+  cambiarCampoAsistencia,
+  cargandoAsistencias,
+  cargarAsistencias,
+  editandoAsistencia,
+  filtroEstadoAsistencia,
+  filtroPracticanteAsistencia,
+  filtroFechaAsistencia,
+  formatearFecha,
+  formatearHora,
+  guardandoAsistencia,
+  guardarAsistencia,
+  practicantes,
+  setBusquedaAsistencia,
+  setEditandoAsistencia,
+  setFiltroEstadoAsistencia,
+  setFiltroPracticanteAsistencia,
+  setFiltroFechaAsistencia,
+}) {
   return (
           <>
             <section className="panel">
@@ -35,8 +58,53 @@ function AsistenciaAdmin({abrirEdicionAsistencia, asistencias, asistenciasFiltra
                   onChange={(e) =>
                     setBusquedaAsistencia(e.target.value)
                   }
-                  placeholder="Buscar por practicante, matrícula, carrera o fecha"
+                  placeholder="Buscar por nombre, matr?cula o carrera"
                   className="asistencia-search"
+                />
+
+                <select
+                  value={filtroPracticanteAsistencia}
+                  onChange={(e) =>
+                    setFiltroPracticanteAsistencia(
+                      e.target.value
+                    )
+                  }
+                  className="asistencia-filter"
+                >
+                  <option value="">
+                    Todos los practicantes
+                  </option>
+                  {practicantes.map((practicante) => (
+                    <option
+                      key={practicante.id_practicante}
+                      value={String(
+                        practicante.id_practicante
+                      )}
+                    >
+                      {[
+                        practicante.nombre,
+                        practicante.apellido_paterno,
+                        practicante.apellido_materno,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      {practicante.matricula
+                        ? ` ? ${practicante.matricula}`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  type="date"
+                  value={filtroFechaAsistencia}
+                  onChange={(e) =>
+                    setFiltroFechaAsistencia(
+                      e.target.value
+                    )
+                  }
+                  className="asistencia-filter"
+                  aria-label="Filtrar por fecha"
                 />
 
                 <select
@@ -49,20 +117,39 @@ function AsistenciaAdmin({abrirEdicionAsistencia, asistencias, asistenciasFiltra
                   <option value="">
                     Todos los estados
                   </option>
-                  <option value="Pendiente">
-                    Pendiente
-                  </option>
-                  <option value="A tiempo">
-                    A tiempo
-                  </option>
-                  <option value="Retardo">
-                    Retardo
-                  </option>
-                  <option value="Incompleta">
-                    Incompleta
-                  </option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="A tiempo">A tiempo</option>
+                  <option value="Retardo">Retardo</option>
+                  <option value="Incompleta">Incompleta</option>
                 </select>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBusquedaAsistencia("");
+                    setFiltroEstadoAsistencia("");
+                    setFiltroPracticanteAsistencia("");
+                    setFiltroFechaAsistencia("");
+                  }}
+                  disabled={
+                    !busquedaAsistencia &&
+                    !filtroEstadoAsistencia &&
+                    !filtroPracticanteAsistencia &&
+                    !filtroFechaAsistencia
+                  }
+                >
+                  Limpiar filtros
+                </button>
               </div>
+
+              <p className="panel-description">
+                Mostrando{" "}
+                <strong>
+                  {asistenciasFiltradas.length}
+                </strong>{" "}
+                de <strong>{asistencias.length}</strong>{" "}
+                registros.
+              </p>
 
               {editandoAsistencia && (
                 <form

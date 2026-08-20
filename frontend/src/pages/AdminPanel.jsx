@@ -147,6 +147,8 @@ function AdminPanel({ usuario, onLogout }) {
   const [cargandoAsistencias, setCargandoAsistencias] = useState(false);
   const [busquedaAsistencia, setBusquedaAsistencia] = useState("");
   const [filtroEstadoAsistencia, setFiltroEstadoAsistencia] = useState("");
+  const [filtroPracticanteAsistencia, setFiltroPracticanteAsistencia] = useState("");
+  const [filtroFechaAsistencia, setFiltroFechaAsistencia] = useState("");
   const [editandoAsistencia, setEditandoAsistencia] = useState(null);
   const [guardandoAsistencia, setGuardandoAsistencia] = useState(false);
 
@@ -1965,7 +1967,24 @@ const formatearFechaHora = (fecha) => {
           .toLowerCase() ===
           filtroEstadoAsistencia.toLowerCase();
 
-      if (!coincideEstado) {
+      const coincidePracticante =
+        !filtroPracticanteAsistencia ||
+        String(asistencia.id_practicante) ===
+          filtroPracticanteAsistencia;
+
+      const fechaAsistencia = String(
+        asistencia.fecha || ""
+      ).slice(0, 10);
+
+      const coincideFecha =
+        !filtroFechaAsistencia ||
+        fechaAsistencia === filtroFechaAsistencia;
+
+      if (
+        !coincideEstado ||
+        !coincidePracticante ||
+        !coincideFecha
+      ) {
         return false;
       }
 
@@ -1992,6 +2011,8 @@ const formatearFechaHora = (fecha) => {
     asistencias,
     busquedaAsistencia,
     filtroEstadoAsistencia,
+    filtroPracticanteAsistencia,
+    filtroFechaAsistencia,
   ]);
 
   // ==========================================
@@ -2183,6 +2204,8 @@ const formatearFechaHora = (fecha) => {
     filtroAccionHistorial,
     filtroCarrera,
     filtroEstadoAsistencia,
+    filtroPracticanteAsistencia,
+    filtroFechaAsistencia,
     filtroEstadoBitacora,
     formActividad,
     formHorario,
@@ -2231,6 +2254,8 @@ const formatearFechaHora = (fecha) => {
     setEditandoRegistroHoras,
     setFiltroAccionHistorial,
     setFiltroEstadoAsistencia,
+    setFiltroPracticanteAsistencia,
+    setFiltroFechaAsistencia,
     setFiltroEstadoBitacora,
     setFormActividad,
     setMostrandoFormularioActividad,
