@@ -1,3 +1,14 @@
+import {
+  BarChart3,
+  ClipboardClock,
+  GraduationCap,
+  History,
+  LayoutDashboard,
+  LogOut,
+  NotebookTabs,
+  Users,
+} from "lucide-react";
+
 import logoNMR from "../../assets/logo-nmr.png";
 
 function AdminSidebar({
@@ -23,101 +34,143 @@ function AdminSidebar({
 
         <div>
           <h1>NMR</h1>
-          <span>Control de Prácticas</span>
+          <span>
+            Control de Pr&aacute;cticas
+          </span>
         </div>
       </div>
 
       <nav className="navigation">
         <button
-          className={`nav-item ${
-            seccion === "dashboard" ? "active" : ""
-          }`}
+          className={
+            "nav-item " +
+            (seccion === "dashboard"
+              ? "active"
+              : "")
+          }
           onClick={() => setSeccion("dashboard")}
         >
-          <span>⌂</span>
+          <span>
+            <LayoutDashboard size={18} />
+          </span>
           Dashboard
         </button>
 
         <button
-          className={`nav-item ${
-            seccion === "practicantes" ? "active" : ""
-          }`}
-          onClick={() => setSeccion("practicantes")}
+          className={
+            "nav-item " +
+            (seccion === "practicantes"
+              ? "active"
+              : "")
+          }
+          onClick={() =>
+            setSeccion("practicantes")
+          }
         >
-          <span>👥</span>
+          <span>
+            <Users size={18} />
+          </span>
           Practicantes
         </button>
 
         <button
-          className={`nav-item ${
-            seccion === "asistencia" ? "active" : ""
-          }`}
+          className={
+            "nav-item " +
+            (seccion === "asistencia"
+              ? "active"
+              : "")
+          }
           onClick={() => {
             setSeccion("asistencia");
             cargarAsistencias();
           }}
         >
-          <span>🕐</span>
+          <span>
+            <ClipboardClock size={18} />
+          </span>
           Asistencia
         </button>
 
         <button
-          className={`nav-item ${
-            seccion === "bitacoras" ? "active" : ""
-          }`}
+          className={
+            "nav-item " +
+            (seccion === "bitacoras"
+              ? "active"
+              : "")
+          }
           onClick={() => {
             setSeccion("bitacoras");
             cargarActividadesBitacora();
             cargarEntregasBitacoras();
           }}
         >
-          <span>📋</span>
-          Bitácoras
+          <span>
+            <NotebookTabs size={18} />
+          </span>
+          Bit&aacute;coras
         </button>
 
         <button
-          className={`nav-item ${
-            seccion === "carreras" ? "active" : ""
-          }`}
+          className={
+            "nav-item " +
+            (seccion === "carreras"
+              ? "active"
+              : "")
+          }
           onClick={() => {
             setSeccion("carreras");
             cargarCarreras();
           }}
         >
-          <span>🎓</span>
+          <span>
+            <GraduationCap size={18} />
+          </span>
           Carreras
         </button>
 
         <button
-          className={`nav-item ${
-            seccion === "estadisticas" ? "active" : ""
-          }`}
-          onClick={() => setSeccion("estadisticas")}
+          className={
+            "nav-item " +
+            (seccion === "estadisticas"
+              ? "active"
+              : "")
+          }
+          onClick={() =>
+            setSeccion("estadisticas")
+          }
         >
-          <span>📊</span>
-          Estadísticas
+          <span>
+            <BarChart3 size={18} />
+          </span>
+          Estad&iacute;sticas
         </button>
 
         <button
-          className={`nav-item ${
-            seccion === "historial" ? "active" : ""
-          }`}
+          className={
+            "nav-item " +
+            (seccion === "historial"
+              ? "active"
+              : "")
+          }
           onClick={() => {
             setSeccion("historial");
             cargarHistorial();
           }}
         >
-          <span>🕘</span>
+          <span>
+            <History size={18} />
+          </span>
           Historial
         </button>
       </nav>
 
       <button
+        type="button"
         className="logout-button"
         onClick={onLogout}
       >
-        <span>↪</span>
-        Cerrar sesión
+        <LogOut size={18} />
+        Cerrar sesi&oacute;n
       </button>
     </aside>
   );

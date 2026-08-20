@@ -1,3 +1,14 @@
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  Hand,
+  UserCheck,
+  Users,
+} from "lucide-react";
+
 function DashboardAdmin({
   cargando,
   estadisticas,
@@ -95,7 +106,11 @@ function DashboardAdmin({
 
           <h1>
             Hola,{" "}
-            {usuario?.nombre || "Administrador"} 👋
+            {usuario?.nombre || "Administrador"}{" "}
+            <Hand
+              size={28}
+              style={{ verticalAlign: "middle" }}
+            />
           </h1>
 
           <p>
@@ -106,7 +121,7 @@ function DashboardAdmin({
         </div>
 
         <div className="welcome-icon">
-          NMR
+          <Building2 size={38} />
         </div>
       </section>
 
@@ -119,7 +134,7 @@ function DashboardAdmin({
           <section className="dashboard-main-stats">
             <article className="dashboard-kpi-card">
               <div className="dashboard-kpi-icon">
-                👥
+                <Users size={24} />
               </div>
 
               <div>
@@ -134,7 +149,7 @@ function DashboardAdmin({
 
             <article className="dashboard-kpi-card">
               <div className="dashboard-kpi-icon">
-                ✅
+                <UserCheck size={24} />
               </div>
 
               <div>
@@ -148,7 +163,7 @@ function DashboardAdmin({
 
             <article className="dashboard-kpi-card">
               <div className="dashboard-kpi-icon">
-                ⏱
+                <Clock3 size={24} />
               </div>
 
               <div>
@@ -164,7 +179,7 @@ function DashboardAdmin({
 
             <article className="dashboard-kpi-card">
               <div className="dashboard-kpi-icon">
-                📋
+                <ClipboardList size={24} />
               </div>
 
               <div>
@@ -219,7 +234,7 @@ function DashboardAdmin({
 
             <div className="dashboard-attendance-grid">
               <article className="dashboard-mini-card">
-                <span>🕐</span>
+                <span><Clock3 size={22} /></span>
                 <div>
                   <p>Asistencias</p>
                   <strong>{asistenciasHoy}</strong>
@@ -457,11 +472,13 @@ function DashboardAdmin({
 
                       <div className="dashboard-chart-detail">
                         <span>
-                          ✓ {Number(dia.a_tiempo || 0)}
+                          <CheckCircle2 size={14} />
+                          {Number(dia.a_tiempo || 0)}
                         </span>
 
                         <span>
-                          ⚠ {Number(dia.retardos || 0)}
+                          <AlertTriangle size={14} />
+                          {Number(dia.retardos || 0)}
                         </span>
                       </div>
                     </div>
