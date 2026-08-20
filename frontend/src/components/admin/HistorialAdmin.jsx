@@ -86,7 +86,7 @@ function HistorialAdmin({accionesHistorial, busquedaHistorial, cargandoHistorial
                   <thead>
                     <tr>
                       {[
-                        "ID",
+                        "No.",
                         "Usuario",
                         "Acción",
                         "Descripción",
@@ -108,12 +108,35 @@ function HistorialAdmin({accionesHistorial, busquedaHistorial, cargandoHistorial
 
                   <tbody>
                     {historialFiltrado.map((registro, indice) => {
-                      const id =
+                      const idInterno =
                         obtenerValorHistorial(registro, [
                           "id_historial",
                           "id_actividad",
                           "id",
-                        ]) || indice + 1;
+                        ]);
+
+                      const indiceGlobal =
+                        historial.findIndex((item) => {
+                          const idItem =
+                            obtenerValorHistorial(item, [
+                              "id_historial",
+                              "id_actividad",
+                              "id",
+                            ]);
+
+                          return (
+                            idInterno &&
+                            String(idItem) ===
+                              String(idInterno)
+                          );
+                        });
+
+                      const numeroVisual =
+                        indiceGlobal >= 0
+                          ? historial.length -
+                            indiceGlobal
+                          : historialFiltrado.length -
+                            indice;
 
                       const usuarioHistorial =
                         obtenerValorHistorial(registro, [
@@ -151,9 +174,25 @@ function HistorialAdmin({accionesHistorial, busquedaHistorial, cargandoHistorial
                       );
 
                       return (
-                        <tr key={`${id}-${indice}`}>
-                          <td style={{ padding: "12px", borderBottom: "1px solid #edf0f5" }}>
-                            {id}
+                        <tr
+                          key={
+                            idInterno ||
+                            `historial-${indice}`
+                          }
+                        >
+                          <td
+                            style={{
+                              padding: "12px",
+                              borderBottom:
+                                "1px solid #edf0f5",
+                            }}
+                            title={
+                              idInterno
+                                ? `ID interno: ${idInterno}`
+                                : "Sin ID interno"
+                            }
+                          >
+                            {numeroVisual}
                           </td>
                           <td style={{ padding: "12px", borderBottom: "1px solid #edf0f5" }}>
                             {usuarioHistorial}
