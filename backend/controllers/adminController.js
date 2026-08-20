@@ -97,7 +97,6 @@ const crearPracticanteAdmin = async (req, res) => {
         correo,
         password,
         id_carrera,
-        matricula,
         telefono,
         universidad,
         fecha_inicio,
@@ -123,9 +122,6 @@ const crearPracticanteAdmin = async (req, res) => {
     const correoLimpio = String(correo)
         .trim()
         .toLowerCase();
-
-    const matriculaLimpia =
-        matricula?.trim() || null;
 
     const formatoCorreo =
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -330,50 +326,70 @@ const crearPracticanteAdmin = async (req, res) => {
                                     );
                                 }
 
-                                const verificarMatricula = (
+                                const generarMatricula = (
                                     continuar
                                 ) => {
-                                    if (!matriculaLimpia) {
-                                        return continuar();
-                                    }
-
                                     connection.query(
                                         `
-                                            SELECT id_practicante
+                                            SELECT
+                                                COALESCE(
+                                                    MAX(
+                                                        CAST(
+                                                            SUBSTRING(matricula, 4)
+                                                            AS UNSIGNED
+                                                        )
+                                                    ),
+                                                    -1
+                                                ) + 1 AS siguiente_numero
                                             FROM practicantes
-                                            WHERE matricula = ?
+                                            WHERE matricula REGEXP '^NMR[0-9]{3}$'
                                         `,
-                                        [matriculaLimpia],
                                         (
                                             errorMatricula,
                                             matriculaResultado
                                         ) => {
-                                            if (
-                                                errorMatricula
-                                            ) {
+                                            if (errorMatricula) {
                                                 return rollback(
                                                     500,
-                                                    "Error al verificar la matrícula",
+                                                    "Error al generar la matr?cula",
                                                     errorMatricula
                                                 );
                                             }
 
+                                            const siguienteNumero = Number(
+                                                matriculaResultado[0]
+                                                    .siguiente_numero
+                                            );
+
                                             if (
-                                                matriculaResultado.length >
-                                                0
+                                                !Number.isInteger(siguienteNumero) ||
+                                                siguienteNumero < 0
                                             ) {
                                                 return rollback(
-                                                    409,
-                                                    "La matrícula ya está registrada"
+                                                    500,
+                                                    "No fue posible calcular la siguiente matr?cula"
                                                 );
                                             }
 
-                                            continuar();
+                                            if (siguienteNumero > 999) {
+                                                return rollback(
+                                                    409,
+                                                    "Se alcanz? el l?mite de matr?culas NMR"
+                                                );
+                                            }
+
+                                            const matriculaGenerada =
+                                                `NMR${String(siguienteNumero).padStart(
+                                                    3,
+                                                    "0"
+                                                )}`;
+
+                                            continuar(matriculaGenerada);
                                         }
                                     );
                                 };
 
-                                verificarMatricula(() => {
+                                generarMatricula((matriculaGenerada) => {
                                     connection.query(
                                         `
                                             SELECT id_rol
@@ -474,7 +490,7 @@ const crearPracticanteAdmin = async (req, res) => {
                                                         [
                                                             idUsuario,
                                                             idCarrera,
-                                                            matriculaLimpia,
+                                                            matriculaGenerada,
                                                             telefono?.trim() ||
                                                                 null,
                                                             universidad?.trim() ||
@@ -542,6 +558,8 @@ const crearPracticanteAdmin = async (req, res) => {
                                                                                     idUsuario,
                                                                                 id_practicante:
                                                                                     practicanteResultado.insertId,
+                                                                                matricula:
+                                                                                    matriculaGenerada,
                                                                                 debe_cambiar_password:
                                                                                     1
                                                                             }

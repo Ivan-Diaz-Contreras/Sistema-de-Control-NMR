@@ -251,16 +251,7 @@ function PracticantesAdmin({
                       </span>
                     </label>
 
-                    <label>
-                      Matrícula
-                      <input
-                        name="matricula"
-                        value={nuevoPracticante.matricula}
-                        onChange={
-                          cambiarCampoNuevoPracticante
-                        }
-                      />
-                    </label>
+
 
                     <label>
                       Teléfono

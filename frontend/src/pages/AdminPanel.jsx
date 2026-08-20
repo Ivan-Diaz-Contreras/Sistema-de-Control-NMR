@@ -52,7 +52,6 @@ function AdminPanel({ usuario, onLogout }) {
     correo: "",
     password: "",
     confirmar_password: "",
-    matricula: "",
     telefono: "",
     universidad: "",
     id_carrera: "",
@@ -568,8 +567,6 @@ function AdminPanel({ usuario, onLogout }) {
         correo:
           nuevoPracticante.correo.trim().toLowerCase(),
         password: nuevoPracticante.password,
-        matricula:
-          nuevoPracticante.matricula.trim() || null,
         telefono:
           nuevoPracticante.telefono.trim() || null,
         universidad:
