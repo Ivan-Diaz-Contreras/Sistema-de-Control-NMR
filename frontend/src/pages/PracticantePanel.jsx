@@ -27,6 +27,7 @@ function PracticantePanel({
   const [cargando, setCargando] = useState(true);
   const [procesandoAsistencia, setProcesandoAsistencia] = useState(false);
   const [seccion, setSeccion] = useState("dashboard");
+  const [horario, setHorario] = useState(null);
 
   // ==========================================
   // SEGURIDAD / CAMBIO DE CONTRASEÑA
@@ -157,6 +158,49 @@ const registrarEntrada = async () => {
   }
 };
 
+const cargarHorario = useCallback(async () => {
+  if (!token || usuario?.rol !== "Practicante") {
+    return;
+  }
+
+  try {
+    const response = await axios.get(
+      `${API}/practicantes/asistencia/horario`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    console.log("Horario recibido:", response.data);
+
+    const horarios = response.data.horario || [];
+
+    const dias = [
+      "Domingo",
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+    ];
+
+    const diaActual = dias[new Date().getDay()];
+
+    const horarioHoy = horarios.find(
+      (item) => item.dia_semana === diaActual
+    );
+
+    setHorario(horarioHoy || null);
+
+  } catch (error) {
+    console.error("Error cargando horario:", error);
+    setHorario(null);
+  }
+}, [token, usuario?.rol]);
+
 const registrarSalida = async () => {
   try {
     setProcesandoAsistencia(true);
@@ -274,14 +318,21 @@ const cambiarSeccion = (nuevaSeccion) => {
     nuevaSeccion !== "perfil"
   ) {
     setSeccion("perfil");
+
     setMensaje(
       "Debes cambiar tu contraseña temporal antes de utilizar las demás secciones."
     );
+
     return;
   }
 
   setSeccion(nuevaSeccion);
   setMensaje("");
+
+  // Cargar horario cuando se abre Asistencia
+  if (nuevaSeccion === "asistencia") {
+    cargarHorario();
+  }
 };
 
 const guardarNuevaPassword = async (e) => {
@@ -968,40 +1019,128 @@ const formatearFechaHoraBitacora = (fecha) => {
         )}
 
         {seccion === "asistencia" && (
-          <section className="panel">
-            <div className="panel-header">
+          <div className="attendance-page">
+
+            <section className="attendance-hero">
               <div>
-                <p className="section-label">CONTROL DE HORARIO</p>
-                <h3>Asistencia</h3>
+                <p className="section-label">ASISTENCIA</p>
+
+                <h2>Control de jornada</h2>
+
+                <p>
+                  Registra tu entrada y salida correspondiente al día de hoy.
+                </p>
               </div>
 
-              <span className="status-dot">● Disponible</span>
-            </div>
+              <div className="attendance-status-box">
+                <span className="status-dot-circle"></span>
+                Disponible
+              </div>
+            </section>
 
-            <p className="panel-description">
-              Registra tu entrada y salida de la jornada.
-            </p>
+            <section className="attendance-summary-grid">
 
-            <div className="attendance-buttons">
-              <button
-                className="attendance-button entry"
-                onClick={registrarEntrada}
-                disabled={procesandoAsistencia}
-              >
-                <span>→</span>
-                Registrar entrada
-              </button>
+              <div className="attendance-summary-card">
+                <span className="attendance-summary-icon">🕐</span>
 
-              <button
-                className="attendance-button exit"
-                onClick={registrarSalida}
-                disabled={procesandoAsistencia}
-              >
-                <span>←</span>
-                Registrar salida
-              </button>
-            </div>
-          </section>
+                <div>
+                  <p>Horario de hoy</p>
+
+                  <strong>
+                    {horario?.hora_entrada && horario?.hora_salida
+                      ? `${horario.hora_entrada.slice(0, 5)} - ${horario.hora_salida.slice(0, 5)}`
+                      : "--:--"}
+                  </strong>
+
+                  <span>Entrada y salida esperadas</span>
+                </div>
+              </div>
+
+              <div className="attendance-summary-card">
+                <span className="attendance-summary-icon">⏱️</span>
+
+                <div>
+                  <p>Horas del día</p>
+
+                  <strong>0.00 h</strong>
+
+                  <span>Máximo 3 horas</span>
+                </div>
+              </div>
+
+              <div className="attendance-summary-card">
+                <span className="attendance-summary-icon">📅</span>
+
+                <div>
+                  <p>Fecha</p>
+
+                  <strong>
+                    {new Date().toLocaleDateString("es-MX")}
+                  </strong>
+
+                  <span>Jornada actual</span>
+                </div>
+              </div>
+
+            </section>
+
+            <section className="attendance-control-card">
+
+              <div className="attendance-control-header">
+                <div>
+                  <p className="section-label">REGISTRO</p>
+
+                  <h3>Entrada y salida</h3>
+                </div>
+
+                <span className="attendance-badge">
+                  ● Jornada disponible
+                </span>
+              </div>
+
+              <p className="panel-description">
+                Utiliza los botones para registrar tu asistencia.
+              </p>
+
+              <div className="attendance-buttons">
+
+                <button
+                  className="attendance-button entry"
+                  onClick={registrarEntrada}
+                  disabled={procesandoAsistencia}
+                >
+                  <span>→</span>
+
+                  <div>
+                    <strong>Registrar entrada</strong>
+
+                    <small>
+                      Marca el inicio de tu jornada
+                    </small>
+                  </div>
+                </button>
+
+                <button
+                  className="attendance-button exit"
+                  onClick={registrarSalida}
+                  disabled={procesandoAsistencia}
+                >
+                  <span>←</span>
+
+                  <div>
+                    <strong>Registrar salida</strong>
+
+                    <small>
+                      Marca el término de tu jornada
+                    </small>
+                  </div>
+                </button>
+
+              </div>
+
+            </section>
+
+          </div>
         )}
 
         {seccion === "horas" && (
