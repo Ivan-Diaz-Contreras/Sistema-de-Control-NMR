@@ -9,6 +9,7 @@ import BitacorasAdmin from "../components/admin/BitacorasAdmin";
 import CarrerasAdmin from "../components/admin/CarrerasAdmin";
 import EstadisticasAdmin from "../components/admin/EstadisticasAdmin";
 import HistorialAdmin from "../components/admin/HistorialAdmin";
+import SeguridadAdmin from "../components/admin/SeguridadAdmin";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
@@ -28,6 +29,17 @@ function AdminPanel({ usuario, onLogout }) {
   const [busqueda, setBusqueda] = useState("");
   const [filtroCarrera, setFiltroCarrera] = useState("");
   const [carreras, setCarreras] = useState([]);
+  const [formPasswordAdmin, setFormPasswordAdmin] = useState({
+    password_actual: "",
+    password_nueva: "",
+    confirmar_password: "",
+  });
+
+  const [mostrarPasswordsAdmin, setMostrarPasswordsAdmin] =
+    useState(false);
+
+  const [guardandoPasswordAdmin, setGuardandoPasswordAdmin] =
+    useState(false);
 
   // ==========================================
   // ADMINISTRACIÓN DE CARRERAS
@@ -2114,7 +2126,7 @@ const formatearFechaHora = (fecha) => {
   }, [historial]);
 
   // ==========================================
-  // TÍTULO DE LA SECCIÓN
+  // 
   // ==========================================
 
   const obtenerTitulo = () => {
@@ -2264,6 +2276,78 @@ const formatearFechaHora = (fecha) => {
     usuario,
     verPracticante,
   };
+  const cambiarCampoPasswordAdmin = (e) => {
+    const { name, value } = e.target;
+
+    setFormPasswordAdmin((actual) => ({
+      ...actual,
+      [name]: value,
+    }));
+  };
+
+  const guardarPasswordAdmin = async (e) => {
+    e.preventDefault();
+
+    if (
+      formPasswordAdmin.password_nueva !==
+      formPasswordAdmin.confirmar_password
+    ) {
+      setMensaje(
+        "La nueva contraseña y su confirmación no coinciden."
+      );
+      return;
+    }
+
+    if (formPasswordAdmin.password_nueva.length < 8) {
+      setMensaje(
+        "La nueva contraseña debe tener al menos 8 caracteres."
+      );
+      return;
+    }
+
+    try {
+      setGuardandoPasswordAdmin(true);
+      setMensaje("");
+
+      const response = await axios.put(
+        `${API}/admin/password`,
+        {
+          password_actual:
+            formPasswordAdmin.password_actual,
+          password_nueva:
+            formPasswordAdmin.password_nueva,
+          confirmar_password:
+            formPasswordAdmin.confirmar_password,
+        },
+        { headers }
+      );
+
+      setFormPasswordAdmin({
+        password_actual: "",
+        password_nueva: "",
+        confirmar_password: "",
+      });
+
+      setMostrarPasswordsAdmin(false);
+
+      setMensaje(
+        response.data.mensaje ||
+          "Contraseña actualizada correctamente."
+      );
+    } catch (error) {
+      console.error(
+        "Error cambiando contraseña del administrador:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo cambiar la contraseña."
+      );
+    } finally {
+      setGuardandoPasswordAdmin(false);
+    }
+  };
 
   return (
     <div className="app">
@@ -2320,6 +2404,21 @@ const formatearFechaHora = (fecha) => {
 
         {seccion === "asistencia" && (
           <AsistenciaAdmin {...adminProps} />
+        )}
+
+        {/* ==========================================
+            SEGURIDAD
+        ========================================== */}
+
+        {seccion === "seguridad" && (
+          <SeguridadAdmin
+            formPasswordAdmin={formPasswordAdmin}
+            mostrarPasswordsAdmin={mostrarPasswordsAdmin}
+            guardandoPasswordAdmin={guardandoPasswordAdmin}
+            cambiarCampoPasswordAdmin={cambiarCampoPasswordAdmin}
+            guardarPasswordAdmin={guardarPasswordAdmin}
+            setMostrarPasswordsAdmin={setMostrarPasswordsAdmin}
+          />
         )}
 
         {/* ==========================================

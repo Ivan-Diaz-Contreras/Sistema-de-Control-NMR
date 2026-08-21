@@ -58,7 +58,7 @@ function AsistenciaAdmin({
                   onChange={(e) =>
                     setBusquedaAsistencia(e.target.value)
                   }
-                  placeholder="Buscar por nombre, matr?cula o carrera"
+                  placeholder="Buscar por nombre, matrícula o carrera"
                   className="asistencia-search"
                 />
 
@@ -89,7 +89,7 @@ function AsistenciaAdmin({
                         .filter(Boolean)
                         .join(" ")}
                       {practicante.matricula
-                        ? ` ? ${practicante.matricula}`
+                        ? ` - ${practicante.matricula}`
                         : ""}
                     </option>
                   ))}

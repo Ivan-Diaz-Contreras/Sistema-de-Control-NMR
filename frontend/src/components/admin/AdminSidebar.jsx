@@ -7,6 +7,7 @@ import {
   LogOut,
   NotebookTabs,
   Users,
+  ShieldCheck
 } from "lucide-react";
 
 import logoNMR from "../../assets/logo-nmr.png";
@@ -162,6 +163,16 @@ function AdminSidebar({
           </span>
           Historial
         </button>
+      
+      <button
+        className={`nav-item ${
+          seccion === "seguridad" ? "active" : ""
+        }`}
+        onClick={() => setSeccion("seguridad")}
+      >
+        <ShieldCheck size={18} />
+        Seguridad
+      </button>
       </nav>
 
       <button

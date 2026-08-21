@@ -34,7 +34,8 @@ const {
     crearActividadBitacora,
     actualizarActividadBitacora,
     actualizarEstadoActividadBitacora,
-    eliminarActividadBitacora
+    eliminarActividadBitacora,
+    cambiarPasswordAdmin
 } = require("../controllers/adminController");
 
 
@@ -345,5 +346,15 @@ router.get(
     obtenerHistorialActividades
 );
 
+// ==========================================
+// SEGURIDAD DEL ADMINISTRADOR
+// ==========================================
+
+router.put(
+    "/password",
+    verificarToken,
+    verificarAdmin,
+    cambiarPasswordAdmin
+);
 
 module.exports = router;
