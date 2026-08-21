@@ -15,6 +15,7 @@ import {
   CalendarDays,
   ChartNoAxesColumnIncreasing,
   ListChecks,
+  AlertTriangle,
 } from "lucide-react";
 
 const API_URL =
@@ -65,6 +66,10 @@ function PracticantePanel({
 
   const [actividadesBitacora, setActividadesBitacora] = useState([]);
   const [bitacoras, setBitacoras] = useState([]);
+  const [
+    notificacionBitacora,
+    setNotificacionBitacora,
+  ] = useState(null);
   const [cargandoBitacoras, setCargandoBitacoras] = useState(false);
   const [subiendoBitacora, setSubiendoBitacora] = useState(null);
   const [archivoBitacora, setArchivoBitacora] = useState(null);
@@ -276,13 +281,46 @@ const cargarBitacorasPracticante = useCallback(async () => {
         ),
       ]);
 
-    setActividadesBitacora(
-      actividadesResponse.data.actividades || []
+    const actividades =
+      actividadesResponse.data.actividades || [];
+
+    const bitacorasRecibidas =
+      bitacorasResponse.data.bitacoras || [];
+
+    setActividadesBitacora(actividades);
+    setBitacoras(bitacorasRecibidas);
+
+    const actividadRechazada = actividades.find(
+      (actividad) =>
+        String(actividad.estado_entrega || "")
+          .trim()
+          .toLowerCase() === "rechazada"
     );
 
-    setBitacoras(
-      bitacorasResponse.data.bitacoras || []
-    );
+    if (actividadRechazada) {
+      const claveNotificacion = [
+        actividadRechazada.id_bitacora ||
+          actividadRechazada.id_actividad,
+        actividadRechazada.observaciones ||
+          "sin-observaciones",
+      ].join("-");
+
+      const claveVista = sessionStorage.getItem(
+        "bitacora_rechazada_vista"
+      );
+
+      if (claveVista !== claveNotificacion) {
+        setNotificacionBitacora({
+          ...actividadRechazada,
+          claveNotificacion,
+        });
+      }
+    } else {
+      setNotificacionBitacora(null);
+      sessionStorage.removeItem(
+        "bitacora_rechazada_vista"
+      );
+    }
   } catch (error) {
     console.error(
       "Error cargando bitácoras del practicante:",
@@ -300,18 +338,32 @@ const cargarBitacorasPracticante = useCallback(async () => {
 
 useEffect(() => {
   if (
-    seccion === "bitacoras" &&
     token &&
     usuario?.rol === "Practicante"
   ) {
     cargarBitacorasPracticante();
   }
 }, [
-  seccion,
   token,
   usuario?.rol,
   cargarBitacorasPracticante,
 ]);
+
+const cerrarNotificacionBitacora = () => {
+  if (notificacionBitacora?.claveNotificacion) {
+    sessionStorage.setItem(
+      "bitacora_rechazada_vista",
+      notificacionBitacora.claveNotificacion
+    );
+  }
+
+  setNotificacionBitacora(null);
+};
+
+const verBitacoraRechazada = () => {
+  cerrarNotificacionBitacora();
+  cambiarSeccion("bitacoras");
+};
 
 
 
@@ -788,6 +840,74 @@ const formatearFechaHoraBitacora = (fecha) => {
         </header>
 
         {mensaje && <div className="message">{mensaje}</div>}
+
+        {notificacionBitacora && (
+          <div
+            className="bitacora-alert-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-bitacora-rechazada"
+          >
+            <div className="bitacora-alert-modal">
+              <div className="bitacora-alert-icon">
+                <AlertTriangle size={34} />
+              </div>
+
+              <div className="bitacora-alert-content">
+                <p className="section-label">
+                  REVISI&Oacute;N DE BIT&Aacute;CORA
+                </p>
+
+                <h2 id="titulo-bitacora-rechazada">
+                  Bit&aacute;cora rechazada
+                </h2>
+
+                <p>
+                  Tu entrega
+                  {notificacionBitacora.numero_semana
+                    ? ` de la semana ${notificacionBitacora.numero_semana}`
+                    : ""}{" "}
+                  necesita correcciones.
+                </p>
+
+                {notificacionBitacora.titulo && (
+                  <p>
+                    <strong>Actividad:</strong>{" "}
+                    {notificacionBitacora.titulo}
+                  </p>
+                )}
+
+                <div className="bitacora-alert-observacion">
+                  <strong>
+                    Comentario del administrador
+                  </strong>
+
+                  <p>
+                    {notificacionBitacora.observaciones ||
+                      "El administrador no agrego comentarios."}
+                  </p>
+                </div>
+
+                <div className="bitacora-alert-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={cerrarNotificacionBitacora}
+                  >
+                    Cerrar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={verBitacoraRechazada}
+                  >
+                    Ver bit&aacute;cora
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {seccion === "dashboard" && (
           <>

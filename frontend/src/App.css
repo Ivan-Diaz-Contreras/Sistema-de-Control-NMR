@@ -2030,3 +2030,91 @@ button {
   font-weight: 600;
   line-height: 1.35;
 }
+
+
+/* NOTIFICACION DE BITACORA RECHAZADA */
+
+.bitacora-alert-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(16, 28, 54, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+.bitacora-alert-modal {
+  width: min(100%, 560px);
+  display: flex;
+  gap: 18px;
+  padding: 26px;
+  border: 1px solid #f0c7c7;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(16, 28, 54, 0.28);
+}
+
+.bitacora-alert-icon {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #b42318;
+  background: #fee4e2;
+}
+
+.bitacora-alert-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.bitacora-alert-content h2 {
+  margin: 4px 0 10px;
+  color: #101c36;
+}
+
+.bitacora-alert-content > p {
+  line-height: 1.5;
+}
+
+.bitacora-alert-observacion {
+  margin-top: 16px;
+  padding: 14px;
+  border-left: 4px solid #b42318;
+  border-radius: 8px;
+  background: #fff4f2;
+}
+
+.bitacora-alert-observacion p {
+  margin: 7px 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.bitacora-alert-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+@media (max-width: 560px) {
+  .bitacora-alert-modal {
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .bitacora-alert-actions {
+    flex-direction: column-reverse;
+  }
+
+  .bitacora-alert-actions button {
+    width: 100%;
+  }
+}
