@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import {
+  normalizarTexto,
+  validarCorreo,
+  validarFechaISO,
+  validarHorasRequeridas,
+  validarNombre,
+  validarPassword,
+  validarTelefono,
+  validarUniversidad,
+} from "../utils/validaciones";
 import DashboardAdmin from "../components/admin/DashboardAdmin";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import AdminTopbar from "../components/admin/AdminTopbar";
@@ -531,9 +541,23 @@ function AdminPanel({ usuario, onLogout }) {
   const cambiarCampoNuevoPracticante = (e) => {
     const { name, value } = e.target;
 
+    let valorSeguro = value;
+
+    if (name === "telefono") {
+      valorSeguro = value
+        .replace(/\D/g, "")
+        .slice(0, 10);
+    }
+
+    if (name === "correo") {
+      valorSeguro = value
+        .replace(/\s/g, "")
+        .slice(0, 120);
+    }
+
     setNuevoPracticante((actual) => ({
       ...actual,
-      [name]: value,
+      [name]: valorSeguro,
     }));
   };
 
@@ -544,11 +568,72 @@ function AdminPanel({ usuario, onLogout }) {
   const guardarNuevoPracticante = async (e) => {
     e.preventDefault();
 
+    const nombreLimpio =
+      normalizarTexto(nuevoPracticante.nombre);
+
+    const apellidoPaternoLimpio =
+      normalizarTexto(
+        nuevoPracticante.apellido_paterno
+      );
+
+    const apellidoMaternoLimpio =
+      normalizarTexto(
+        nuevoPracticante.apellido_materno
+      );
+
+    const correoLimpio =
+      normalizarTexto(
+        nuevoPracticante.correo
+      ).toLowerCase();
+
+    const telefonoLimpio =
+      normalizarTexto(
+        nuevoPracticante.telefono
+      );
+
+    const universidadLimpia =
+      normalizarTexto(
+        nuevoPracticante.universidad
+      );
+
+    if (!validarNombre(nombreLimpio)) {
+      setMensaje(
+        "El nombre debe contener solo letras y tener entre 2 y 15 caracteres."
+      );
+      return;
+    }
+
+    if (!validarNombre(apellidoPaternoLimpio)) {
+      setMensaje(
+        "El apellido paterno debe contener solo letras y tener entre 2 y 15 caracteres."
+      );
+      return;
+    }
+
     if (
-      nuevoPracticante.password.length < 8
+      apellidoMaternoLimpio &&
+      !validarNombre(apellidoMaternoLimpio)
     ) {
       setMensaje(
-        "La contraseña temporal debe tener al menos 8 caracteres."
+        "El apellido materno debe contener solo letras y tener entre 2 y 15 caracteres."
+      );
+      return;
+    }
+
+    if (!validarCorreo(correoLimpio)) {
+      setMensaje(
+        "Escribe un correo valido y sin espacios."
+      );
+      return;
+    }
+
+    if (
+      !validarPassword(
+        nuevoPracticante.password
+      )
+    ) {
+      setMensaje(
+        "La contrasena temporal debe tener entre 8 y 20 caracteres e incluir mayuscula, minuscula y numero."
       );
       return;
     }
@@ -558,7 +643,23 @@ function AdminPanel({ usuario, onLogout }) {
       nuevoPracticante.confirmar_password
     ) {
       setMensaje(
-        "La contraseña y su confirmación no coinciden."
+        "La contrasena y su confirmacion no coinciden."
+      );
+      return;
+    }
+
+    if (!validarTelefono(telefonoLimpio)) {
+      setMensaje(
+        "El telefono debe contener exactamente 10 digitos."
+      );
+      return;
+    }
+
+    if (
+      !validarUniversidad(universidadLimpia)
+    ) {
+      setMensaje(
+        "La universidad debe tener entre 2 y 20 caracteres."
       );
       return;
     }
@@ -568,23 +669,67 @@ function AdminPanel({ usuario, onLogout }) {
       return;
     }
 
+    if (
+      !validarFechaISO(
+        nuevoPracticante.fecha_inicio
+      )
+    ) {
+      setMensaje(
+        "Selecciona una fecha de inicio valida."
+      );
+      return;
+    }
+
+    if (
+      nuevoPracticante.fecha_fin &&
+      !validarFechaISO(
+        nuevoPracticante.fecha_fin
+      )
+    ) {
+      setMensaje(
+        "Selecciona una fecha de fin valida."
+      );
+      return;
+    }
+
+    if (
+      nuevoPracticante.fecha_fin &&
+      nuevoPracticante.fecha_fin <
+        nuevoPracticante.fecha_inicio
+    ) {
+      setMensaje(
+        "La fecha de fin no puede ser anterior a la fecha de inicio."
+      );
+      return;
+    }
+
+    if (
+      !validarHorasRequeridas(
+        nuevoPracticante.horas_requeridas
+      )
+    ) {
+      setMensaje(
+        "Las horas requeridas deben estar entre 1 y 2000."
+      );
+      return;
+    }
+
     try {
       setGuardandoNuevoPracticante(true);
       setMensaje("");
 
       const payload = {
-        nombre: nuevoPracticante.nombre.trim(),
+        nombre: nombreLimpio,
         apellido_paterno:
-          nuevoPracticante.apellido_paterno.trim(),
+          apellidoPaternoLimpio,
         apellido_materno:
-          nuevoPracticante.apellido_materno.trim() || null,
-        correo:
-          nuevoPracticante.correo.trim().toLowerCase(),
+          apellidoMaternoLimpio || null,
+        correo: correoLimpio,
         password: nuevoPracticante.password,
         telefono:
-          nuevoPracticante.telefono.trim() || null,
+          telefonoLimpio || null,
         universidad:
-          nuevoPracticante.universidad.trim() || null,
+          universidadLimpia || null,
         id_carrera: Number(
           nuevoPracticante.id_carrera
         ),

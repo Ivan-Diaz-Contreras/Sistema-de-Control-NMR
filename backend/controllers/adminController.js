@@ -3,6 +3,16 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs");
 const registrarActividad = require("../utils/registrarActividad");
+const {
+    normalizarTexto,
+    validarNombre,
+    validarCorreo,
+    validarPassword,
+    validarTelefono,
+    validarUniversidad,
+    validarHorasRequeridas,
+    validarFechaISO
+} = require("../utils/validaciones");
 
 // ==========================================
 // OBTENER TODOS LOS PRACTICANTES
@@ -119,23 +129,79 @@ const crearPracticanteAdmin = async (req, res) => {
         });
     }
 
-    const correoLimpio = String(correo)
-        .trim()
-        .toLowerCase();
+    const nombreLimpio =
+        normalizarTexto(nombre);
 
-    const formatoCorreo =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const apellidoPaternoLimpio =
+        normalizarTexto(apellido_paterno);
 
-    if (!formatoCorreo.test(correoLimpio)) {
+    const apellidoMaternoLimpio =
+        normalizarTexto(apellido_materno);
+
+    const correoLimpio =
+        normalizarTexto(correo).toLowerCase();
+
+    const telefonoLimpio =
+        normalizarTexto(telefono);
+
+    const universidadLimpia =
+        normalizarTexto(universidad);
+
+    const passwordTexto =
+        String(password ?? "");
+
+    if (!validarNombre(nombreLimpio)) {
         return res.status(400).json({
-            mensaje: "El correo no tiene un formato válido"
+            mensaje:
+                "El nombre debe tener entre 2 y 15 caracteres y contener solo letras"
         });
     }
 
-    if (String(password).length < 8) {
+    if (
+        apellidoPaternoLimpio.length > 60 ||
+        !validarNombre(apellidoPaternoLimpio)
+    ) {
         return res.status(400).json({
             mensaje:
-                "La contraseña temporal debe tener al menos 8 caracteres"
+                "El apellido paterno debe contener solo letras y tener entre 2 y 15 caracteres"
+        });
+    }
+
+    if (
+        apellidoMaternoLimpio &&
+        !validarNombre(apellidoMaternoLimpio)
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "El apellido materno debe contener solo letras y tener entre 2 y 15 caracteres"
+        });
+    }
+
+    if (!validarCorreo(correoLimpio)) {
+        return res.status(400).json({
+            mensaje:
+                "El correo no tiene un formato valido"
+        });
+    }
+
+    if (!validarPassword(passwordTexto)) {
+        return res.status(400).json({
+            mensaje:
+                "La contrasena temporal debe tener entre 8 y 20 caracteres e incluir mayuscula, minuscula y numero"
+        });
+    }
+
+    if (!validarTelefono(telefonoLimpio)) {
+        return res.status(400).json({
+            mensaje:
+                "El telefono debe contener exactamente 10 digitos"
+        });
+    }
+
+    if (!validarUniversidad(universidadLimpia)) {
+        return res.status(400).json({
+            mensaje:
+                "La universidad debe tener entre 2 y 20 caracteres"
         });
     }
 
@@ -148,44 +214,36 @@ const crearPracticanteAdmin = async (req, res) => {
         idCarrera <= 0
     ) {
         return res.status(400).json({
-            mensaje: "La carrera seleccionada no es válida"
+            mensaje:
+                "La carrera seleccionada no es valida"
         });
     }
 
     if (
-        !Number.isFinite(horasRequeridasNumero) ||
-        horasRequeridasNumero <= 0
+        !validarHorasRequeridas(
+            horasRequeridasNumero
+        )
     ) {
         return res.status(400).json({
             mensaje:
-                "Las horas requeridas deben ser mayores a 0"
+                "Las horas requeridas deben estar entre 1 y 2000"
         });
     }
 
-    const validarFecha = (fecha) => {
-        if (!fecha) {
-            return false;
-        }
-
-        return /^\d{4}-\d{2}-\d{2}$/.test(
-            String(fecha)
-        );
-    };
-
-    if (!validarFecha(fecha_inicio)) {
+    if (!validarFechaISO(fecha_inicio)) {
         return res.status(400).json({
             mensaje:
-                "La fecha de inicio no es válida"
+                "La fecha de inicio no es valida"
         });
     }
 
     if (
         fecha_fin &&
-        !validarFecha(fecha_fin)
+        !validarFechaISO(fecha_fin)
     ) {
         return res.status(400).json({
             mensaje:
-                "La fecha de fin no es válida"
+                "La fecha de fin no es valida"
         });
     }
 
@@ -438,9 +496,9 @@ const crearPracticanteAdmin = async (req, res) => {
                                                     VALUES (?, ?, ?, ?, ?, ?, 1, 1)
                                                 `,
                                                 [
-                                                    nombre.trim(),
-                                                    apellido_paterno.trim(),
-                                                    apellido_materno?.trim() ||
+                                                    nombreLimpio,
+                                                    apellidoPaternoLimpio,
+                                                    apellidoMaternoLimpio ||
                                                         null,
                                                     correoLimpio,
                                                     passwordHash,
@@ -491,9 +549,9 @@ const crearPracticanteAdmin = async (req, res) => {
                                                             idUsuario,
                                                             idCarrera,
                                                             matriculaGenerada,
-                                                            telefono?.trim() ||
+                                                            telefonoLimpio ||
                                                                 null,
-                                                            universidad?.trim() ||
+                                                            universidadLimpia ||
                                                                 null,
                                                             fecha_inicio,
                                                             fecha_fin ||

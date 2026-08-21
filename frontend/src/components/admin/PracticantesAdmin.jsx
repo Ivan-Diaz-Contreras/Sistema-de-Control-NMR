@@ -1,4 +1,19 @@
+import {
+  Eye,
+  EyeOff,
+} from "lucide-react";
+
 import { useState } from "react";
+import {
+  normalizarTexto,
+  validarCorreo,
+  validarFechaISO,
+  validarHorasRequeridas,
+  validarNombre,
+  validarPassword,
+  validarTelefono,
+  validarUniversidad,
+} from "../../utils/validaciones";
 function PracticantesAdmin({
   abrirEdicionHorario,
   abrirEdicionRegistroHoras,
@@ -54,6 +69,172 @@ function PracticantesAdmin({
   setPracticanteSeleccionado,
   verPracticante,
 }) {
+
+  const [
+    erroresNuevoPracticante,
+    setErroresNuevoPracticante,
+  ] = useState({});
+
+  const validarCampoNuevo = (
+    nombreCampo,
+    datos = nuevoPracticante
+  ) => {
+    const valor = datos[nombreCampo];
+
+    switch (nombreCampo) {
+      case "nombre":
+        return validarNombre(valor)
+          ? ""
+          : "Escribe un nombre de 2 a 15 caracteres, usando solo letras.";
+
+      case "apellido_paterno":
+        return validarNombre(valor)
+          ? ""
+          : "Escribe un apellido paterno de 2 a 15 caracteres, usando solo letras.";
+
+      case "apellido_materno":
+        return !normalizarTexto(valor) ||
+          validarNombre(valor)
+          ? ""
+          : "El apellido materno solo puede contener letras.";
+
+      case "correo":
+        return validarCorreo(valor)
+          ? ""
+          : "Escribe un correo valido, por ejemplo usuario@correo.com.";
+
+      case "password":
+        return validarPassword(valor)
+          ? ""
+          : "Debe tener de 8 a 20 caracteres, mayuscula, minuscula y numero.";
+
+      case "confirmar_password":
+        return valor === datos.password &&
+          String(valor || "").length > 0
+          ? ""
+          : "Las contrasenas no coinciden.";
+
+      case "telefono":
+        return validarTelefono(valor)
+          ? ""
+          : "El telefono debe contener exactamente 10 digitos.";
+
+      case "universidad":
+        return validarUniversidad(valor)
+          ? ""
+          : "Ingresa una universidad valida.";
+
+      case "id_carrera":
+        return valor
+          ? ""
+          : "Selecciona una carrera.";
+
+      case "fecha_inicio":
+        return validarFechaISO(valor)
+          ? ""
+          : "Selecciona una fecha de inicio valida.";
+
+      case "fecha_fin":
+        if (
+          valor &&
+          !validarFechaISO(valor)
+        ) {
+          return "Selecciona una fecha de fin valida.";
+        }
+
+        return valor &&
+          datos.fecha_inicio &&
+          valor < datos.fecha_inicio
+          ? "La fecha de fin no puede ser anterior a la fecha de inicio."
+          : "";
+
+      case "horas_requeridas":
+        return validarHorasRequeridas(valor)
+          ? ""
+          : "Las horas deben estar entre 1 y 2000.";
+
+      default:
+        return "";
+    }
+  };
+
+  const validarFormularioNuevo = () => {
+    const campos = [
+      "nombre",
+      "apellido_paterno",
+      "apellido_materno",
+      "correo",
+      "password",
+      "confirmar_password",
+      "telefono",
+      "universidad",
+      "id_carrera",
+      "fecha_inicio",
+      "fecha_fin",
+      "horas_requeridas",
+    ];
+
+    const errores = {};
+
+    campos.forEach((campo) => {
+      const error = validarCampoNuevo(campo);
+
+      if (error) {
+        errores[campo] = error;
+      }
+    });
+
+    setErroresNuevoPracticante(errores);
+
+    return Object.keys(errores).length === 0;
+  };
+
+  const manejarCambioNuevo = (e) => {
+    const campo = e.target.name;
+
+    cambiarCampoNuevoPracticante(e);
+
+    setErroresNuevoPracticante(
+      (erroresActuales) => {
+        const nuevosErrores = {
+          ...erroresActuales,
+        };
+
+        delete nuevosErrores[campo];
+
+        if (campo === "password") {
+          delete nuevosErrores.confirmar_password;
+        }
+
+        return nuevosErrores;
+      }
+    );
+  };
+
+  const manejarBlurNuevo = (e) => {
+    const campo = e.target.name;
+    const error = validarCampoNuevo(campo);
+
+    setErroresNuevoPracticante(
+      (erroresActuales) => ({
+        ...erroresActuales,
+        [campo]: error,
+      })
+    );
+  };
+
+  const validarYGuardarNuevoPracticante = (
+    e
+  ) => {
+    e.preventDefault();
+
+    if (!validarFormularioNuevo()) {
+      return;
+    }
+
+    guardarNuevoPracticante(e);
+  };
+
   const [
     mostrarPasswordTemporal,
     setMostrarPasswordTemporal,
@@ -121,8 +302,10 @@ function PracticantesAdmin({
 
               {mostrandoFormularioNuevoPracticante && (
                 <form
-                  onSubmit={guardarNuevoPracticante}
+                  onSubmit={validarYGuardarNuevoPracticante}
                   className="admin-inline-form"
+
+                  noValidate
                 >
                   <div className="admin-form-header">
                     <div>
@@ -149,38 +332,65 @@ function PracticantesAdmin({
                       <input
                         name="nombre"
                         value={nuevoPracticante.nombre}
-                        onChange={
-                          cambiarCampoNuevoPracticante
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.nombre
+                            ? "input-invalid"
+                            : ""
                         }
-                        required
+                        minLength="2"
+                        maxLength="15"
                       />
+                      {erroresNuevoPracticante.nombre && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.nombre}
+                        </small>
+                      )}
                     </label>
 
                     <label>
                       Apellido paterno *
                       <input
                         name="apellido_paterno"
-                        value={
-                          nuevoPracticante.apellido_paterno
+                        value={nuevoPracticante.apellido_paterno}
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.apellido_paterno
+                            ? "input-invalid"
+                            : ""
                         }
-                        onChange={
-                          cambiarCampoNuevoPracticante
-                        }
-                        required
+                        minLength="2"
+                        maxLength="15"
                       />
+                      {erroresNuevoPracticante.apellido_paterno && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.apellido_paterno}
+                        </small>
+                      )}
                     </label>
 
                     <label>
                       Apellido materno
                       <input
                         name="apellido_materno"
-                        value={
-                          nuevoPracticante.apellido_materno
+                        value={nuevoPracticante.apellido_materno}
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.apellido_materno
+                            ? "input-invalid"
+                            : ""
                         }
-                        onChange={
-                          cambiarCampoNuevoPracticante
-                        }
+                        minLength="2"
+                        maxLength="15"
                       />
+                      {erroresNuevoPracticante.apellido_materno && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.apellido_materno}
+                        </small>
+                      )}
                     </label>
 
                     <label>
@@ -188,34 +398,78 @@ function PracticantesAdmin({
                       <input
                         type="email"
                         name="correo"
+                        maxLength="120"
                         value={nuevoPracticante.correo}
-                        onChange={
-                          cambiarCampoNuevoPracticante
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.correo
+                            ? "input-invalid"
+                            : ""
                         }
-                        required
                       />
+                      {erroresNuevoPracticante.correo && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.correo}
+                        </small>
+                      )}
                     </label>
 
                     <label>
-                      Contraseña temporal *
-                      <input
-                        type={
-                          mostrarPasswordTemporal
-                            ? "text"
-                            : "password"
-                        }
-                        name="password"
-                        minLength="8"
-                        value={nuevoPracticante.password}
-                        onChange={
-                          cambiarCampoNuevoPracticante
-                        }
-                        required
-                      />
+                      Contrase&ntilde;a temporal *
+                      <div className="password-input-wrapper">
+                        <input
+                          type={
+                            mostrarPasswordTemporal
+                              ? "text"
+                              : "password"
+                          }
+                          name="password"
+                          minLength="8"
+                          maxLength="20"
+                          value={nuevoPracticante.password}
+                          onChange={manejarCambioNuevo}
+                          onBlur={manejarBlurNuevo}
+                          className={
+                            erroresNuevoPracticante.password
+                              ? "input-invalid"
+                              : ""
+                          }
+                        />
+
+                        <button
+                          type="button"
+                          className="password-toggle-button"
+                          onClick={() =>
+                            setMostrarPasswordTemporal(
+                              (actual) => !actual
+                            )
+                          }
+                          aria-label="Mostrar u ocultar contrasena"
+                        >
+                          {mostrarPasswordTemporal ? (
+                            <EyeOff size={18} />
+                          ) : (
+                            <Eye size={18} />
+                          )}
+                        </button>
+                      </div>
+
+                      {erroresNuevoPracticante.password ? (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.password}
+                        </small>
+                      ) : (
+                        <small className="password-help">
+                          M&iacute;nimo 8 caracteres, con
+                          may&uacute;scula, min&uacute;scula
+                          y n&uacute;mero.
+                        </small>
+                      )}
                     </label>
 
                     <label>
-                      Confirmar contraseña *
+                      Confirmar contrase&ntilde;a *
                       <input
                         type={
                           mostrarPasswordTemporal
@@ -224,70 +478,83 @@ function PracticantesAdmin({
                         }
                         name="confirmar_password"
                         minLength="8"
+                        maxLength="20"
                         value={
                           nuevoPracticante.confirmar_password
                         }
-                        onChange={
-                          cambiarCampoNuevoPracticante
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.confirmar_password
+                            ? "input-invalid"
+                            : ""
                         }
-                        required
                       />
+                      {erroresNuevoPracticante.confirmar_password && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.confirmar_password}
+                        </small>
+                      )}
                     </label>
 
                     <label>
-                      <span>
-                        <input
-                          type="checkbox"
-                          checked={
-                            mostrarPasswordTemporal
-                          }
-                          onChange={(e) =>
-                            setMostrarPasswordTemporal(
-                              e.target.checked
-                            )
-                          }
-                        />{" "}
-                        Mostrar contraseña temporal
-                      </span>
-                    </label>
-
-
-
-                    <label>
-                      Teléfono
+                      Tel&eacute;fono
                       <input
+                        type="tel"
+                        inputMode="numeric"
                         name="telefono"
+                        maxLength="10"
+                        placeholder="10 digitos"
                         value={nuevoPracticante.telefono}
-                        onChange={
-                          cambiarCampoNuevoPracticante
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.telefono
+                            ? "input-invalid"
+                            : ""
                         }
                       />
+                      {erroresNuevoPracticante.telefono && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.telefono}
+                        </small>
+                      )}
                     </label>
 
                     <label>
                       Universidad
                       <input
                         name="universidad"
-                        value={
-                          nuevoPracticante.universidad
+                        value={nuevoPracticante.universidad}
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.universidad
+                            ? "input-invalid"
+                            : ""
                         }
-                        onChange={
-                          cambiarCampoNuevoPracticante
-                        }
+                        minLength="2"
+                        maxLength="20"
                       />
+                      {erroresNuevoPracticante.universidad && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.universidad}
+                        </small>
+                      )}
                     </label>
 
                     <label>
                       Carrera *
                       <select
                         name="id_carrera"
-                        value={
-                          nuevoPracticante.id_carrera
+                        value={nuevoPracticante.id_carrera}
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.id_carrera
+                            ? "input-invalid"
+                            : ""
                         }
-                        onChange={
-                          cambiarCampoNuevoPracticante
-                        }
-                        required
                       >
                         <option value="">
                           Selecciona una carrera
@@ -304,17 +571,19 @@ function PracticantesAdmin({
                           )
                           .map((carrera) => (
                             <option
-                              key={
-                                carrera.id_carrera
-                              }
-                              value={
-                                carrera.id_carrera
-                              }
+                              key={carrera.id_carrera}
+                              value={carrera.id_carrera}
                             >
                               {carrera.nombre}
                             </option>
                           ))}
                       </select>
+
+                      {erroresNuevoPracticante.id_carrera && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.id_carrera}
+                        </small>
+                      )}
                     </label>
 
                     <label>
@@ -322,14 +591,24 @@ function PracticantesAdmin({
                       <input
                         type="date"
                         name="fecha_inicio"
-                        value={
-                          nuevoPracticante.fecha_inicio
+                        max={
+                          nuevoPracticante.fecha_fin ||
+                          undefined
                         }
-                        onChange={
-                          cambiarCampoNuevoPracticante
+                        value={nuevoPracticante.fecha_inicio}
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.fecha_inicio
+                            ? "input-invalid"
+                            : ""
                         }
-                        required
                       />
+                      {erroresNuevoPracticante.fecha_inicio && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.fecha_inicio}
+                        </small>
+                      )}
                     </label>
 
                     <label>
@@ -337,13 +616,24 @@ function PracticantesAdmin({
                       <input
                         type="date"
                         name="fecha_fin"
-                        value={
-                          nuevoPracticante.fecha_fin
+                        min={
+                          nuevoPracticante.fecha_inicio ||
+                          undefined
                         }
-                        onChange={
-                          cambiarCampoNuevoPracticante
+                        value={nuevoPracticante.fecha_fin}
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.fecha_fin
+                            ? "input-invalid"
+                            : ""
                         }
                       />
+                      {erroresNuevoPracticante.fecha_fin && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.fecha_fin}
+                        </small>
+                      )}
                     </label>
 
                     <label>
@@ -351,16 +641,25 @@ function PracticantesAdmin({
                       <input
                         type="number"
                         min="1"
+                        max="2000"
                         step="0.01"
                         name="horas_requeridas"
                         value={
                           nuevoPracticante.horas_requeridas
                         }
-                        onChange={
-                          cambiarCampoNuevoPracticante
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.horas_requeridas
+                            ? "input-invalid"
+                            : ""
                         }
-                        required
                       />
+                      {erroresNuevoPracticante.horas_requeridas && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.horas_requeridas}
+                        </small>
+                      )}
                     </label>
                   </div>
 
