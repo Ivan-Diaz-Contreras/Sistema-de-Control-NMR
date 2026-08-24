@@ -9,6 +9,7 @@ const practicanteRoutes = require("./routes/practicanteRoutes");
 const asistenciaRoutes = require("./routes/asistenciaRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const bitacoraRoutes = require("./routes/bitacoraRoutes");
+const notificacionRoutes = require("./routes/notificacionRoutes");
 
 const app = express();
 const PORT = 3000;
@@ -44,6 +45,12 @@ app.use(
 
 // Administrador
 app.use("/api/admin", adminRoutes);
+
+// Notificaciones
+app.use(
+    "/api/notificaciones",
+    notificacionRoutes
+);
 
 // ==========================================
 // RUTA PRINCIPAL
