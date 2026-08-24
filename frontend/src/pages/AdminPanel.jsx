@@ -2519,6 +2519,8 @@ const formatearFechaHora = (fecha) => {
         <AdminTopbar
           usuario={usuario}
           titulo={obtenerTitulo()}
+          onLogout={onLogout}
+          setSeccion={setSeccion}
         />
 
         {mensaje && (
