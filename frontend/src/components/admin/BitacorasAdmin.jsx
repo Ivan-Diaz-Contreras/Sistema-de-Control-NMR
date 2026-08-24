@@ -1,4 +1,25 @@
 function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrirNuevaActividad, actividadInicial, actividadesBitacora, busquedaEntrega, cambiarCampoActividad, cambiarEstadoActividad, cargandoActividades, cargandoEntregas, cargarEntregasBitacoras, editandoActividad, eliminarActividadBitacora, entregasFiltradas, filtroEstadoBitacora, formActividad, formatearFecha, formatearFechaHora, guardandoActividad, guardarActividadBitacora, mostrandoFormularioActividad, practicantes, revisandoBitacora, revisarEntregaBitacora, setBusquedaEntrega, setEditandoActividad, setFiltroEstadoBitacora, setFormActividad, setMostrandoFormularioActividad}) {
+  const obtenerClaseEstadoBitacora = (estado) => {
+    const estadoNormalizado = String(
+      estado || "Pendiente"
+    )
+      .trim()
+      .toLowerCase();
+
+    if (
+      estadoNormalizado === "aprobada" ||
+      estadoNormalizado === "aceptada"
+    ) {
+      return "bitacora-status-approved";
+    }
+
+    if (estadoNormalizado === "rechazada") {
+      return "bitacora-status-rejected";
+    }
+
+    return "bitacora-status-pending";
+  };
+
   return (
           <>
             <section className="panel">
@@ -540,10 +561,17 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                   "1px solid #edf0f5",
                               }}
                             >
-                              <strong>
+                              <span
+                                className={[
+                                  "bitacora-status",
+                                  obtenerClaseEstadoBitacora(
+                                    entrega.estado
+                                  ),
+                                ].join(" ")}
+                              >
                                 {entrega.estado ||
                                   "Pendiente"}
-                              </strong>
+                              </span>
                             </td>
 
                             <td
