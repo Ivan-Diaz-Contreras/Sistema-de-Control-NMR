@@ -6,6 +6,7 @@ import {
 import axios from "axios";
 import "../App.css";
 import logoNMR from "../assets/logo-nmr.png";
+import ActividadDiariaPracticante from "../components/practicante/ActividadDiariaPracticante";
 import {
   User,
   Clock3,
@@ -19,6 +20,10 @@ import {
   ChevronDown,
   LogOut,
   CircleUserRound,
+  ClipboardPenLine,
+  LayoutDashboard,
+  ClipboardClock,
+  NotebookTabs,
 } from "lucide-react";
 
 const API_URL =
@@ -703,6 +708,38 @@ const abrirPdfBitacora = async (
   }
 };
 
+const obtenerClaseEstadoBitacoraPracticante = (
+  actividad
+) => {
+  if (
+    !actividad?.entregada &&
+    !actividad?.estado
+  ) {
+    return "bitacora-status-pending";
+  }
+
+  const estado = String(
+    actividad.estado_entrega ||
+      actividad.estado ||
+      "Pendiente"
+  )
+    .trim()
+    .toLowerCase();
+
+  if (
+    estado === "aprobada" ||
+    estado === "aceptada"
+  ) {
+    return "bitacora-status-approved";
+  }
+
+  if (estado === "rechazada") {
+    return "bitacora-status-rejected";
+  }
+
+  return "bitacora-status-pending";
+};
+
 const formatearFechaBitacora = (fecha) => {
   if (!fecha) {
     return "—";
@@ -868,7 +905,9 @@ const formatearFechaHoraBitacora = (fecha) => {
             }`}
             onClick={() => cambiarSeccion("dashboard")}
           >
-            <span>⌂</span>
+            <span className="nav-item-icon">
+              <LayoutDashboard size={18} />
+            </span>
             <span className="nav-item-text">
               Dashboard
             </span>
@@ -881,7 +920,9 @@ const formatearFechaHoraBitacora = (fecha) => {
             }`}
             onClick={() => cambiarSeccion("perfil")}
           >
-            <span>👤</span>
+            <span className="nav-item-icon">
+              <CircleUserRound size={18} />
+            </span>
             <span className="nav-item-text">
               Mi perfil
             </span>
@@ -894,7 +935,9 @@ const formatearFechaHoraBitacora = (fecha) => {
             }`}
             onClick={() => cambiarSeccion("asistencia")}
           >
-            <span>🕘</span>
+            <span className="nav-item-icon">
+              <ClipboardClock size={18} />
+            </span>
             <span className="nav-item-text">
               Asistencia
             </span>
@@ -907,11 +950,39 @@ const formatearFechaHoraBitacora = (fecha) => {
             }`}
             onClick={() => cambiarSeccion("horas")}
           >
-            <span>⏱️</span>
+            <span className="nav-item-icon">
+              <Clock3 size={18} />
+            </span>
             <span className="nav-item-text">
               Mis horas
             </span>
             {mostrarBadgeNotificacion("horas")}
+          </button>
+
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "actividad-diaria"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion(
+                "actividad-diaria"
+              )
+            }
+          >
+            <span className="nav-item-icon">
+              <ClipboardPenLine size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Actividad diaria
+            </span>
+
+            {mostrarBadgeNotificacion(
+              "actividad-diaria"
+            )}
           </button>
 
           <button
@@ -920,7 +991,9 @@ const formatearFechaHoraBitacora = (fecha) => {
             }`}
             onClick={() => cambiarSeccion("bitacoras")}
           >
-            <span>📋</span>
+            <span className="nav-item-icon">
+              <NotebookTabs size={18} />
+            </span>
             <span className="nav-item-text">
               Bitácoras
             </span>
@@ -930,7 +1003,7 @@ const formatearFechaHoraBitacora = (fecha) => {
         </nav>
 
         <button className="logout-button" onClick={onLogout}>
-          <span>↪</span>
+          <LogOut size={18} />
           Cerrar sesión
         </button>
       </aside>
@@ -949,6 +1022,8 @@ const formatearFechaHoraBitacora = (fecha) => {
                 ? "Asistencia"
                 : seccion === "horas"
                 ? "Mis horas"
+                : seccion === "actividad-diaria"
+                ? "Actividad diaria"
                 : seccion === "bitacoras"
                 ? "Bitácoras"
                 : "Evidencias"}
@@ -1808,6 +1883,14 @@ const formatearFechaHoraBitacora = (fecha) => {
           </>
         )}
 
+        {seccion === "actividad-diaria" && (
+          <ActividadDiariaPracticante
+            perfil={perfil}
+            usuario={usuario}
+            horario={horario}
+          />
+        )}
+
         {seccion === "bitacoras" && (
           <>
             <section className="panel">
@@ -1880,12 +1963,19 @@ const formatearFechaHoraBitacora = (fecha) => {
                             </h3>
                           </div>
 
-                          <strong>
+                          <span
+                            className={[
+                              "bitacora-status",
+                              obtenerClaseEstadoBitacoraPracticante(
+                                actividad
+                              ),
+                            ].join(" ")}
+                          >
                             {actividad.entregada
                               ? actividad.estado_entrega ||
-                                "Entregada"
+                                "Pendiente"
                               : "Pendiente de entrega"}
-                          </strong>
+                          </span>
                         </div>
 
                         <p>
@@ -2191,7 +2281,17 @@ const formatearFechaHoraBitacora = (fecha) => {
                                 "1px solid #edf0f5",
                             }}
                           >
-                            {bitacora.estado}
+                            <span
+                              className={[
+                                "bitacora-status",
+                                obtenerClaseEstadoBitacoraPracticante(
+                                  bitacora
+                                ),
+                              ].join(" ")}
+                            >
+                              {bitacora.estado ||
+                                "Pendiente"}
+                            </span>
                           </td>
 
                           <td

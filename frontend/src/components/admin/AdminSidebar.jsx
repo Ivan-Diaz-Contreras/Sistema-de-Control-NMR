@@ -1,6 +1,7 @@
 import {
   BarChart3,
   ClipboardClock,
+  ClipboardPenLine,
   GraduationCap,
   History,
   LayoutDashboard,
@@ -171,6 +172,33 @@ function AdminSidebar({
           </span>
 
           {mostrarBadge("asistencia")}
+        </button>
+
+        {/* ACTIVIDAD DIARIA */}
+        <button
+          type="button"
+          className={`nav-item ${
+            seccion === "actividad-diaria"
+              ? "active"
+              : ""
+          }`}
+          onClick={() =>
+            cambiarSeccion(
+              "actividad-diaria"
+            )
+          }
+        >
+          <span className="nav-item-icon">
+            <ClipboardPenLine size={18} />
+          </span>
+
+          <span className="nav-item-text">
+            Actividad diaria
+          </span>
+
+          {mostrarBadge(
+            "actividad-diaria"
+          )}
         </button>
 
         {/* BITÁCORAS */}

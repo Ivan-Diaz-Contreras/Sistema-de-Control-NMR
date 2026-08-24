@@ -2367,3 +2367,563 @@ button {
   background: #fdeaea;
   border-color: #efb9b9;
 }
+
+
+/* MODULO DE ACTIVIDAD DIARIA */
+
+.actividad-diaria-page {
+  display: grid;
+  gap: 20px;
+}
+
+.actividad-diaria-form-panel {
+  overflow: visible;
+}
+
+.actividad-diaria-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: #ffffff;
+  background: #182b4f;
+}
+
+.actividad-diaria-form-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.35fr) minmax(320px, 1fr);
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.actividad-diaria-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #41506a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.actividad-input-icon {
+  position: relative;
+}
+
+.actividad-input-icon svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  z-index: 1;
+  color: #66758c;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.actividad-input-icon input {
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 14px 11px 44px;
+  border: 1px solid #d8dee9;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #172033;
+  font: inherit;
+}
+
+.actividad-diaria-textarea-label {
+  position: relative;
+}
+
+.actividad-diaria-textarea-label textarea {
+  width: 100%;
+  min-height: 126px;
+  resize: vertical;
+  padding: 13px 14px 32px;
+  border: 1px solid #d8dee9;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #172033;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.actividad-input-icon input:focus,
+.actividad-diaria-textarea-label textarea:focus {
+  border-color: #315b9a;
+  outline: 3px solid rgba(49, 91, 154, 0.12);
+}
+
+.actividad-contador {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  color: #758196;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.actividad-mensaje {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.actividad-mensaje-error {
+  color: #9b2c2c;
+  background: #fdeaea;
+  border: 1px solid #efb9b9;
+}
+
+.actividad-mensaje-exito {
+  color: #27663b;
+  background: #e7f5eb;
+  border: 1px solid #b8ddc2;
+}
+
+.actividad-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.actividad-total {
+  padding: 7px 11px;
+  border-radius: 999px;
+  color: #315b9a;
+  background: #eaf0fa;
+  font-size: 13px;
+}
+
+.actividad-empty-state {
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #758196;
+  text-align: center;
+}
+
+.actividad-empty-state svg {
+  margin-bottom: 4px;
+  color: #315b9a;
+}
+
+.actividad-empty-state strong {
+  color: #172033;
+}
+
+.actividad-tabla-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.actividad-tabla {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.actividad-tabla th {
+  padding: 13px 14px;
+  border-bottom: 1px solid #d8dee9;
+  color: #41506a;
+  font-size: 13px;
+  text-align: left;
+}
+
+.actividad-tabla td {
+  padding: 15px 14px;
+  border-bottom: 1px solid #edf0f5;
+  vertical-align: top;
+}
+
+.actividad-descripcion-cell {
+  max-width: 650px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.actividad-acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.actividad-action-button {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  color: #315b9a;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.actividad-action-button:hover {
+  color: #ffffff;
+  background: #315b9a;
+  border-color: #315b9a;
+}
+
+.actividad-action-delete {
+  color: #a33b3b;
+}
+
+.actividad-action-delete:hover {
+  color: #ffffff;
+  background: #a33b3b;
+  border-color: #a33b3b;
+}
+
+@media (max-width: 780px) {
+  .actividad-diaria-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actividad-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .actividad-form-actions button {
+    width: 100%;
+  }
+}
+
+
+/* ADMINISTRACION DE ACTIVIDADES DIARIAS */
+
+.actividad-admin-page {
+  display: grid;
+  gap: 20px;
+}
+
+.actividad-admin-page .panel-header > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.actividad-admin-form {
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #d8dee9;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.actividad-admin-form-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 18px;
+  color: #182b4f;
+  font-size: 17px;
+}
+
+.actividad-admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.actividad-admin-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #41506a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.actividad-admin-form-grid input,
+.actividad-admin-form-grid textarea {
+  width: 100%;
+  min-height: 45px;
+  padding: 11px 12px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  color: #172033;
+  background: #ffffff;
+  font: inherit;
+}
+
+.actividad-admin-form-grid input:focus,
+.actividad-admin-form-grid textarea:focus {
+  border-color: #315b9a;
+  outline: 3px solid rgba(49, 91, 154, 0.12);
+}
+
+.actividad-admin-textarea {
+  position: relative;
+  grid-column: 1 / -1;
+}
+
+.actividad-admin-textarea textarea {
+  min-height: 120px;
+  resize: vertical;
+  padding-bottom: 30px;
+  line-height: 1.5;
+}
+
+.actividad-admin-textarea > span {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  color: #758196;
+  font-size: 12px;
+}
+
+.actividad-admin-filtros {
+  display: grid;
+  grid-template-columns:
+    minmax(280px, 2fr)
+    minmax(190px, 1fr)
+    minmax(170px, 1fr)
+    minmax(150px, 0.8fr)
+    minmax(150px, 0.8fr)
+    auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 22px;
+}
+
+.actividad-admin-filtros input,
+.actividad-admin-filtros select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  color: #172033;
+  background: #ffffff;
+  font: inherit;
+}
+
+.actividad-admin-search {
+  position: relative;
+}
+
+.actividad-admin-search svg {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  color: #758196;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.actividad-admin-search input {
+  padding-left: 42px;
+}
+
+.actividad-date-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.actividad-date-filter span {
+  color: #66758c;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.actividad-admin-results {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 12px;
+  color: #66758c;
+  font-size: 14px;
+}
+
+.actividad-admin-results > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.actividad-admin-table {
+  min-width: 1450px;
+}
+
+.actividad-admin-table th {
+  white-space: nowrap;
+}
+
+.actividad-admin-table td {
+  min-width: 120px;
+}
+
+.actividad-admin-table td:nth-child(7) {
+  min-width: 340px;
+}
+
+.actividad-admin-table td:last-child {
+  min-width: 100px;
+}
+
+@media (max-width: 1350px) {
+  .actividad-admin-filtros {
+    grid-template-columns:
+      repeat(3, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .actividad-admin-form-grid,
+  .actividad-admin-filtros {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .actividad-admin-textarea,
+  .actividad-admin-search {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 650px) {
+  .actividad-admin-form-grid,
+  .actividad-admin-filtros {
+    grid-template-columns: 1fr;
+  }
+
+  .actividad-admin-textarea,
+  .actividad-admin-search {
+    grid-column: auto;
+  }
+}
+
+
+/* CORRECCION DE DESBORDAMIENTO ACTIVIDAD DIARIA */
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app {
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+.main-content {
+  width: calc(100% - 250px);
+  max-width: calc(100vw - 250px);
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.main-content > *,
+.actividad-diaria-page,
+.actividad-admin-page,
+.actividad-diaria-page .panel,
+.actividad-admin-page .panel {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.actividad-diaria-form-grid,
+.actividad-admin-form-grid,
+.actividad-admin-filtros {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.actividad-diaria-form-grid > *,
+.actividad-admin-form-grid > *,
+.actividad-admin-filtros > * {
+  min-width: 0;
+}
+
+.actividad-admin-form-grid {
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+}
+
+.actividad-admin-filtros {
+  grid-template-columns:
+    minmax(0, 2fr)
+    minmax(0, 1fr)
+    minmax(0, 1fr)
+    minmax(0, 0.8fr)
+    minmax(0, 0.8fr)
+    auto;
+}
+
+.actividad-tabla-wrapper {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.actividad-tabla {
+  max-width: none;
+}
+
+@media (max-width: 1350px) {
+  .actividad-admin-filtros {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .main-content {
+    width: calc(100% - 210px);
+    max-width: calc(100vw - 210px);
+  }
+
+  .actividad-admin-form-grid,
+  .actividad-admin-filtros {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .actividad-admin-search,
+  .actividad-admin-textarea {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 650px) {
+  .main-content {
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  .actividad-diaria-form-grid,
+  .actividad-admin-form-grid,
+  .actividad-admin-filtros {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actividad-admin-search,
+  .actividad-admin-textarea {
+    grid-column: auto;
+  }
+}

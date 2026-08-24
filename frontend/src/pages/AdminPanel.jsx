@@ -16,6 +16,7 @@ import AdminTopbar from "../components/admin/AdminTopbar";
 import PracticantesAdmin from "../components/admin/PracticantesAdmin";
 import AsistenciaAdmin from "../components/admin/AsistenciaAdmin";
 import BitacorasAdmin from "../components/admin/BitacorasAdmin";
+import ActividadDiariaAdmin from "../components/admin/ActividadDiariaAdmin";
 import CarrerasAdmin from "../components/admin/CarrerasAdmin";
 import EstadisticasAdmin from "../components/admin/EstadisticasAdmin";
 import HistorialAdmin from "../components/admin/HistorialAdmin";
@@ -2355,6 +2356,8 @@ const formatearFechaHora = (fecha) => {
         return "Practicantes";
       case "asistencia":
         return "Asistencia";
+      case "actividad-diaria":
+        return "Actividad diaria";
       case "bitacoras":
         return "Bitácoras";
       case "carreras":
@@ -2646,6 +2649,14 @@ const formatearFechaHora = (fecha) => {
         {/* ==========================================
             BITÁCORAS
         ========================================== */}
+
+        {/* ==========================================
+            ACTIVIDAD DIARIA
+        ========================================== */}
+
+        {seccion === "actividad-diaria" && (
+          <ActividadDiariaAdmin />
+        )}
 
         {seccion === "bitacoras" && (
           <BitacorasAdmin {...adminProps} />
