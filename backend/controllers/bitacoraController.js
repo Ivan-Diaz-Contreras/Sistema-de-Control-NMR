@@ -1,6 +1,4 @@
 const db = require("../config/db");
-const path = require("path");
-const fs = require("fs");
 const registrarActividad = require("../utils/registrarActividad");
 
 // ==========================================
@@ -11,62 +9,12 @@ const subirBitacora = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
     const { id_actividad } = req.body || {};
 
-    const eliminarArchivoSubido = () => {
-        if (req.file?.path && fs.existsSync(req.file.path)) {
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (error) {
-                console.error(
-                    "Error eliminando archivo subido:",
-                    error
-                );
-            }
-        }
-    };
-
-    const eliminarArchivoGuardado = (nombreArchivo) => {
-        if (!nombreArchivo) {
-            return;
-        }
-
-        const carpetaBitacoras = path.resolve(
-            __dirname,
-            "../uploads/bitacoras"
-        );
-
-        const rutaSegura = path.resolve(
-            carpetaBitacoras,
-            path.basename(nombreArchivo)
-        );
-
-        if (!rutaSegura.startsWith(carpetaBitacoras)) {
-            console.error(
-                "Ruta de archivo inválida:",
-                nombreArchivo
-            );
-            return;
-        }
-
-        if (fs.existsSync(rutaSegura)) {
-            try {
-                fs.unlinkSync(rutaSegura);
-            } catch (error) {
-                console.error(
-                    "Error eliminando PDF anterior:",
-                    error
-                );
-            }
-        }
-    };
-
     if (
         id_actividad === undefined ||
         id_actividad === null ||
         id_actividad === "" ||
         !req.file
     ) {
-        eliminarArchivoSubido();
-
         return res.status(400).json({
             mensaje:
                 "La actividad de bitácora y el archivo PDF son obligatorios"
@@ -79,11 +27,19 @@ const subirBitacora = (req, res) => {
         !Number.isInteger(idActividad) ||
         idActividad <= 0
     ) {
-        eliminarArchivoSubido();
-
         return res.status(400).json({
             mensaje:
                 "El id de la actividad de bitácora es inválido"
+        });
+    }
+
+    if (
+        !req.file.buffer ||
+        req.file.buffer.length === 0
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "El archivo PDF recibido está vacío"
         });
     }
 
@@ -101,8 +57,6 @@ const subirBitacora = (req, res) => {
                     errorPracticante
                 );
 
-                eliminarArchivoSubido();
-
                 return res.status(500).json({
                     mensaje:
                         "Error al consultar el practicante"
@@ -110,8 +64,6 @@ const subirBitacora = (req, res) => {
             }
 
             if (resultadosPracticante.length === 0) {
-                eliminarArchivoSubido();
-
                 return res.status(404).json({
                     mensaje:
                         "Practicante no encontrado"
@@ -146,8 +98,6 @@ const subirBitacora = (req, res) => {
                             errorActividad
                         );
 
-                        eliminarArchivoSubido();
-
                         return res.status(500).json({
                             mensaje:
                                 "Error al consultar la actividad de bitácora"
@@ -155,8 +105,6 @@ const subirBitacora = (req, res) => {
                     }
 
                     if (resultadosActividad.length === 0) {
-                        eliminarArchivoSubido();
-
                         return res.status(404).json({
                             mensaje:
                                 "Actividad de bitácora no encontrada"
@@ -167,8 +115,6 @@ const subirBitacora = (req, res) => {
                         resultadosActividad[0];
 
                     if (Number(actividad.activa) !== 1) {
-                        eliminarArchivoSubido();
-
                         return res.status(400).json({
                             mensaje:
                                 "La actividad de bitácora se encuentra desactivada"
@@ -182,8 +128,7 @@ const subirBitacora = (req, res) => {
                         SELECT
                             id_bitacora,
                             estado,
-                            nombre_archivo,
-                            ruta_archivo
+                            nombre_archivo
                         FROM bitacoras
                         WHERE id_practicante = ?
                           AND (
@@ -213,8 +158,6 @@ const subirBitacora = (req, res) => {
                                     errorExistente
                                 );
 
-                                eliminarArchivoSubido();
-
                                 return res.status(500).json({
                                     mensaje:
                                         "Error al verificar la entrega de la bitácora"
@@ -231,8 +174,6 @@ const subirBitacora = (req, res) => {
                                     bitacoraActual.estado !==
                                     "Rechazada"
                                 ) {
-                                    eliminarArchivoSubido();
-
                                     return res.status(409).json({
                                         mensaje:
                                             "La bitácora ya fue entregada y solo puede reemplazarse cuando está rechazada"
@@ -247,7 +188,8 @@ const subirBitacora = (req, res) => {
                                         fecha_inicio = ?,
                                         fecha_fin = ?,
                                         nombre_archivo = ?,
-                                        ruta_archivo = ?,
+                                        archivo_pdf = ?,
+                                        ruta_archivo = '',
                                         estado = 'Pendiente',
                                         observaciones = NULL,
                                         fecha_envio = NOW(),
@@ -264,7 +206,7 @@ const subirBitacora = (req, res) => {
                                         actividad.fecha_inicio,
                                         actividad.fecha_fin,
                                         req.file.originalname,
-                                        req.file.filename,
+                                        req.file.buffer,
                                         bitacoraActual.id_bitacora
                                     ],
                                     (
@@ -276,17 +218,11 @@ const subirBitacora = (req, res) => {
                                                 errorReemplazar
                                             );
 
-                                            eliminarArchivoSubido();
-
                                             return res.status(500).json({
                                                 mensaje:
                                                     "Error al reemplazar la bitácora rechazada"
                                             });
                                         }
-
-                                        eliminarArchivoGuardado(
-                                            bitacoraActual.ruta_archivo
-                                        );
 
                                         registrarActividad(
                                             idUsuario,
@@ -322,12 +258,13 @@ const subirBitacora = (req, res) => {
                                     fecha_inicio,
                                     fecha_fin,
                                     nombre_archivo,
+                                    archivo_pdf,
                                     ruta_archivo,
                                     estado,
                                     fecha_envio
                                 )
                                 VALUES (
-                                    ?, ?, ?, ?, ?, ?, ?,
+                                    ?, ?, ?, ?, ?, ?, ?, '',
                                     'Pendiente',
                                     NOW()
                                 )
@@ -342,7 +279,7 @@ const subirBitacora = (req, res) => {
                                     actividad.fecha_inicio,
                                     actividad.fecha_fin,
                                     req.file.originalname,
-                                    req.file.filename
+                                    req.file.buffer
                                 ],
                                 (
                                     errorInsert,
@@ -353,8 +290,6 @@ const subirBitacora = (req, res) => {
                                             "Error registrando bitácora:",
                                             errorInsert
                                         );
-
-                                        eliminarArchivoSubido();
 
                                         return res.status(500).json({
                                             mensaje:
@@ -512,7 +447,6 @@ const obtenerBitacoras = (req, res) => {
             b.fecha_inicio,
             b.fecha_fin,
             b.nombre_archivo,
-            b.ruta_archivo,
             b.estado,
             b.observaciones,
             b.fecha_envio,
@@ -574,13 +508,14 @@ const obtenerArchivoBitacora = (req, res) => {
 
     const sql = `
         SELECT
-            b.ruta_archivo,
+            b.archivo_pdf,
             b.nombre_archivo
         FROM bitacoras b
         INNER JOIN practicantes p
             ON b.id_practicante = p.id_practicante
         WHERE b.id_bitacora = ?
           AND p.id_usuario = ?
+        LIMIT 1
     `;
 
     db.query(
@@ -608,18 +543,19 @@ const obtenerArchivoBitacora = (req, res) => {
 
             const bitacora = resultados[0];
 
-            const rutaCompleta = path.join(
-                __dirname,
-                "../uploads/bitacoras",
-                bitacora.ruta_archivo
-            );
-
-            if (!fs.existsSync(rutaCompleta)) {
+            if (
+                !bitacora.archivo_pdf ||
+                bitacora.archivo_pdf.length === 0
+            ) {
                 return res.status(404).json({
                     mensaje:
                         "Archivo PDF no encontrado"
                 });
             }
+
+            const nombreSeguro = String(
+                bitacora.nombre_archivo || "bitacora.pdf"
+            ).replace(/["\r\n]/g, "");
 
             res.setHeader(
                 "Content-Type",
@@ -628,10 +564,17 @@ const obtenerArchivoBitacora = (req, res) => {
 
             res.setHeader(
                 "Content-Disposition",
-                `inline; filename="${bitacora.nombre_archivo}"`
+                `inline; filename="${nombreSeguro}"`
             );
 
-            return res.sendFile(rutaCompleta);
+            res.setHeader(
+                "Content-Length",
+                bitacora.archivo_pdf.length
+            );
+
+            return res.status(200).send(
+                bitacora.archivo_pdf
+            );
         }
     );
 };

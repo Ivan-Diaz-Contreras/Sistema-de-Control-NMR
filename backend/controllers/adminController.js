@@ -1,7 +1,5 @@
 const db = require("../config/db");
 const bcrypt = require("bcrypt");
-const path = require("path");
-const fs = require("fs");
 const registrarActividad = require("../utils/registrarActividad");
 const {
     normalizarTexto,
@@ -1651,7 +1649,6 @@ const obtenerBitacorasPracticante = (req, res) => {
             b.fecha_inicio,
             b.fecha_fin,
             b.nombre_archivo,
-            b.ruta_archivo,
             b.estado,
             b.observaciones,
             b.fecha_envio,
@@ -1800,10 +1797,11 @@ const obtenerArchivoBitacoraAdmin = (req, res) => {
 
     const sql = `
         SELECT
-            ruta_archivo,
+            archivo_pdf,
             nombre_archivo
         FROM bitacoras
         WHERE id_bitacora = ?
+        LIMIT 1
     `;
 
     db.query(sql, [id], (error, resultados) => {
@@ -1826,17 +1824,18 @@ const obtenerArchivoBitacoraAdmin = (req, res) => {
 
         const bitacora = resultados[0];
 
-        const rutaCompleta = path.join(
-            __dirname,
-            "../uploads/bitacoras",
-            bitacora.ruta_archivo
-        );
-
-        if (!fs.existsSync(rutaCompleta)) {
+        if (
+            !bitacora.archivo_pdf ||
+            bitacora.archivo_pdf.length === 0
+        ) {
             return res.status(404).json({
                 mensaje: "Archivo PDF no encontrado"
             });
         }
+
+        const nombreSeguro = String(
+            bitacora.nombre_archivo || "bitacora.pdf"
+        ).replace(/["\r\n]/g, "");
 
         res.setHeader(
             "Content-Type",
@@ -1845,10 +1844,17 @@ const obtenerArchivoBitacoraAdmin = (req, res) => {
 
         res.setHeader(
             "Content-Disposition",
-            `inline; filename="${bitacora.nombre_archivo}"`
+            `inline; filename="${nombreSeguro}"`
         );
 
-        return res.sendFile(rutaCompleta);
+        res.setHeader(
+            "Content-Length",
+            bitacora.archivo_pdf.length
+        );
+
+        return res.status(200).send(
+            bitacora.archivo_pdf
+        );
     });
 };
 
@@ -3403,45 +3409,6 @@ const eliminarActividadBitacora = (req, res) => {
         });
     }
 
-    const carpetaBitacoras = path.resolve(
-        __dirname,
-        "../uploads/bitacoras"
-    );
-
-    const eliminarArchivoSeguro = (nombreArchivo) => {
-        if (!nombreArchivo) {
-            return true;
-        }
-
-        const rutaArchivo = path.resolve(
-            carpetaBitacoras,
-            path.basename(nombreArchivo)
-        );
-
-        if (!rutaArchivo.startsWith(carpetaBitacoras)) {
-            console.error(
-                "Se evitó eliminar una ruta fuera de uploads/bitacoras:",
-                nombreArchivo
-            );
-            return false;
-        }
-
-        if (!fs.existsSync(rutaArchivo)) {
-            return true;
-        }
-
-        try {
-            fs.unlinkSync(rutaArchivo);
-            return true;
-        } catch (error) {
-            console.error(
-                "Error eliminando PDF de bitácora:",
-                error
-            );
-            return false;
-        }
-    };
-
     db.getConnection((errorConexion, connection) => {
         if (errorConexion) {
             console.error(
@@ -3515,9 +3482,7 @@ const eliminarActividadBitacora = (req, res) => {
 
                         connection.query(
                             `
-                                SELECT
-                                    id_bitacora,
-                                    ruta_archivo
+                                SELECT COUNT(*) AS total
                                 FROM bitacoras
                                 WHERE id_actividad = ?
                             `,
@@ -3533,6 +3498,12 @@ const eliminarActividadBitacora = (req, res) => {
                                         errorBitacoras
                                     );
                                 }
+
+                                const totalBitacoras =
+                                    Number(
+                                        bitacorasResultado[0]
+                                            ?.total || 0
+                                    );
 
                                 connection.query(
                                     `
@@ -3595,52 +3566,19 @@ const eliminarActividadBitacora = (req, res) => {
 
                                                         connection.release();
 
-                                                        let archivosEliminados =
-                                                            0;
-
-                                                        let archivosConError =
-                                                            0;
-
-                                                        bitacorasResultado.forEach(
-                                                            (
-                                                                bitacora
-                                                            ) => {
-                                                                const eliminado =
-                                                                    eliminarArchivoSeguro(
-                                                                        bitacora.ruta_archivo
-                                                                    );
-
-                                                                if (
-                                                                    eliminado
-                                                                ) {
-                                                                    archivosEliminados +=
-                                                                        1;
-                                                                } else {
-                                                                    archivosConError +=
-                                                                        1;
-                                                                }
-                                                            }
-                                                        );
-
                                                         registrarActividad(
                                                             idUsuarioAdmin,
                                                             "ELIMINAR_ACTIVIDAD_BITACORA",
-                                                            `El administrador eliminó la actividad de bitácora ${idActividad} junto con ${bitacorasResultado.length} entrega(s) asociada(s)`
+                                                            `El administrador eliminó la actividad de bitácora ${idActividad} junto con ${totalBitacoras} entrega(s) asociada(s)`
                                                         );
 
                                                         return res
                                                             .status(200)
                                                             .json({
                                                                 mensaje:
-                                                                    archivosConError > 0
-                                                                        ? "Actividad y entregas eliminadas. Algunos archivos físicos no pudieron eliminarse; revisa la consola del servidor."
-                                                                        : "Actividad, entregas y archivos PDF eliminados correctamente",
+                                                                    "Actividad y entregas PDF eliminadas correctamente",
                                                                 bitacoras_eliminadas:
-                                                                    bitacorasResultado.length,
-                                                                archivos_eliminados:
-                                                                    archivosEliminados,
-                                                                archivos_con_error:
-                                                                    archivosConError
+                                                                    totalBitacoras
                                                             });
                                                     }
                                                 );
