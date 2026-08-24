@@ -1724,68 +1724,188 @@ const revisarBitacora = (req, res) => {
         });
     }
 
-    const sql = `
-        UPDATE bitacoras
-        SET
-            estado = ?,
-            observaciones = ?,
-            fecha_revision = NOW()
-        WHERE id_bitacora = ?
+    // ==========================================
+    // OBTENER AL PRACTICANTE DUEÑO DE LA BITÁCORA
+    // ==========================================
+
+    const sqlBuscarBitacora = `
+        SELECT
+            b.id_bitacora,
+            b.numero_semana,
+            b.nombre_archivo,
+            p.id_usuario
+        FROM bitacoras b
+        INNER JOIN practicantes p
+            ON b.id_practicante = p.id_practicante
+        WHERE b.id_bitacora = ?
+        LIMIT 1
     `;
 
     db.query(
-        sql,
-        [
-            estado,
-            observaciones?.trim() || null,
-            id
-        ],
-        (error, resultado) => {
-            if (error) {
+        sqlBuscarBitacora,
+        [id],
+        (errorBuscar, resultadosBitacora) => {
+            if (errorBuscar) {
                 console.error(
-                    "Error revisando bitácora:",
-                    error
+                    "Error consultando bitácora para revisión:",
+                    errorBuscar
                 );
 
                 return res.status(500).json({
-                    mensaje: "Error al revisar la bitácora"
+                    mensaje:
+                        "Error al consultar la bitácora"
                 });
             }
 
-            if (resultado.affectedRows === 0) {
+            if (resultadosBitacora.length === 0) {
                 return res.status(404).json({
                     mensaje: "Bitácora no encontrada"
                 });
             }
 
-            const accionRevision =
-    estado === "Aprobada"
-        ? "aprobó"
-        : "rechazó";
+            const bitacora =
+                resultadosBitacora[0];
 
-            let descripcionActividad =
-                `El administrador ${accionRevision} la bitácora ${id}`;
-            if (
-                estado === "Rechazada" &&
-                observaciones?.trim()
-            ) {
-                descripcionActividad +=
-                    `. Observaciones: ${observaciones.trim()}`;
-            }
+            // ==========================================
+            // ACTUALIZAR ESTADO DE LA BITÁCORA
+            // ==========================================
 
-            registrarActividad(
-                idUsuario,
-                "REVISAR_BITACORA",
-                descripcionActividad
+            const sqlActualizar = `
+                UPDATE bitacoras
+                SET
+                    estado = ?,
+                    observaciones = ?,
+                    fecha_revision = NOW()
+                WHERE id_bitacora = ?
+            `;
+
+            db.query(
+                sqlActualizar,
+                [
+                    estado,
+                    observaciones?.trim() || null,
+                    id
+                ],
+                (errorActualizar, resultadoActualizar) => {
+                    if (errorActualizar) {
+                        console.error(
+                            "Error revisando bitácora:",
+                            errorActualizar
+                        );
+
+                        return res.status(500).json({
+                            mensaje:
+                                "Error al revisar la bitácora"
+                        });
+                    }
+
+                    if (
+                        resultadoActualizar.affectedRows === 0
+                    ) {
+                        return res.status(404).json({
+                            mensaje:
+                                "Bitácora no encontrada"
+                        });
+                    }
+
+                    // ==========================================
+                    // REGISTRAR ACTIVIDAD DEL ADMINISTRADOR
+                    // ==========================================
+
+                    const accionRevision =
+                        estado === "Aprobada"
+                            ? "aprobó"
+                            : "rechazó";
+
+                    let descripcionActividad =
+                        `El administrador ${accionRevision} la bitácora ${id}`;
+
+                    if (
+                        estado === "Rechazada" &&
+                        observaciones?.trim()
+                    ) {
+                        descripcionActividad +=
+                            `. Observaciones: ${observaciones.trim()}`;
+                    }
+
+                    registrarActividad(
+                        idUsuario,
+                        "REVISAR_BITACORA",
+                        descripcionActividad
+                    );
+
+                    // ==========================================
+                    // CREAR NOTIFICACIÓN PARA EL PRACTICANTE
+                    // ==========================================
+
+                    const tipoNotificacion =
+                        estado === "Aprobada"
+                            ? "BITACORA_APROBADA"
+                            : "BITACORA_RECHAZADA";
+
+                    const tituloNotificacion =
+                        estado === "Aprobada"
+                            ? "Bitácora aprobada"
+                            : "Bitácora rechazada";
+
+                    let mensajeNotificacion =
+                        `Tu bitácora de la semana ${bitacora.numero_semana} fue ${estado.toLowerCase()}.`;
+
+                    if (
+                        estado === "Rechazada" &&
+                        observaciones?.trim()
+                    ) {
+                        mensajeNotificacion +=
+                            ` Motivo: ${observaciones.trim()}`;
+                    }
+
+                    const sqlNotificacion = `
+                        INSERT INTO notificaciones (
+                            id_usuario,
+                            seccion,
+                            tipo,
+                            titulo,
+                            mensaje
+                        )
+                        VALUES (?, 'bitacoras', ?, ?, ?)
+                    `;
+
+                    db.query(
+                        sqlNotificacion,
+                        [
+                            bitacora.id_usuario,
+                            tipoNotificacion,
+                            tituloNotificacion,
+                            mensajeNotificacion
+                        ],
+                        (
+                            errorNotificacion,
+                            resultadoNotificacion
+                        ) => {
+                            if (errorNotificacion) {
+                                console.error(
+                                    "Error creando notificación para el practicante:",
+                                    errorNotificacion
+                                );
+                            } else {
+                                console.log(
+                                    `Notificación ${tipoNotificacion} creada para usuario ${bitacora.id_usuario}. Filas:`,
+                                    resultadoNotificacion.affectedRows
+                                );
+                            }
+
+                            return res.status(200).json({
+                                mensaje:
+                                    `Bitácora ${estado.toLowerCase()} correctamente`
+                            });
+                        }
+                    );
+                }
             );
-
-            return res.status(200).json({
-                mensaje:
-                    `Bitácora ${estado.toLowerCase()} correctamente`
-            });
         }
     );
 };
+
 
 // ==========================================
 // OBTENER ARCHIVO PDF DE UNA BITÁCORA

@@ -183,10 +183,82 @@ function AdminPanel({ usuario, onLogout }) {
   const [busquedaHistorial, setBusquedaHistorial] = useState("");
   const [filtroAccionHistorial, setFiltroAccionHistorial] = useState("");
 
+  // ==========================================
+  // NOTIFICACIONES DEL ADMINISTRADOR
+  // ==========================================
+
+  const [notificaciones, setNotificaciones] = useState({});
+
   const token = localStorage.getItem("token");
 
   const headers = {
     Authorization: `Bearer ${token}`,
+  };
+
+  // ==========================================
+  // CARGAR RESUMEN DE NOTIFICACIONES
+  // ==========================================
+
+  const cargarResumenNotificaciones = async () => {
+    try {
+      const response = await axios.get(
+        `${API}/notificaciones/resumen`,
+        { headers }
+      );
+
+      setNotificaciones(
+        response.data.secciones || {}
+      );
+    } catch (error) {
+      console.error(
+        "Error cargando resumen de notificaciones:",
+        error
+      );
+
+      setNotificaciones({});
+    }
+  };
+
+  // ==========================================
+  // MARCAR NOTIFICACIONES DE UNA SECCIÓN
+  // COMO LEÍDAS
+  // ==========================================
+
+  const marcarSeccionComoLeida = async (
+    nombreSeccion
+  ) => {
+    const cantidadActual = Number(
+      notificaciones?.[nombreSeccion] || 0
+    );
+
+    if (cantidadActual <= 0) {
+      return;
+    }
+
+    try {
+      await axios.put(
+        `${API}/notificaciones/seccion/${encodeURIComponent(
+          nombreSeccion
+        )}/leer`,
+        {},
+        { headers }
+      );
+
+      setNotificaciones((actual) => {
+        const actualizado = {
+          ...actual,
+        };
+
+        delete actualizado[nombreSeccion];
+
+        return actualizado;
+      });
+    } catch (error) {
+      console.error(
+        `Error marcando notificaciones de ${nombreSeccion} como leídas:`,
+        error
+      );
+    }
   };
 
   // ==========================================
@@ -426,6 +498,7 @@ function AdminPanel({ usuario, onLogout }) {
     cargarEstadisticas();
     cargarCarreras();
     cargarPracticantes();
+    cargarResumenNotificaciones();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -2509,6 +2582,8 @@ const formatearFechaHora = (fecha) => {
         cargarEntregasBitacoras={cargarEntregasBitacoras}
         cargarCarreras={cargarCarreras}
         cargarHistorial={cargarHistorial}
+        notificaciones={notificaciones}
+        marcarSeccionComoLeida={marcarSeccionComoLeida}
       />
 
       {/* ==========================================

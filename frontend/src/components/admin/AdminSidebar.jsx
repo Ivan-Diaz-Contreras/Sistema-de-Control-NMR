@@ -7,7 +7,7 @@ import {
   LogOut,
   NotebookTabs,
   Users,
-  ShieldCheck
+  ShieldCheck,
 } from "lucide-react";
 
 import logoNMR from "../../assets/logo-nmr.png";
@@ -21,7 +21,65 @@ function AdminSidebar({
   cargarEntregasBitacoras,
   cargarCarreras,
   cargarHistorial,
+  notificaciones = {},
+  marcarSeccionComoLeida,
 }) {
+  // ==========================================
+  // OBTENER CANTIDAD DE NOTIFICACIONES
+  // ==========================================
+
+  const obtenerCantidad = (nombreSeccion) => {
+    return Number(
+      notificaciones?.[nombreSeccion] || 0
+    );
+  };
+
+  // ==========================================
+  // BADGE DE NOTIFICACIONES
+  // ==========================================
+
+  const mostrarBadge = (nombreSeccion) => {
+    const cantidad =
+      obtenerCantidad(nombreSeccion);
+
+    if (cantidad <= 0) {
+      return null;
+    }
+
+    return (
+      <span
+        className={`nav-badge nav-badge-${nombreSeccion}`}
+        aria-label={`${cantidad} notificaciones nuevas`}
+      >
+        {cantidad > 99 ? "99+" : cantidad}
+      </span>
+    );
+  };
+
+  // ==========================================
+  // CAMBIAR SECCIÓN
+  // ==========================================
+
+  const cambiarSeccion = async (
+    nombreSeccion,
+    callback
+  ) => {
+    setSeccion(nombreSeccion);
+
+    if (typeof callback === "function") {
+      callback();
+    }
+
+    if (
+      typeof marcarSeccionComoLeida ===
+      "function"
+    ) {
+      await marcarSeccionComoLeida(
+        nombreSeccion
+      );
+    }
+  };
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -35,6 +93,7 @@ function AdminSidebar({
 
         <div>
           <h1>NMR</h1>
+
           <span>
             Control de Pr&aacute;cticas
           </span>
@@ -42,137 +101,204 @@ function AdminSidebar({
       </div>
 
       <nav className="navigation">
+        {/* DASHBOARD */}
         <button
-          className={
-            "nav-item " +
-            (seccion === "dashboard"
+          type="button"
+          className={`nav-item ${
+            seccion === "dashboard"
               ? "active"
-              : "")
+              : ""
+          }`}
+          onClick={() =>
+            cambiarSeccion("dashboard")
           }
-          onClick={() => setSeccion("dashboard")}
         >
-          <span>
+          <span className="nav-item-icon">
             <LayoutDashboard size={18} />
           </span>
-          Dashboard
+
+          <span className="nav-item-text">
+            Dashboard
+          </span>
+
+          {mostrarBadge("dashboard")}
         </button>
 
+        {/* PRACTICANTES */}
         <button
-          className={
-            "nav-item " +
-            (seccion === "practicantes"
+          type="button"
+          className={`nav-item ${
+            seccion === "practicantes"
               ? "active"
-              : "")
-          }
+              : ""
+          }`}
           onClick={() =>
-            setSeccion("practicantes")
+            cambiarSeccion("practicantes")
           }
         >
-          <span>
+          <span className="nav-item-icon">
             <Users size={18} />
           </span>
-          Practicantes
+
+          <span className="nav-item-text">
+            Practicantes
+          </span>
+
+          {mostrarBadge("practicantes")}
         </button>
 
+        {/* ASISTENCIA */}
         <button
-          className={
-            "nav-item " +
-            (seccion === "asistencia"
+          type="button"
+          className={`nav-item ${
+            seccion === "asistencia"
               ? "active"
-              : "")
+              : ""
+          }`}
+          onClick={() =>
+            cambiarSeccion(
+              "asistencia",
+              cargarAsistencias
+            )
           }
-          onClick={() => {
-            setSeccion("asistencia");
-            cargarAsistencias();
-          }}
         >
-          <span>
+          <span className="nav-item-icon">
             <ClipboardClock size={18} />
           </span>
-          Asistencia
+
+          <span className="nav-item-text">
+            Asistencia
+          </span>
+
+          {mostrarBadge("asistencia")}
         </button>
 
+        {/* BITÁCORAS */}
         <button
-          className={
-            "nav-item " +
-            (seccion === "bitacoras"
+          type="button"
+          className={`nav-item ${
+            seccion === "bitacoras"
               ? "active"
-              : "")
+              : ""
+          }`}
+          onClick={() =>
+            cambiarSeccion(
+              "bitacoras",
+              () => {
+                cargarActividadesBitacora();
+                cargarEntregasBitacoras();
+              }
+            )
           }
-          onClick={() => {
-            setSeccion("bitacoras");
-            cargarActividadesBitacora();
-            cargarEntregasBitacoras();
-          }}
         >
-          <span>
+          <span className="nav-item-icon">
             <NotebookTabs size={18} />
           </span>
-          Bit&aacute;coras
+
+          <span className="nav-item-text">
+            Bit&aacute;coras
+          </span>
+
+          {mostrarBadge("bitacoras")}
         </button>
 
+        {/* CARRERAS */}
         <button
-          className={
-            "nav-item " +
-            (seccion === "carreras"
+          type="button"
+          className={`nav-item ${
+            seccion === "carreras"
               ? "active"
-              : "")
+              : ""
+          }`}
+          onClick={() =>
+            cambiarSeccion(
+              "carreras",
+              cargarCarreras
+            )
           }
-          onClick={() => {
-            setSeccion("carreras");
-            cargarCarreras();
-          }}
         >
-          <span>
+          <span className="nav-item-icon">
             <GraduationCap size={18} />
           </span>
-          Carreras
+
+          <span className="nav-item-text">
+            Carreras
+          </span>
+
+          {mostrarBadge("carreras")}
         </button>
 
+        {/* ESTADÍSTICAS */}
         <button
-          className={
-            "nav-item " +
-            (seccion === "estadisticas"
+          type="button"
+          className={`nav-item ${
+            seccion === "estadisticas"
               ? "active"
-              : "")
-          }
+              : ""
+          }`}
           onClick={() =>
-            setSeccion("estadisticas")
+            cambiarSeccion("estadisticas")
           }
         >
-          <span>
+          <span className="nav-item-icon">
             <BarChart3 size={18} />
           </span>
-          Estad&iacute;sticas
+
+          <span className="nav-item-text">
+            Estad&iacute;sticas
+          </span>
+
+          {mostrarBadge("estadisticas")}
         </button>
 
+        {/* HISTORIAL */}
         <button
-          className={
-            "nav-item " +
-            (seccion === "historial"
+          type="button"
+          className={`nav-item ${
+            seccion === "historial"
               ? "active"
-              : "")
+              : ""
+          }`}
+          onClick={() =>
+            cambiarSeccion(
+              "historial",
+              cargarHistorial
+            )
           }
-          onClick={() => {
-            setSeccion("historial");
-            cargarHistorial();
-          }}
         >
-          <span>
+          <span className="nav-item-icon">
             <History size={18} />
           </span>
-          Historial
+
+          <span className="nav-item-text">
+            Historial
+          </span>
+
+          {mostrarBadge("historial")}
         </button>
-      
-      <button
-        className={`nav-item ${
-          seccion === "seguridad" ? "active" : ""
-        }`}
-        onClick={() => setSeccion("seguridad")}
-      >
-        <ShieldCheck size={18} />
-        Seguridad
-      </button>
+
+        {/* SEGURIDAD */}
+        <button
+          type="button"
+          className={`nav-item ${
+            seccion === "seguridad"
+              ? "active"
+              : ""
+          }`}
+          onClick={() =>
+            cambiarSeccion("seguridad")
+          }
+        >
+          <span className="nav-item-icon">
+            <ShieldCheck size={18} />
+          </span>
+
+          <span className="nav-item-text">
+            Seguridad
+          </span>
+
+          {mostrarBadge("seguridad")}
+        </button>
       </nav>
 
       <button

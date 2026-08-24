@@ -6,6 +6,8 @@ const registrarActividad = require("../utils/registrarActividad");
 // ==========================================
 
 const subirBitacora = (req, res) => {
+    console.log("=== ENTRÓ A subirBitacora NUEVO ===");
+
     const idUsuario = req.usuario.id_usuario;
     const { id_actividad } = req.body || {};
 
@@ -230,6 +232,46 @@ const subirBitacora = (req, res) => {
                                             `El practicante reemplazó y volvió a enviar la bitácora de la semana ${semana}: ${req.file.originalname}`
                                         );
 
+                                        console.log("=== BITÁCORA REENVIADA, CREANDO NOTIFICACIÓN ===");
+                                        db.query(
+                                            `
+                                                INSERT INTO notificaciones (
+                                                    id_usuario,
+                                                    seccion,
+                                                    tipo,
+                                                    titulo,
+                                                    mensaje
+                                                )
+                                                SELECT
+                                                    u.id_usuario,
+                                                    'bitacoras',
+                                                    'BITACORA_REENVIADA',
+                                                    'Bitácora reenviada',
+                                                    ?
+                                                FROM usuarios u
+                                                INNER JOIN roles r
+                                                    ON u.id_rol = r.id_rol
+                                                WHERE r.nombre = 'Administrador'
+                                                  AND u.activo = 1
+                                            `,
+                                            [
+                                                `Se volvió a enviar la bitácora de la semana ${semana}: ${req.file.originalname}`
+                                            ],
+                                            (errorNotificacion, resultadoNotificacion) => {
+                                                if (errorNotificacion) {
+                                                    console.error(
+                                                        "Error creando notificación de bitácora reenviada:",
+                                                        errorNotificacion
+                                                    );
+                                                } else {
+                                                    console.log(
+                                                        "Notificación de reenvío creada. Filas:",
+                                                        resultadoNotificacion.affectedRows
+                                                    );
+                                                }
+                                            }
+                                        );
+
                                         return res.status(200).json({
                                             mensaje:
                                                 "Bitácora corregida enviada nuevamente. El estado volvió a Pendiente.",
@@ -301,6 +343,46 @@ const subirBitacora = (req, res) => {
                                         idUsuario,
                                         "SUBIR_BITACORA",
                                         `El practicante subió la bitácora de la semana ${semana}: ${req.file.originalname}`
+                                    );
+
+                                    console.log("=== BITÁCORA GUARDADA, CREANDO NOTIFICACIÓN ===");
+                                    db.query(
+                                        `
+                                            INSERT INTO notificaciones (
+                                                id_usuario,
+                                                seccion,
+                                                tipo,
+                                                titulo,
+                                                mensaje
+                                            )
+                                            SELECT
+                                                u.id_usuario,
+                                                'bitacoras',
+                                                'NUEVA_BITACORA',
+                                                'Nueva bitácora recibida',
+                                                ?
+                                            FROM usuarios u
+                                            INNER JOIN roles r
+                                                ON u.id_rol = r.id_rol
+                                            WHERE r.nombre = 'Administrador'
+                                              AND u.activo = 1
+                                        `,
+                                        [
+                                            `Se recibió una nueva bitácora de la semana ${semana}: ${req.file.originalname}`
+                                        ],
+                                        (errorNotificacion, resultadoNotificacion) => {
+                                            if (errorNotificacion) {
+                                                console.error(
+                                                    "Error creando notificación de nueva bitácora:",
+                                                    errorNotificacion
+                                                );
+                                            } else {
+                                                console.log(
+                                                    "Notificación de nueva bitácora creada. Filas:",
+                                                    resultadoNotificacion.affectedRows
+                                                );
+                                            }
+                                        }
                                     );
 
                                     return res.status(201).json({

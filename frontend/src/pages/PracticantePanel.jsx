@@ -73,6 +73,89 @@ function PracticantePanel({
   const [cargandoBitacoras, setCargandoBitacoras] = useState(false);
   const [subiendoBitacora, setSubiendoBitacora] = useState(null);
   const [archivoBitacora, setArchivoBitacora] = useState(null);
+
+  // ==========================================
+  // NOTIFICACIONES DEL PRACTICANTE
+  // ==========================================
+
+  const [notificaciones, setNotificaciones] = useState({});
+
+  const cargarNotificaciones = useCallback(async () => {
+    if (!token || usuario?.rol !== "Practicante") {
+      return;
+    }
+
+    try {
+      const response = await axios.get(
+        `${API}/notificaciones/resumen`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setNotificaciones(
+        response.data?.secciones || {}
+      );
+    } catch (error) {
+      console.error(
+        "Error cargando notificaciones:",
+        error
+      );
+    }
+  }, [token, usuario?.rol]);
+
+  const marcarSeccionComoLeida = async (
+    nombreSeccion
+  ) => {
+    try {
+      await axios.put(
+        `${API}/notificaciones/seccion/${nombreSeccion}/leer`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setNotificaciones((actual) => ({
+        ...actual,
+        [nombreSeccion]: 0,
+      }));
+    } catch (error) {
+      console.error(
+        "Error marcando notificaciones como leídas:",
+        error
+      );
+    }
+  };
+
+  const obtenerCantidadNotificaciones = (
+    nombreSeccion
+  ) => {
+    return Number(
+      notificaciones?.[nombreSeccion] || 0
+    );
+  };
+
+  const mostrarBadgeNotificacion = (
+    nombreSeccion
+  ) => {
+    const cantidad =
+      obtenerCantidadNotificaciones(nombreSeccion);
+
+    if (cantidad <= 0) {
+      return null;
+    }
+
+    return (
+      <span className="nav-badge">
+        {cantidad > 99 ? "99+" : cantidad}
+      </span>
+    );
+  };
 //const headers = {
   //  Authorization: `Bearer ${token}`,
   //};
@@ -349,6 +432,19 @@ useEffect(() => {
   cargarBitacorasPracticante,
 ]);
 
+useEffect(() => {
+  if (
+    token &&
+    usuario?.rol === "Practicante"
+  ) {
+    cargarNotificaciones();
+  }
+}, [
+  token,
+  usuario?.rol,
+  cargarNotificaciones,
+]);
+
 const cerrarNotificacionBitacora = () => {
   if (notificacionBitacora?.claveNotificacion) {
     sessionStorage.setItem(
@@ -376,7 +472,7 @@ const cambiarCampoPassword = (e) => {
   }));
 };
 
-const cambiarSeccion = (nuevaSeccion) => {
+const cambiarSeccion = async (nuevaSeccion) => {
   const cambioObligatorio =
     Number(
       perfil?.debe_cambiar_password ||
@@ -404,8 +500,23 @@ const cambiarSeccion = (nuevaSeccion) => {
   if (nuevaSeccion === "asistencia") {
     cargarHorario();
   }
-};
 
+  // Actualizar las bitácoras al entrar
+  if (nuevaSeccion === "bitacoras") {
+    await cargarBitacorasPracticante();
+  }
+
+  // Marcar como leídas las novedades de la sección
+  if (
+    obtenerCantidadNotificaciones(
+      nuevaSeccion
+    ) > 0
+  ) {
+    await marcarSeccionComoLeida(
+      nuevaSeccion
+    );
+  }
+};
 const guardarNuevaPassword = async (e) => {
   e.preventDefault();
 
@@ -753,7 +864,10 @@ const formatearFechaHoraBitacora = (fecha) => {
             onClick={() => cambiarSeccion("dashboard")}
           >
             <span>⌂</span>
-            Dashboard
+            <span className="nav-item-text">
+              Dashboard
+            </span>
+            {mostrarBadgeNotificacion("dashboard")}
           </button>
 
           <button
@@ -763,7 +877,10 @@ const formatearFechaHoraBitacora = (fecha) => {
             onClick={() => cambiarSeccion("perfil")}
           >
             <span>👤</span>
-            Mi perfil
+            <span className="nav-item-text">
+              Mi perfil
+            </span>
+            {mostrarBadgeNotificacion("perfil")}
           </button>
 
           <button
@@ -773,7 +890,10 @@ const formatearFechaHoraBitacora = (fecha) => {
             onClick={() => cambiarSeccion("asistencia")}
           >
             <span>🕘</span>
-            Asistencia
+            <span className="nav-item-text">
+              Asistencia
+            </span>
+            {mostrarBadgeNotificacion("asistencia")}
           </button>
 
           <button
@@ -783,7 +903,10 @@ const formatearFechaHoraBitacora = (fecha) => {
             onClick={() => cambiarSeccion("horas")}
           >
             <span>⏱️</span>
-            Mis horas
+            <span className="nav-item-text">
+              Mis horas
+            </span>
+            {mostrarBadgeNotificacion("horas")}
           </button>
 
           <button
@@ -793,7 +916,10 @@ const formatearFechaHoraBitacora = (fecha) => {
             onClick={() => cambiarSeccion("bitacoras")}
           >
             <span>📋</span>
-            Bitácoras
+            <span className="nav-item-text">
+              Bitácoras
+            </span>
+            {mostrarBadgeNotificacion("bitacoras")}
           </button>
 
         </nav>
