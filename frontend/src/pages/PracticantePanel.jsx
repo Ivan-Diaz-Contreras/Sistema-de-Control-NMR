@@ -16,6 +16,9 @@ import {
   ChartNoAxesColumnIncreasing,
   ListChecks,
   AlertTriangle,
+  ChevronDown,
+  LogOut,
+  CircleUserRound,
 } from "lucide-react";
 
 const API_URL =
@@ -40,6 +43,8 @@ function PracticantePanel({
   const [horario, setHorario] = useState(null);
   const [registrosHoras, setRegistrosHoras] = useState([]);
   const [filtroPeriodoHoras, setFiltroPeriodoHoras] = useState("todos");
+  const [menuUsuarioAbierto, setMenuUsuarioAbierto] =
+  useState(false);
 
   // ==========================================
   // SEGURIDAD / CAMBIO DE CONTRASEÑA
@@ -950,18 +955,82 @@ const formatearFechaHoraBitacora = (fecha) => {
             </h2>
           </div>
 
-          <div className="user-info">
-            <div className="avatar">
-              <User size={22} />
-            </div>
+          <div className="user-menu-wrapper">
 
-            <div>
-              <strong>
-                {perfil?.nombre || usuario?.nombre || "Usuario"}
-              </strong>
+            <button
+              type="button"
+              className="user-info user-info-button"
+              onClick={() =>
+                setMenuUsuarioAbierto((abierto) => !abierto)
+              }
+            >
+              <div className="avatar">
+                <User size={22} />
+              </div>
 
-              <span>Practicante</span>
-            </div>
+              <div className="user-info-text">
+                <strong>
+                  {perfil?.nombre ||
+                    usuario?.nombre ||
+                    "Usuario"}
+                </strong>
+
+                <span>Practicante</span>
+              </div>
+
+              <ChevronDown
+                size={17}
+                className={`user-menu-chevron ${
+                  menuUsuarioAbierto ? "open" : ""
+                }`}
+              />
+            </button>
+
+            {menuUsuarioAbierto && (
+              <div className="user-dropdown">
+
+                <div className="user-dropdown-header">
+                  <div className="user-dropdown-avatar">
+                    <User size={20} />
+                  </div>
+
+                  <div>
+                    <strong>
+                      {perfil?.nombre ||
+                        usuario?.nombre ||
+                        "Usuario"}
+                    </strong>
+
+                    <span>Practicante</span>
+                  </div>
+                </div>
+
+                <div className="user-dropdown-divider" />
+
+                <button
+                  type="button"
+                  className="user-dropdown-item"
+                  onClick={() => {
+                    cambiarSeccion("perfil");
+                    setMenuUsuarioAbierto(false);
+                  }}
+                >
+                  <CircleUserRound size={18} />
+                  Mi perfil
+                </button>
+
+                <button
+                  type="button"
+                  className="user-dropdown-item logout"
+                  onClick={onLogout}
+                >
+                  <LogOut size={18} />
+                  Cerrar sesión
+                </button>
+
+              </div>
+            )}
+
           </div>
         </header>
 
