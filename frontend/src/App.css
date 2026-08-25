@@ -2927,3 +2927,67 @@ body,
     grid-column: auto;
   }
 }
+
+/* ESTADOS DE ASISTENCIA */
+
+.attendance-status-box.disponible,
+.attendance-badge.disponible {
+  color: #2f855a;
+}
+
+.attendance-status-box.disponible
+.status-dot-circle {
+  background: #48bb78;
+}
+
+
+/* RETARDO */
+
+.attendance-status-box.retardo,
+.attendance-badge.retardo {
+  color: #b7791f;
+}
+
+.attendance-status-box.retardo
+.status-dot-circle {
+  background: #edb949;
+}
+
+
+/* EN JORNADA */
+
+.attendance-status-box.en-jornada,
+.attendance-badge.en-jornada {
+  color: #2b6cb0;
+}
+
+.attendance-status-box.en-jornada
+.status-dot-circle {
+  background: #4299e1;
+}
+
+
+/* COMPLETADA */
+
+.attendance-status-box.completada,
+.attendance-badge.completada {
+  color: #2f855a;
+}
+
+.attendance-status-box.completada
+.status-dot-circle {
+  background: #38a169;
+}
+
+
+/* SIN HORARIO */
+
+.attendance-status-box.sin-horario,
+.attendance-badge.sin-horario {
+  color: #718096;
+}
+
+.attendance-status-box.sin-horario
+.status-dot-circle {
+  background: #a0aec0;
+}

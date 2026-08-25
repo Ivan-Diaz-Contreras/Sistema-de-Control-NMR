@@ -47,6 +47,7 @@ function PracticantePanel({
   const [procesandoAsistencia, setProcesandoAsistencia] = useState(false);
   const [seccion, setSeccion] = useState("dashboard");
   const [horario, setHorario] = useState(null);
+  const [asistenciaHoy, setAsistenciaHoy] = useState(null);
   const [registrosHoras, setRegistrosHoras] = useState([]);
   const [filtroPeriodoHoras, setFiltroPeriodoHoras] = useState("todos");
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] =
@@ -264,6 +265,9 @@ const registrarEntrada = async () => {
       response.data.mensaje ||
         "Entrada registrada correctamente."
     );
+
+    await cargarAsistenciaHoy();
+
   } catch (error) {
     console.error(error);
 
@@ -319,6 +323,50 @@ const cargarHorario = useCallback(async () => {
   }
 }, [token, usuario?.rol]);
 
+const cargarAsistenciaHoy = useCallback(async () => {
+  if (!token) {
+    setAsistenciaHoy(null);
+    return;
+  }
+
+  try {
+    const response = await axios.get(
+      `${API}/practicantes/asistencia/historial`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const asistencias =
+      response.data.asistencias || [];
+
+    const ahora = new Date();
+
+    const fechaHoy = [
+      ahora.getFullYear(),
+      String(ahora.getMonth() + 1).padStart(2, "0"),
+      String(ahora.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    const registroHoy = asistencias.find(
+      (asistencia) =>
+        String(asistencia.fecha).slice(0, 10) ===
+        fechaHoy
+    );
+
+    setAsistenciaHoy(registroHoy || null);
+  } catch (error) {
+    console.error(
+      "Error cargando asistencia de hoy:",
+      error
+    );
+
+    setAsistenciaHoy(null);
+  }
+}, [token]);
+
 const registrarSalida = async () => {
   try {
     setProcesandoAsistencia(true);
@@ -338,6 +386,9 @@ const registrarSalida = async () => {
       response.data.mensaje ||
         "Salida registrada correctamente."
     );
+
+    await cargarAsistenciaHoy();
+
   } catch (error) {
     console.error(error);
 
@@ -510,6 +561,7 @@ const cambiarSeccion = async (nuevaSeccion) => {
   // Cargar horario cuando se abre Asistencia
   if (nuevaSeccion === "asistencia") {
     cargarHorario();
+    cargarAsistenciaHoy();
   }
 
   // Actualizar las bitácoras al entrar
@@ -882,6 +934,70 @@ const formatearFechaHoraBitacora = (fecha) => {
           0
         ) / registrosHoras.length
       : 0;
+  
+  const obtenerEstadoAsistencia = () => {
+    if (!horario) {
+      return {
+        texto: "Sin horario",
+        clase: "sin-horario",
+      };
+    }
+
+    // Ya registró entrada y salida
+    if (
+      asistenciaHoy?.hora_entrada_real &&
+      asistenciaHoy?.hora_salida_real
+    ) {
+      return {
+        texto: "Jornada completada",
+        clase: "completada",
+      };
+    }
+
+    // Ya registró entrada pero todavía no salida
+    if (
+      asistenciaHoy?.hora_entrada_real &&
+      !asistenciaHoy?.hora_salida_real
+    ) {
+      return {
+        texto: "En jornada",
+        clase: "en-jornada",
+      };
+    }
+
+    // Aún no registra entrada
+    const ahora = new Date();
+
+    const [horas, minutos] = String(
+      horario.hora_entrada || "00:00"
+    )
+      .split(":")
+      .map(Number);
+
+    const horaEsperada = new Date();
+
+    horaEsperada.setHours(
+      horas,
+      minutos,
+      0,
+      0
+    );
+
+    if (ahora > horaEsperada) {
+      return {
+        texto: "Retardo",
+        clase: "retardo",
+      };
+    }
+
+    return {
+      texto: "Disponible",
+      clase: "disponible",
+    };
+  };
+
+  const estadoAsistencia =
+  obtenerEstadoAsistencia();
 
   return (
     <div className="app">
@@ -1269,7 +1385,9 @@ const formatearFechaHoraBitacora = (fecha) => {
                   <button
                     className="attendance-button entry"
                     onClick={registrarEntrada}
-                    disabled={procesandoAsistencia}
+                    disabled={procesandoAsistencia ||
+                              Boolean(asistenciaHoy?.hora_entrada_real)
+                             }
                   >
                     <span>→</span>
                     Registrar entrada
@@ -1278,7 +1396,10 @@ const formatearFechaHoraBitacora = (fecha) => {
                   <button
                     className="attendance-button exit"
                     onClick={registrarSalida}
-                    disabled={procesandoAsistencia}
+                    disabled={procesandoAsistencia ||
+                              !asistenciaHoy?.hora_entrada_real ||
+                              Boolean(asistenciaHoy?.hora_salida_real)
+                             }
                   >
                     <span>←</span>
                     Registrar salida
@@ -1548,9 +1669,12 @@ const formatearFechaHoraBitacora = (fecha) => {
                 </p>
               </div>
 
-              <div className="attendance-status-box">
+              <div
+                className={`attendance-status-box ${estadoAsistencia.clase}`}
+              >
                 <span className="status-dot-circle"></span>
-                Disponible
+
+                {estadoAsistencia.texto}
               </div>
             </section>
 
@@ -1617,8 +1741,10 @@ const formatearFechaHoraBitacora = (fecha) => {
                   <h3>Entrada y salida</h3>
                 </div>
 
-                <span className="attendance-badge">
-                  ● Jornada disponible
+                <span
+                  className={`attendance-badge ${estadoAsistencia.clase}`}
+                >
+                  ● {estadoAsistencia.texto}
                 </span>
               </div>
 
