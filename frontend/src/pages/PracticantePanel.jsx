@@ -9,6 +9,7 @@ import logoNMR from "../assets/logo-nmr.png";
 import ActividadDiariaPracticante from "../components/practicante/ActividadDiariaPracticante";
 import {
   User,
+  Hand,
   Clock3,
   Target,
   Hourglass,
@@ -1186,7 +1187,15 @@ const formatearFechaHoraBitacora = (fecha) => {
                 <p className="section-label">BIENVENIDO</p>
 
                 <h1>
-                  Hola, {perfil?.nombre || usuario?.nombre || "Samuel"} 👋
+                  Hola, {perfil?.nombre || usuario?.nombre || "Samuel"}{" "}
+                  <Hand
+                    size={34}
+                    strokeWidth={2}
+                    aria-label="Saludo"
+                    style={{
+                      verticalAlign: "middle",
+                    }}
+                  />
                 </h1>
 
                 <p>
@@ -1200,7 +1209,9 @@ const formatearFechaHoraBitacora = (fecha) => {
 
             <section className="stats-grid">
               <div className="stat-card">
-                <span className="stat-icon">⏱️</span>
+                <span className="stat-icon">
+                  <Clock3 size={22} />
+                </span>
 
                 <div>
                   <p>Horas acumuladas</p>
@@ -1212,7 +1223,9 @@ const formatearFechaHoraBitacora = (fecha) => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">📊</span>
+                <span className="stat-icon">
+                  <TrendingUp size={22} />
+                </span>
 
                 <div>
                   <p>Avance</p>
@@ -1222,7 +1235,9 @@ const formatearFechaHoraBitacora = (fecha) => {
               </div>
 
               <div className="stat-card">
-                <span className="stat-icon">📊</span>
+                <span className="stat-icon">
+                  <Hourglass size={22} />
+                </span>
 
                 <div>
                   <p>Horas restantes</p>
@@ -1542,7 +1557,9 @@ const formatearFechaHoraBitacora = (fecha) => {
             <section className="attendance-summary-grid">
 
               <div className="attendance-summary-card">
-                <span className="attendance-summary-icon">🕐</span>
+                <span className="attendance-summary-icon">
+                  <Clock3 size={22} />
+                </span>
 
                 <div>
                   <p>Horario de hoy</p>
@@ -1558,7 +1575,11 @@ const formatearFechaHoraBitacora = (fecha) => {
               </div>
 
               <div className="attendance-summary-card">
-                <span className="attendance-summary-icon">⏱️</span>
+                <span className="attendance-summary-icon">
+                  <ChartNoAxesColumnIncreasing
+                    size={22}
+                  />
+                </span>
 
                 <div>
                   <p>Horas del día</p>
@@ -1570,7 +1591,9 @@ const formatearFechaHoraBitacora = (fecha) => {
               </div>
 
               <div className="attendance-summary-card">
-                <span className="attendance-summary-icon">📅</span>
+                <span className="attendance-summary-icon">
+                  <CalendarDays size={22} />
+                </span>
 
                 <div>
                   <p>Fecha</p>
