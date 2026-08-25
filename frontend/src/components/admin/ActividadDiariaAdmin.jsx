@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 
 import axios from "axios";
-import * as XLSX from "xlsx";
 
 const LIMITE_ACTIVIDAD = 300;
 const MINIMO_ACTIVIDAD = 10;
@@ -594,7 +593,7 @@ function ActividadDiariaAdmin({
     }
   };
 
-  const descargarExcel = () => {
+  const descargarCSV = () => {
     if (actividadesFiltradas.length === 0) {
       setError(
         "No hay actividades para exportar con los filtros seleccionados."
@@ -604,51 +603,63 @@ function ActividadDiariaAdmin({
 
     setError("");
 
-    const datosExcel = actividadesFiltradas.map(
-      (actividad) => ({
-        Empresa:
+    const protegerCeldaCSV = (valor) => {
+      let texto = String(
+        valor ?? ""
+      );
+
+      /*
+       * Evita que Excel interprete el contenido
+       * de los usuarios como una formula.
+       */
+      if (/^[=+\-@\t\r]/.test(texto)) {
+        texto = "'" + texto;
+      }
+
+      return (
+        '"' +
+        texto.replaceAll('"', '""') +
+        '"'
+      );
+    };
+
+    const encabezados = [
+      "Empresa",
+      "Nombre",
+      "Carrera",
+      "Horario",
+      "Fecha",
+      "Actividad realizada",
+    ];
+
+    const filas =
+      actividadesFiltradas.map(
+        (actividad) => [
           actividad.empresa ||
-          "NMR CONSULTORES",
-        Nombre:
+            "NMR CONSULTORES",
           actividad.nombre ||
-          "Sin nombre",
-        Carrera:
+            "Sin nombre",
           actividad.carrera ||
-          "No registrada",
-        Horario:
+            "No registrada",
           actividad.horario ||
-          "No registrado",
-        Fecha:
+            "No registrado",
           formatearFecha(
             actividad.fecha
           ),
-        "Actividad realizada":
           actividad.actividad || "",
-      })
-    );
-
-    const hoja =
-      XLSX.utils.json_to_sheet(
-        datosExcel
+        ]
       );
 
-    hoja["!cols"] = [
-      { wch: 22 },
-      { wch: 32 },
-      { wch: 32 },
-      { wch: 20 },
-      { wch: 14 },
-      { wch: 65 },
-    ];
-
-    const libro =
-      XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(
-      libro,
-      hoja,
-      "Actividades"
-    );
+    const contenidoCSV = [
+      encabezados,
+      ...filas,
+    ]
+      .map((fila) =>
+        fila
+          .map(protegerCeldaCSV)
+          .join(",")
+      )
+      .join("\r\n");
 
     const fechaArchivo = (fecha) =>
       String(fecha || "")
@@ -659,23 +670,57 @@ function ActividadDiariaAdmin({
 
     if (fechaDesde && fechaHasta) {
       nombreArchivo +=
-        `_${fechaArchivo(fechaDesde)}` +
-        `_al_${fechaArchivo(fechaHasta)}`;
+        "_" +
+        fechaArchivo(fechaDesde) +
+        "_al_" +
+        fechaArchivo(fechaHasta);
     } else if (fechaDesde) {
       nombreArchivo +=
-        `_desde_${fechaArchivo(fechaDesde)}`;
+        "_desde_" +
+        fechaArchivo(fechaDesde);
     } else if (fechaHasta) {
       nombreArchivo +=
-        `_hasta_${fechaArchivo(fechaHasta)}`;
+        "_hasta_" +
+        fechaArchivo(fechaHasta);
     } else {
       nombreArchivo +=
-        `_${fechaArchivo(obtenerFechaHoy())}`;
+        "_" +
+        fechaArchivo(
+          obtenerFechaHoy()
+        );
     }
 
-    XLSX.writeFile(
-      libro,
-      `${nombreArchivo}.xlsx`
+    /*
+     * BOM UTF-8 para conservar acentos
+     * al abrir el CSV en Excel.
+     */
+    const archivo = new Blob(
+      [
+        String.fromCodePoint(0xfeff),
+        "sep=,\r\n",
+        contenidoCSV,
+      ],
+      {
+        type:
+          "text/csv;charset=utf-8;",
+      }
     );
+
+    const url =
+      URL.createObjectURL(archivo);
+
+    const enlace =
+      document.createElement("a");
+
+    enlace.href = url;
+    enlace.download =
+      nombreArchivo + ".csv";
+
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+
+    URL.revokeObjectURL(url);
   };
 
   const limpiarFiltros = () => {
@@ -995,13 +1040,13 @@ function ActividadDiariaAdmin({
           <button
             type="button"
             className="secondary-button"
-            onClick={descargarExcel}
+            onClick={descargarCSV}
             disabled={
               actividadesFiltradas.length === 0
             }
           >
             <Download size={18} />
-            Descargar Excel
+            Descargar CSV
           </button>
         </div>
 
