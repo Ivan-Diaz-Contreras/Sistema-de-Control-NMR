@@ -10,6 +10,9 @@ const asistenciaRoutes = require("./routes/asistenciaRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const bitacoraRoutes = require("./routes/bitacoraRoutes");
 const notificacionRoutes = require("./routes/notificacionRoutes");
+const actividadDiariaRoutes = require(
+    "./routes/actividadDiariaRoutes"
+);
 
 const app = express();
 const PORT = 3000;
@@ -50,6 +53,12 @@ app.use("/api/admin", adminRoutes);
 app.use(
     "/api/notificaciones",
     notificacionRoutes
+);
+
+// Actividades diarias
+app.use(
+    "/api/actividades-diarias",
+    actividadDiariaRoutes
 );
 
 // ==========================================

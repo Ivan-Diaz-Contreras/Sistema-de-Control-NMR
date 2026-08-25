@@ -63,7 +63,8 @@ function AdminSidebar({
 
   const cambiarSeccion = async (
     nombreSeccion,
-    callback
+    callback,
+    seccionNotificacion = nombreSeccion
   ) => {
     setSeccion(nombreSeccion);
 
@@ -76,7 +77,7 @@ function AdminSidebar({
       "function"
     ) {
       await marcarSeccionComoLeida(
-        nombreSeccion
+        seccionNotificacion
       );
     }
   };
@@ -184,7 +185,9 @@ function AdminSidebar({
           }`}
           onClick={() =>
             cambiarSeccion(
-              "actividad-diaria"
+              "actividad-diaria",
+              null,
+              "actividad_diaria"
             )
           }
         >
@@ -197,7 +200,7 @@ function AdminSidebar({
           </span>
 
           {mostrarBadge(
-            "actividad-diaria"
+            "actividad_diaria"
           )}
         </button>
 

@@ -1888,6 +1888,7 @@ const formatearFechaHoraBitacora = (fecha) => {
             perfil={perfil}
             usuario={usuario}
             horario={horario}
+            token={token}
           />
         )}
 

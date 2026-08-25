@@ -12,3 +12,5 @@ database/*_backup.sql
 *.pre-produccion.backup
 *.local-backup
 database/*.sql
+
+google-service-account.json

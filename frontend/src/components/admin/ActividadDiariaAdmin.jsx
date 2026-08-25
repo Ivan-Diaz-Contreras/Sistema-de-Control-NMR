@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -6,6 +7,7 @@ import {
 
 import {
   CalendarRange,
+  Download,
   FilePenLine,
   Pencil,
   Plus,
@@ -14,15 +16,17 @@ import {
   X,
 } from "lucide-react";
 
-import {
-  eliminarActividadDiaria,
-  guardarActividadDiaria,
-  obtenerActividadesDiarias,
-  suscribirseActividadesDiarias,
-} from "../../services/actividadDiariaStorage";
+import axios from "axios";
+import * as XLSX from "xlsx";
 
 const LIMITE_ACTIVIDAD = 300;
 const MINIMO_ACTIVIDAD = 10;
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:3000";
+
+const API = `${API_URL}/api`;
 
 const obtenerFechaHoy = () => {
   const fecha = new Date();
@@ -35,9 +39,9 @@ const obtenerFechaHoy = () => {
 };
 
 const FORMULARIO_INICIAL = {
+  id_practicante: "",
   empresa: "NMR CONSULTORES",
   nombre: "",
-  matricula: "",
   carrera: "",
   horario: "",
   fecha: obtenerFechaHoy(),
@@ -65,8 +69,16 @@ const formatearFecha = (fecha) => {
     : fecha || "Sin fecha";
 };
 
-function ActividadDiariaAdmin() {
+function ActividadDiariaAdmin({
+  token,
+}) {
+  const tokenSesion =
+    token || localStorage.getItem("token");
+
   const [actividades, setActividades] =
+    useState([]);
+
+  const [listaPracticantes, setListaPracticantes] =
     useState([]);
 
   const [formulario, setFormulario] =
@@ -99,19 +111,94 @@ function ActividadDiariaAdmin() {
   const [fechaHasta, setFechaHasta] =
     useState("");
 
-  const cargarActividades = () => {
-    setActividades(
-      obtenerActividadesDiarias()
-    );
-  };
+  const cargarActividades = useCallback(async () => {
+    if (!tokenSesion) {
+      setActividades([]);
+      return;
+    }
+
+    try {
+      const response = await axios.get(
+        `${API}/actividades-diarias/admin`,
+        {
+          headers: {
+            Authorization: `Bearer ${tokenSesion}`,
+          },
+        }
+      );
+
+      const registros = Array.isArray(
+        response.data?.actividades
+      )
+        ? response.data.actividades
+        : [];
+
+      setActividades(
+        registros.map((actividad) => ({
+          ...actividad,
+          nombre:
+            actividad.nombre_completo ||
+            [
+              actividad.nombre,
+              actividad.apellido_paterno,
+              actividad.apellido_materno,
+            ]
+              .filter(Boolean)
+              .join(" "),
+          fecha: String(
+            actividad.fecha || ""
+          ).slice(0, 10),
+        }))
+      );
+    } catch (errorPeticion) {
+      console.error(
+        "Error cargando actividades diarias del administrador:",
+        errorPeticion
+      );
+
+      setError(
+        errorPeticion.response?.data?.mensaje ||
+          "No se pudieron cargar las actividades diarias."
+      );
+    }
+  }, [tokenSesion]);
+
+  const cargarPracticantes = useCallback(async () => {
+    if (!tokenSesion) {
+      setListaPracticantes([]);
+      return;
+    }
+
+    try {
+      const response = await axios.get(
+        `${API}/admin/practicantes`,
+        {
+          headers: {
+            Authorization: `Bearer ${tokenSesion}`,
+          },
+        }
+      );
+
+      setListaPracticantes(
+        Array.isArray(response.data?.practicantes)
+          ? response.data.practicantes
+          : []
+      );
+    } catch (errorPeticion) {
+      console.error(
+        "Error cargando practicantes para actividad diaria:",
+        errorPeticion
+      );
+    }
+  }, [tokenSesion]);
 
   useEffect(() => {
     cargarActividades();
-
-    return suscribirseActividadesDiarias(
-      cargarActividades
-    );
-  }, []);
+    cargarPracticantes();
+  }, [
+    cargarActividades,
+    cargarPracticantes,
+  ]);
 
   const practicantes = useMemo(() => {
     const mapa = new Map();
@@ -164,7 +251,6 @@ function ActividadDiariaAdmin() {
             [
               actividad.empresa,
               actividad.nombre,
-              actividad.matricula,
               actividad.carrera,
               actividad.horario,
               actividad.fecha,
@@ -217,6 +303,42 @@ function ActividadDiariaAdmin() {
     const { name, value } =
       evento.target;
 
+    if (name === "id_practicante") {
+      const practicanteSeleccionado =
+        listaPracticantes.find(
+          (practicante) =>
+            String(
+              practicante.id_practicante
+            ) === String(value)
+        );
+
+      setFormulario((actual) => ({
+        ...actual,
+        id_practicante: value,
+        empresa: "NMR CONSULTORES",
+        nombre: practicanteSeleccionado
+          ? [
+              practicanteSeleccionado.nombre,
+              practicanteSeleccionado.apellido_paterno,
+              practicanteSeleccionado.apellido_materno,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          : "",
+        carrera:
+          practicanteSeleccionado?.carrera ||
+          practicanteSeleccionado?.nombre_carrera ||
+          "",
+        horario:
+          practicanteSeleccionado?.horario ||
+          "Se obtiene del sistema",
+      }));
+
+      setError("");
+      setMensaje("");
+      return;
+    }
+
     setFormulario((actual) => ({
       ...actual,
       [name]:
@@ -255,18 +377,20 @@ function ActividadDiariaAdmin() {
     actividad
   ) => {
     setFormulario({
+      id_practicante:
+        actividad.id_practicante || "",
       empresa:
         actividad.empresa || "",
       nombre:
         actividad.nombre || "",
-      matricula:
-        actividad.matricula || "",
       carrera:
         actividad.carrera || "",
       horario:
         actividad.horario || "",
       fecha:
-        actividad.fecha || "",
+        String(
+          actividad.fecha || ""
+        ).slice(0, 10),
       actividad:
         actividad.actividad || "",
     });
@@ -282,20 +406,12 @@ function ActividadDiariaAdmin() {
     });
   };
 
-  const guardarRegistro = (evento) => {
+  const guardarRegistro = async (evento) => {
     evento.preventDefault();
 
     const datos = {
-      empresa:
-        formulario.empresa.trim(),
-      nombre:
-        formulario.nombre.trim(),
-      matricula:
-        formulario.matricula.trim(),
-      carrera:
-        formulario.carrera.trim(),
-      horario:
-        formulario.horario.trim(),
+      id_practicante:
+        formulario.id_practicante,
       fecha:
         formulario.fecha,
       actividad:
@@ -305,22 +421,21 @@ function ActividadDiariaAdmin() {
     };
 
     if (
-      !datos.empresa ||
-      !datos.nombre ||
-      !datos.carrera ||
-      !datos.horario ||
+      !idEditando &&
+      !datos.id_practicante
+    ) {
+      setError(
+        "Selecciona un practicante."
+      );
+      return;
+    }
+
+    if (
       !datos.fecha ||
       !datos.actividad
     ) {
       setError(
         "Completa todos los campos obligatorios."
-      );
-      return;
-    }
-
-    if (datos.nombre.length < 2) {
-      setError(
-        "Ingresa un nombre valido."
       );
       return;
     }
@@ -355,27 +470,17 @@ function ActividadDiariaAdmin() {
       return;
     }
 
-    const registroAnterior =
-      actividades.find(
-        (actividad) =>
-          actividad.id === idEditando
-      );
-
-    const idPracticante =
-      registroAnterior?.id_practicante ||
-      [
-        "manual",
-        normalizar(datos.nombre)
-          .replace(/[^a-z0-9]+/g, "-"),
-      ].join("-");
-
     const duplicado =
       actividades.find(
         (actividad) =>
           String(
             actividad.id_practicante
-          ) === String(idPracticante) &&
-          actividad.fecha ===
+          ) === String(
+            datos.id_practicante
+          ) &&
+          String(
+            actividad.fecha || ""
+          ).slice(0, 10) ===
             datos.fecha &&
           actividad.id !== idEditando
       );
@@ -387,28 +492,64 @@ function ActividadDiariaAdmin() {
       return;
     }
 
-    guardarActividadDiaria({
-      ...registroAnterior,
-      id:
-        idEditando || undefined,
-      id_practicante:
-        idPracticante,
-      ...datos,
-    });
+    try {
+      if (idEditando) {
+        await axios.put(
+          `${API}/actividades-diarias/admin/${idEditando}`,
+          {
+            fecha: datos.fecha,
+            actividad: datos.actividad,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${tokenSesion}`,
+            },
+          }
+        );
+      } else {
+        await axios.post(
+          `${API}/actividades-diarias/admin`,
+          {
+            id_practicante:
+              Number(
+                datos.id_practicante
+              ),
+            fecha: datos.fecha,
+            actividad: datos.actividad,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${tokenSesion}`,
+            },
+          }
+        );
+      }
 
-    setMensaje(
-      idEditando
-        ? "Registro actualizado correctamente."
-        : "Registro agregado correctamente."
-    );
+      setMensaje(
+        idEditando
+          ? "Registro actualizado correctamente."
+          : "Registro agregado correctamente."
+      );
 
-    setMostrandoFormulario(false);
-    setIdEditando(null);
-    setFormulario(FORMULARIO_INICIAL);
-    cargarActividades();
+      setMostrandoFormulario(false);
+      setIdEditando(null);
+      setFormulario(FORMULARIO_INICIAL);
+
+      await cargarActividades();
+    } catch (errorPeticion) {
+      console.error(
+        "Error guardando actividad diaria desde administrador:",
+        errorPeticion
+      );
+
+      setError(
+        errorPeticion.response?.data?.mensaje ||
+          "No se pudo guardar el registro."
+      );
+    }
   };
 
-  const eliminarRegistro = (
+  const eliminarRegistro = async (
     actividad
   ) => {
     const confirmar = window.confirm(
@@ -421,19 +562,120 @@ function ActividadDiariaAdmin() {
       return;
     }
 
-    eliminarActividadDiaria(
-      actividad.id
-    );
+    try {
+      await axios.delete(
+        `${API}/actividades-diarias/admin/${actividad.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${tokenSesion}`,
+          },
+        }
+      );
 
-    if (idEditando === actividad.id) {
-      cancelarFormulario();
+      if (idEditando === actividad.id) {
+        cancelarFormulario();
+      }
+
+      setMensaje(
+        "Registro eliminado correctamente."
+      );
+
+      await cargarActividades();
+    } catch (errorPeticion) {
+      console.error(
+        "Error eliminando actividad diaria desde administrador:",
+        errorPeticion
+      );
+
+      setError(
+        errorPeticion.response?.data?.mensaje ||
+          "No se pudo eliminar el registro."
+      );
+    }
+  };
+
+  const descargarExcel = () => {
+    if (actividadesFiltradas.length === 0) {
+      setError(
+        "No hay actividades para exportar con los filtros seleccionados."
+      );
+      return;
     }
 
-    setMensaje(
-      "Registro eliminado correctamente."
+    setError("");
+
+    const datosExcel = actividadesFiltradas.map(
+      (actividad) => ({
+        Empresa:
+          actividad.empresa ||
+          "NMR CONSULTORES",
+        Nombre:
+          actividad.nombre ||
+          "Sin nombre",
+        Carrera:
+          actividad.carrera ||
+          "No registrada",
+        Horario:
+          actividad.horario ||
+          "No registrado",
+        Fecha:
+          formatearFecha(
+            actividad.fecha
+          ),
+        "Actividad realizada":
+          actividad.actividad || "",
+      })
     );
 
-    cargarActividades();
+    const hoja =
+      XLSX.utils.json_to_sheet(
+        datosExcel
+      );
+
+    hoja["!cols"] = [
+      { wch: 22 },
+      { wch: 32 },
+      { wch: 32 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 65 },
+    ];
+
+    const libro =
+      XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      libro,
+      hoja,
+      "Actividades"
+    );
+
+    const fechaArchivo = (fecha) =>
+      String(fecha || "")
+        .replaceAll("-", "");
+
+    let nombreArchivo =
+      "Actividades_Diarias";
+
+    if (fechaDesde && fechaHasta) {
+      nombreArchivo +=
+        `_${fechaArchivo(fechaDesde)}` +
+        `_al_${fechaArchivo(fechaHasta)}`;
+    } else if (fechaDesde) {
+      nombreArchivo +=
+        `_desde_${fechaArchivo(fechaDesde)}`;
+    } else if (fechaHasta) {
+      nombreArchivo +=
+        `_hasta_${fechaArchivo(fechaHasta)}`;
+    } else {
+      nombreArchivo +=
+        `_${fechaArchivo(obtenerFechaHoy())}`;
+    }
+
+    XLSX.writeFile(
+      libro,
+      `${nombreArchivo}.xlsx`
+    );
   };
 
   const limpiarFiltros = () => {
@@ -513,6 +755,7 @@ function ActividadDiariaAdmin() {
                 <input
                   name="empresa"
                   value={formulario.empresa}
+                  readOnly
                   maxLength="60"
                   onChange={cambiarCampo}
                 />
@@ -520,22 +763,37 @@ function ActividadDiariaAdmin() {
 
               <label>
                 Practicante *
-                <input
-                  name="nombre"
-                  value={formulario.nombre}
-                  maxLength="100"
+                <select
+                  name="id_practicante"
+                  value={formulario.id_practicante}
                   onChange={cambiarCampo}
-                />
-              </label>
+                  disabled={Boolean(idEditando)}
+                >
+                  <option value="">
+                    Selecciona un practicante
+                  </option>
 
-              <label>
-                Matrícula
-                <input
-                  name="matricula"
-                  value={formulario.matricula}
-                  maxLength="20"
-                  onChange={cambiarCampo}
-                />
+                  {listaPracticantes.map(
+                    (practicante) => (
+                      <option
+                        key={
+                          practicante.id_practicante
+                        }
+                        value={
+                          practicante.id_practicante
+                        }
+                      >
+                        {[
+                          practicante.nombre,
+                          practicante.apellido_paterno,
+                          practicante.apellido_materno,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      </option>
+                    )
+                  )}
+                </select>
               </label>
 
               <label>
@@ -543,6 +801,7 @@ function ActividadDiariaAdmin() {
                 <input
                   name="carrera"
                   value={formulario.carrera}
+                  readOnly
                   maxLength="80"
                   onChange={cambiarCampo}
                 />
@@ -553,6 +812,7 @@ function ActividadDiariaAdmin() {
                 <input
                   name="horario"
                   value={formulario.horario}
+                  readOnly
                   maxLength="40"
                   placeholder="Ej. 10:00 - 13:00"
                   onChange={cambiarCampo}
@@ -629,7 +889,7 @@ function ActividadDiariaAdmin() {
                   evento.target.value
                 )
               }
-              placeholder="Buscar por practicante, matr?cula, empresa, carrera o actividad"
+              placeholder="Buscar por practicante, empresa, carrera o actividad"
             />
           </div>
 
@@ -731,6 +991,18 @@ function ActividadDiariaAdmin() {
             </strong>{" "}
             registros
           </div>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={descargarExcel}
+            disabled={
+              actividadesFiltradas.length === 0
+            }
+          >
+            <Download size={18} />
+            Descargar Excel
+          </button>
         </div>
 
         {actividadesFiltradas.length === 0 ? (
@@ -752,7 +1024,6 @@ function ActividadDiariaAdmin() {
                 <tr>
                   <th>Empresa</th>
                   <th>Practicante</th>
-                  <th>Matrícula</th>
                   <th>Carrera</th>
                   <th>Horario</th>
                   <th>Fecha</th>
@@ -775,10 +1046,6 @@ function ActividadDiariaAdmin() {
                         <strong>
                           {actividad.nombre}
                         </strong>
-                      </td>
-
-                      <td>
-                        {actividad.matricula || "—"}
                       </td>
 
                       <td>

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -12,15 +13,12 @@ import {
   Trash2,
 } from "lucide-react";
 
-import {
-  eliminarActividadDiaria,
-  guardarActividadDiaria,
-  obtenerActividadesDiarias,
-  suscribirseActividadesDiarias,
-} from "../../services/actividadDiariaStorage";
+import axios from "axios";
 
 const LIMITE_ACTIVIDAD = 300;
 const MINIMO_ACTIVIDAD = 10;
+
+const API = "http://localhost:3000/api";
 
 const obtenerFechaLocal = () => {
   const fecha = new Date();
@@ -56,6 +54,7 @@ function ActividadDiariaPracticante({
   perfil,
   usuario,
   horario,
+  token,
 }) {
   const fechaHoy = obtenerFechaLocal();
 
@@ -77,13 +76,7 @@ function ActividadDiariaPracticante({
   const [error, setError] =
     useState("");
 
-  const idPracticante = String(
-    perfil?.id_practicante ||
-      usuario?.id_practicante ||
-      usuario?.id_usuario ||
-      usuario?.correo ||
-      "practicante-temporal"
-  );
+
 
   const nombreCompleto = [
     perfil?.nombre || usuario?.nombre,
@@ -116,26 +109,43 @@ function ActividadDiariaPracticante({
     return "No registrado";
   }, [horario]);
 
-  const cargarActividades = () => {
-    const registros =
-      obtenerActividadesDiarias()
-        .filter(
-          (actividad) =>
-            String(
-              actividad.id_practicante
-            ) === idPracticante
-        );
+  const cargarActividades = useCallback(async () => {
+    if (!token) {
+      setActividades([]);
+      return;
+    }
 
-    setActividades(registros);
-  };
+    try {
+      const response = await axios.get(
+        `${API}/actividades-diarias/mis`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setActividades(
+        Array.isArray(response.data?.actividades)
+          ? response.data.actividades
+          : []
+      );
+    } catch (errorPeticion) {
+      console.error(
+        "Error cargando actividades diarias:",
+        errorPeticion
+      );
+
+      setError(
+        errorPeticion.response?.data?.mensaje ||
+          "No se pudieron cargar las actividades diarias."
+      );
+    }
+  }, [token]);
 
   useEffect(() => {
     cargarActividades();
-
-    return suscribirseActividadesDiarias(
-      cargarActividades
-    );
-  }, [idPracticante]);
+  }, [cargarActividades]);
 
   const limpiarFormulario = () => {
     setFormulario({
@@ -166,7 +176,7 @@ function ActividadDiariaPracticante({
     setMensaje("");
   };
 
-  const guardarRegistro = (evento) => {
+  const guardarRegistro = async (evento) => {
     evento.preventDefault();
 
     const actividadLimpia =
@@ -201,7 +211,8 @@ function ActividadDiariaPracticante({
     const registroDuplicado =
       actividades.find(
         (actividad) =>
-          actividad.fecha ===
+          String(actividad.fecha || "")
+            .slice(0, 10) ===
             formulario.fecha &&
           actividad.id !== idEditando
       );
@@ -213,53 +224,62 @@ function ActividadDiariaPracticante({
       return;
     }
 
-    const registroAnterior =
-      actividades.find(
-        (actividad) =>
-          actividad.id === idEditando
+    try {
+      if (idEditando) {
+        await axios.put(
+          `${API}/actividades-diarias/mis/${idEditando}`,
+          {
+            fecha: formulario.fecha,
+            actividad: actividadLimpia,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      } else {
+        await axios.post(
+          `${API}/actividades-diarias/mis`,
+          {
+            fecha: formulario.fecha,
+            actividad: actividadLimpia,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+
+      setMensaje(
+        idEditando
+          ? "Actividad actualizada correctamente."
+          : "Actividad guardada correctamente."
       );
 
-    guardarActividadDiaria({
-      ...registroAnterior,
-      id: idEditando || undefined,
-      id_practicante: idPracticante,
-      id_usuario:
-        perfil?.id_usuario ||
-        usuario?.id_usuario ||
-        null,
-      nombre: nombreCompleto,
-      matricula:
-        perfil?.matricula ||
-        usuario?.matricula ||
-        "Sin matricula",
-      empresa:
-        perfil?.empresa ||
-        "NMR CONSULTORES",
-      carrera:
-        perfil?.carrera ||
-        perfil?.nombre_carrera ||
-        usuario?.carrera ||
-        "Sin carrera",
-      horario: horarioTexto,
-      fecha: formulario.fecha,
-      actividad: actividadLimpia,
-    });
+      limpiarFormulario();
+      await cargarActividades();
+    } catch (errorPeticion) {
+      console.error(
+        "Error guardando actividad diaria:",
+        errorPeticion
+      );
 
-    setMensaje(
-      idEditando
-        ? "Actividad actualizada correctamente."
-        : "Actividad guardada correctamente."
-    );
-
-    limpiarFormulario();
-    cargarActividades();
+      setError(
+        errorPeticion.response?.data?.mensaje ||
+          "No se pudo guardar la actividad diaria."
+      );
+    }
   };
 
   const editarActividad = (
     actividad
   ) => {
     setFormulario({
-      fecha: actividad.fecha,
+      fecha: String(actividad.fecha || "")
+        .slice(0, 10),
       actividad: actividad.actividad,
     });
 
@@ -273,7 +293,7 @@ function ActividadDiariaPracticante({
     });
   };
 
-  const eliminarActividad = (
+  const eliminarActividad = async (
     actividad
   ) => {
     const confirmar = window.confirm(
@@ -284,19 +304,36 @@ function ActividadDiariaPracticante({
       return;
     }
 
-    eliminarActividadDiaria(
-      actividad.id
-    );
+    try {
+      await axios.delete(
+        `${API}/actividades-diarias/mis/${actividad.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    if (idEditando === actividad.id) {
-      limpiarFormulario();
+      if (idEditando === actividad.id) {
+        limpiarFormulario();
+      }
+
+      setMensaje(
+        "Actividad eliminada correctamente."
+      );
+
+      await cargarActividades();
+    } catch (errorPeticion) {
+      console.error(
+        "Error eliminando actividad diaria:",
+        errorPeticion
+      );
+
+      setError(
+        errorPeticion.response?.data?.mensaje ||
+          "No se pudo eliminar la actividad diaria."
+      );
     }
-
-    setMensaje(
-      "Actividad eliminada correctamente."
-    );
-
-    cargarActividades();
   };
 
   return (

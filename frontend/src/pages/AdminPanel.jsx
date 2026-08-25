@@ -2655,7 +2655,7 @@ const formatearFechaHora = (fecha) => {
         ========================================== */}
 
         {seccion === "actividad-diaria" && (
-          <ActividadDiariaAdmin />
+          <ActividadDiariaAdmin token={token} />
         )}
 
         {seccion === "bitacoras" && (
