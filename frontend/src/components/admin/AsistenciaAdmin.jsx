@@ -1,20 +1,27 @@
 function AsistenciaAdmin({
   abrirEdicionAsistencia,
+  abrirFormularioAsistenciaHistorica,
   asistencias,
   asistenciasFiltradas,
   busquedaAsistencia,
   calcularTiempoReal,
   cambiarCampoAsistencia,
+  cambiarCampoAsistenciaHistorica,
+  cancelarAsistenciaHistorica,
   cargandoAsistencias,
   cargarAsistencias,
   editandoAsistencia,
+  formAsistenciaHistorica,
   filtroEstadoAsistencia,
   filtroPracticanteAsistencia,
   filtroFechaAsistencia,
   formatearFecha,
   formatearHora,
   guardandoAsistencia,
+  guardandoAsistenciaHistorica,
   guardarAsistencia,
+  guardarAsistenciaHistorica,
+  mostrandoAsistenciaHistorica,
   practicantes,
   setBusquedaAsistencia,
   setEditandoAsistencia,
@@ -33,15 +40,35 @@ function AsistenciaAdmin({
                   <h3>Registros de entrada y salida</h3>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={cargarAsistencias}
-                  disabled={cargandoAsistencias}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    flexWrap: "wrap",
+                  }}
                 >
-                  {cargandoAsistencias
-                    ? "Actualizando..."
-                    : "Actualizar"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={
+                      abrirFormularioAsistenciaHistorica
+                    }
+                    disabled={
+                      mostrandoAsistenciaHistorica
+                    }
+                  >
+                    + Registrar asistencia anterior
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={cargarAsistencias}
+                    disabled={cargandoAsistencias}
+                  >
+                    {cargandoAsistencias
+                      ? "Actualizando..."
+                      : "Actualizar"}
+                  </button>
+                </div>
               </div>
 
               <p className="panel-description">
@@ -150,6 +177,167 @@ function AsistenciaAdmin({
                 de <strong>{asistencias.length}</strong>{" "}
                 registros.
               </p>
+
+              {mostrandoAsistenciaHistorica && (
+                <form
+                  onSubmit={
+                    guardarAsistenciaHistorica
+                  }
+                  className="admin-inline-form asistencia-edit-form"
+                  noValidate
+                >
+                  <div className="admin-form-header">
+                    <div>
+                      <h4 className="admin-form-title">
+                        Registrar asistencia anterior
+                      </h4>
+
+                      <small>
+                        Captura una entrada y salida de
+                        una fecha pasada. El horario se
+                        seleccionar? autom?ticamente
+                        seg?n el d?a.
+                      </small>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={
+                        cancelarAsistenciaHistorica
+                      }
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+
+                  <div className="admin-form-grid">
+                    <label>
+                      Practicante *
+                      <select
+                        name="id_practicante"
+                        value={
+                          formAsistenciaHistorica
+                            .id_practicante
+                        }
+                        onChange={
+                          cambiarCampoAsistenciaHistorica
+                        }
+                        required
+                      >
+                        <option value="">
+                          Selecciona un practicante
+                        </option>
+
+                        {practicantes.map(
+                          (practicante) => (
+                            <option
+                              key={
+                                practicante.id_practicante
+                              }
+                              value={
+                                practicante.id_practicante
+                              }
+                            >
+                              {[
+                                practicante.nombre,
+                                practicante.apellido_paterno,
+                                practicante.apellido_materno,
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+
+                              {practicante.matricula
+                                ? ` - ${practicante.matricula}`
+                                : ""}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </label>
+
+                    <label>
+                      Fecha *
+                      <input
+                        type="date"
+                        name="fecha"
+                        max={new Date(
+                          Date.now() -
+                            new Date().getTimezoneOffset() *
+                              60000
+                        )
+                          .toISOString()
+                          .slice(0, 10)}
+                        value={
+                          formAsistenciaHistorica.fecha
+                        }
+                        onChange={
+                          cambiarCampoAsistenciaHistorica
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Hora de entrada *
+                      <input
+                        type="time"
+                        name="hora_entrada_real"
+                        value={
+                          formAsistenciaHistorica
+                            .hora_entrada_real
+                        }
+                        onChange={
+                          cambiarCampoAsistenciaHistorica
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Hora de salida *
+                      <input
+                        type="time"
+                        name="hora_salida_real"
+                        value={
+                          formAsistenciaHistorica
+                            .hora_salida_real
+                        }
+                        onChange={
+                          cambiarCampoAsistenciaHistorica
+                        }
+                        required
+                      />
+                    </label>
+
+
+                  </div>
+
+                  <div className="asistencia-form-footer">
+                    <button
+                      type="submit"
+                      disabled={
+                        guardandoAsistenciaHistorica
+                      }
+                    >
+                      {guardandoAsistenciaHistorica
+                        ? "Registrando..."
+                        : "Registrar asistencia"}
+                    </button>
+
+                    <span>
+                      Tiempo real:{" "}
+                      <strong>
+                        {calcularTiempoReal(
+                          formAsistenciaHistorica
+                            .hora_entrada_real,
+                          formAsistenciaHistorica
+                            .hora_salida_real
+                        )}
+                      </strong>
+                    </span>
+                  </div>
+                </form>
+              )}
 
               {editandoAsistencia && (
                 <form

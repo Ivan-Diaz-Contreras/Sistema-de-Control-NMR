@@ -829,6 +829,516 @@ const obtenerAsistenciasPracticante = (req, res) => {
     });
 };
 
+
+// ==========================================
+// CREAR ASISTENCIA HISTORICA DESDE ADMIN
+// ==========================================
+
+const crearAsistenciaHistorica = (req, res) => {
+    const idUsuarioAdmin =
+        req.usuario.id_usuario;
+
+    const {
+        id_practicante,
+        fecha,
+        hora_entrada_real,
+        hora_salida_real,
+        observaciones
+    } = req.body || {};
+
+    const idPracticante =
+        Number(id_practicante);
+
+    const fechaLimpia =
+        String(fecha || "").trim();
+
+    const entradaLimpia =
+        String(
+            hora_entrada_real || ""
+        ).trim();
+
+    const salidaLimpia =
+        String(
+            hora_salida_real || ""
+        ).trim();
+
+    const observacionesLimpias =
+        observaciones === undefined ||
+        observaciones === null
+            ? null
+            : String(observaciones).trim() ||
+              null;
+
+    if (
+        !Number.isInteger(idPracticante) ||
+        idPracticante <= 0
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "Selecciona un practicante valido"
+        });
+    }
+
+    const formatoFecha =
+        /^\d{4}-\d{2}-\d{2}$/;
+
+    if (!formatoFecha.test(fechaLimpia)) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha no tiene un formato valido"
+        });
+    }
+
+    const [
+        anio,
+        mes,
+        dia
+    ] = fechaLimpia
+        .split("-")
+        .map(Number);
+
+    const fechaUTC = new Date(
+        Date.UTC(anio, mes - 1, dia)
+    );
+
+    const fechaEsReal =
+        fechaUTC.getUTCFullYear() === anio &&
+        fechaUTC.getUTCMonth() === mes - 1 &&
+        fechaUTC.getUTCDate() === dia;
+
+    if (!fechaEsReal) {
+        return res.status(400).json({
+            mensaje:
+                "La fecha seleccionada no existe"
+        });
+    }
+
+    const formatoHora =
+        /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/;
+
+    if (
+        !formatoHora.test(entradaLimpia) ||
+        !formatoHora.test(salidaLimpia)
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La entrada y la salida deben tener una hora valida"
+        });
+    }
+
+    const convertirSegundos = (hora) => {
+        const [
+            horas,
+            minutos,
+            segundos = 0
+        ] = hora
+            .split(":")
+            .map(Number);
+
+        return (
+            horas * 3600 +
+            minutos * 60 +
+            segundos
+        );
+    };
+
+    const segundosEntrada =
+        convertirSegundos(entradaLimpia);
+
+    const segundosSalida =
+        convertirSegundos(salidaLimpia);
+
+    if (
+        segundosSalida <= segundosEntrada
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La hora de salida debe ser posterior a la hora de entrada"
+        });
+    }
+
+    if (
+        observacionesLimpias &&
+        observacionesLimpias.length > 500
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "Las observaciones no pueden superar los 500 caracteres"
+        });
+    }
+
+    const diasSemana = [
+        "Domingo",
+        "Lunes",
+        "Martes",
+        "Mi\u00e9rcoles",
+        "Jueves",
+        "Viernes",
+        "S\u00e1bado"
+    ];
+
+    const diaSemana =
+        diasSemana[
+            fechaUTC.getUTCDay()
+        ];
+
+    db.getConnection(
+        (errorConexion, connection) => {
+            if (errorConexion) {
+                console.error(
+                    "Error obteniendo conexion:",
+                    errorConexion
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al iniciar el registro historico"
+                });
+            }
+
+            let liberada = false;
+
+            const liberar = () => {
+                if (!liberada) {
+                    liberada = true;
+                    connection.release();
+                }
+            };
+
+            const rollback = (
+                estado,
+                mensaje,
+                error = null
+            ) => {
+                if (error) {
+                    console.error(
+                        mensaje,
+                        error
+                    );
+                }
+
+                connection.rollback(() => {
+                    liberar();
+
+                    return res
+                        .status(estado)
+                        .json({ mensaje });
+                });
+            };
+
+            connection.beginTransaction(
+                (errorTransaccion) => {
+                    if (errorTransaccion) {
+                        liberar();
+
+                        console.error(
+                            "Error iniciando transaccion:",
+                            errorTransaccion
+                        );
+
+                        return res
+                            .status(500)
+                            .json({
+                                mensaje:
+                                    "Error al iniciar el registro historico"
+                            });
+                    }
+
+                    const sqlPracticanteHorario = `
+                        SELECT
+                            p.id_practicante,
+                            u.activo,
+                            h.id_horario,
+                            h.hora_entrada,
+                            h.hora_salida,
+                            DATE_FORMAT(
+                                CURDATE(),
+                                '%Y-%m-%d'
+                            ) AS fecha_hoy
+                        FROM practicantes p
+                        INNER JOIN usuarios u
+                            ON p.id_usuario =
+                               u.id_usuario
+                        LEFT JOIN horarios h
+                            ON h.id_practicante =
+                               p.id_practicante
+                           AND h.dia_semana = ?
+                           AND h.activo = 1
+                        WHERE p.id_practicante = ?
+                        LIMIT 1
+                    `;
+
+                    connection.query(
+                        sqlPracticanteHorario,
+                        [
+                            diaSemana,
+                            idPracticante
+                        ],
+                        (
+                            errorHorario,
+                            resultadosHorario
+                        ) => {
+                            if (errorHorario) {
+                                return rollback(
+                                    500,
+                                    "Error al consultar el horario del practicante",
+                                    errorHorario
+                                );
+                            }
+
+                            if (
+                                resultadosHorario.length ===
+                                0
+                            ) {
+                                return rollback(
+                                    404,
+                                    "Practicante no encontrado"
+                                );
+                            }
+
+                            const datosHorario =
+                                resultadosHorario[0];
+
+                            if (
+                                Number(
+                                    datosHorario.activo
+                                ) !== 1
+                            ) {
+                                return rollback(
+                                    409,
+                                    "El practicante esta inactivo"
+                                );
+                            }
+
+                            if (
+                                fechaLimpia >
+                                datosHorario.fecha_hoy
+                            ) {
+                                return rollback(
+                                    400,
+                                    "No se pueden registrar asistencias de fechas futuras"
+                                );
+                            }
+
+                            if (
+                                !datosHorario.id_horario
+                            ) {
+                                return rollback(
+                                    409,
+                                    `El practicante no tiene un horario activo para el dia ${diaSemana}`
+                                );
+                            }
+
+                            const sqlDuplicado = `
+                                SELECT id_asistencia
+                                FROM asistencias
+                                WHERE id_practicante = ?
+                                  AND fecha = ?
+                                LIMIT 1
+                            `;
+
+                            connection.query(
+                                sqlDuplicado,
+                                [
+                                    idPracticante,
+                                    fechaLimpia
+                                ],
+                                (
+                                    errorDuplicado,
+                                    duplicados
+                                ) => {
+                                    if (
+                                        errorDuplicado
+                                    ) {
+                                        return rollback(
+                                            500,
+                                            "Error al verificar la asistencia",
+                                            errorDuplicado
+                                        );
+                                    }
+
+                                    if (
+                                        duplicados.length >
+                                        0
+                                    ) {
+                                        return rollback(
+                                            409,
+                                            "El practicante ya tiene una asistencia registrada en esa fecha"
+                                        );
+                                    }
+
+                                    const entradaEsperada =
+                                        convertirSegundos(
+                                            String(
+                                                datosHorario
+                                                    .hora_entrada
+                                            )
+                                        );
+
+                                    const estado =
+                                        segundosEntrada <=
+                                        entradaEsperada
+                                            ? "A tiempo"
+                                            : "Retardo";
+
+                                    const horasReales =
+                                        (
+                                            segundosSalida -
+                                            segundosEntrada
+                                        ) / 3600;
+
+                                    const horasContabilizadas =
+                                        Number(
+                                            Math.min(
+                                                horasReales,
+                                                3
+                                            ).toFixed(2)
+                                        );
+
+                                    const sqlAsistencia = `
+                                        INSERT INTO asistencias (
+                                            id_practicante,
+                                            id_horario,
+                                            fecha,
+                                            hora_entrada_real,
+                                            hora_salida_real,
+                                            estado,
+                                            observaciones
+                                        )
+                                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                                    `;
+
+                                    connection.query(
+                                        sqlAsistencia,
+                                        [
+                                            idPracticante,
+                                            datosHorario
+                                                .id_horario,
+                                            fechaLimpia,
+                                            entradaLimpia,
+                                            salidaLimpia,
+                                            estado,
+                                            observacionesLimpias
+                                        ],
+                                        (
+                                            errorAsistencia,
+                                            resultadoAsistencia
+                                        ) => {
+                                            if (
+                                                errorAsistencia
+                                            ) {
+                                                return rollback(
+                                                    500,
+                                                    "Error al registrar la asistencia historica",
+                                                    errorAsistencia
+                                                );
+                                            }
+
+                                            const idAsistencia =
+                                                resultadoAsistencia
+                                                    .insertId;
+
+                                            const descripcion =
+                                                horasReales > 3
+                                                    ? `Registro historico. Tiempo real: ${horasReales.toFixed(
+                                                          2
+                                                      )} h. Se aplico el limite diario de 3 horas.`
+                                                    : "Horas generadas automaticamente desde una asistencia historica.";
+
+                                            const sqlHoras = `
+                                                INSERT INTO registros_horas (
+                                                    id_practicante,
+                                                    id_asistencia,
+                                                    fecha,
+                                                    horas,
+                                                    descripcion
+                                                )
+                                                VALUES (?, ?, ?, ?, ?)
+                                            `;
+
+                                            connection.query(
+                                                sqlHoras,
+                                                [
+                                                    idPracticante,
+                                                    idAsistencia,
+                                                    fechaLimpia,
+                                                    horasContabilizadas,
+                                                    descripcion
+                                                ],
+                                                (
+                                                    errorHoras
+                                                ) => {
+                                                    if (
+                                                        errorHoras
+                                                    ) {
+                                                        return rollback(
+                                                            500,
+                                                            "Error al registrar las horas de la asistencia",
+                                                            errorHoras
+                                                        );
+                                                    }
+
+                                                    connection.commit(
+                                                        (
+                                                            errorCommit
+                                                        ) => {
+                                                            if (
+                                                                errorCommit
+                                                            ) {
+                                                                return rollback(
+                                                                    500,
+                                                                    "Error al completar el registro historico",
+                                                                    errorCommit
+                                                                );
+                                                            }
+
+                                                            liberar();
+
+                                                            registrarActividad(
+                                                                idUsuarioAdmin,
+                                                                "CREAR_ASISTENCIA_HISTORICA",
+                                                                `El administrador registro una asistencia historica para el practicante ${idPracticante} con fecha ${fechaLimpia}. Estado: ${estado}. Horas: ${horasContabilizadas}`
+                                                            );
+
+                                                            return res
+                                                                .status(
+                                                                    201
+                                                                )
+                                                                .json({
+                                                                    mensaje:
+                                                                        "Asistencia historica registrada correctamente",
+                                                                    id_asistencia:
+                                                                        idAsistencia,
+                                                                    dia_semana:
+                                                                        diaSemana,
+                                                                    estado,
+                                                                    horas_reales:
+                                                                        Number(
+                                                                            horasReales.toFixed(
+                                                                                2
+                                                                            )
+                                                                        ),
+                                                                    horas_contabilizadas:
+                                                                        horasContabilizadas,
+                                                                    limite_diario:
+                                                                        3
+                                                                });
+                                                        }
+                                                    );
+                                                }
+                                            );
+                                        }
+                                    );
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+};
+
 const actualizarAsistencia = (req, res) => {
     const { id } = req.params;
     const idUsuario = req.usuario.id_usuario;
@@ -4002,6 +4512,7 @@ module.exports = {
     // Horarios y asistencias
     obtenerHorarioPracticante,
     obtenerAsistenciasPracticante,
+    crearAsistenciaHistorica,
     actualizarAsistencia,
     crearHorarioPracticante,
     actualizarHorario,

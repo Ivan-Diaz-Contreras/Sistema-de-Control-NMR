@@ -175,6 +175,40 @@ function AdminPanel({ usuario, onLogout }) {
   const [editandoAsistencia, setEditandoAsistencia] = useState(null);
   const [guardandoAsistencia, setGuardandoAsistencia] = useState(false);
 
+  const obtenerFechaLocalActual = () => {
+    const ahora = new Date();
+    const compensacion =
+      ahora.getTimezoneOffset() * 60000;
+
+    return new Date(
+      ahora.getTime() - compensacion
+    )
+      .toISOString()
+      .slice(0, 10);
+  };
+
+  const asistenciaHistoricaInicial = () => ({
+    id_practicante: "",
+    fecha: obtenerFechaLocalActual(),
+    hora_entrada_real: "",
+    hora_salida_real: "",
+  });
+
+  const [
+    mostrandoAsistenciaHistorica,
+    setMostrandoAsistenciaHistorica,
+  ] = useState(false);
+
+  const [
+    formAsistenciaHistorica,
+    setFormAsistenciaHistorica,
+  ] = useState(asistenciaHistoricaInicial);
+
+  const [
+    guardandoAsistenciaHistorica,
+    setGuardandoAsistenciaHistorica,
+  ] = useState(false);
+
   // ==========================================
   // HISTORIAL DE ACTIVIDADES
   // ==========================================
@@ -2054,6 +2088,129 @@ const formatearFechaHora = (fecha) => {
     }
   };
 
+  const abrirFormularioAsistenciaHistorica = () => {
+    setFormAsistenciaHistorica(
+      asistenciaHistoricaInicial()
+    );
+    setMostrandoAsistenciaHistorica(true);
+    setEditandoAsistencia(null);
+    setMensaje("");
+  };
+
+  const cancelarAsistenciaHistorica = () => {
+    setMostrandoAsistenciaHistorica(false);
+    setFormAsistenciaHistorica(
+      asistenciaHistoricaInicial()
+    );
+    setMensaje("");
+  };
+
+  const cambiarCampoAsistenciaHistorica = (e) => {
+    const { name, value } = e.target;
+
+    setFormAsistenciaHistorica((actual) => ({
+      ...actual,
+      [name]: value,
+    }));
+  };
+
+  const guardarAsistenciaHistorica = async (e) => {
+    e.preventDefault();
+
+    const {
+      id_practicante,
+      fecha,
+      hora_entrada_real,
+      hora_salida_real,
+    } = formAsistenciaHistorica;
+
+    if (!id_practicante) {
+      setMensaje(
+        "Selecciona un practicante."
+      );
+      return;
+    }
+
+    if (!fecha) {
+      setMensaje(
+        "Selecciona la fecha de la asistencia."
+      );
+      return;
+    }
+
+    if (fecha > obtenerFechaLocalActual()) {
+      setMensaje(
+        "No puedes registrar una asistencia en una fecha futura."
+      );
+      return;
+    }
+
+    if (
+      !hora_entrada_real ||
+      !hora_salida_real
+    ) {
+      setMensaje(
+        "La hora de entrada y la hora de salida son obligatorias."
+      );
+      return;
+    }
+
+    if (
+      hora_salida_real <=
+      hora_entrada_real
+    ) {
+      setMensaje(
+        "La hora de salida debe ser posterior a la hora de entrada."
+      );
+      return;
+    }
+
+    try {
+      setGuardandoAsistenciaHistorica(true);
+      setMensaje("");
+
+      const response = await axios.post(
+        `${API}/admin/asistencias/historica`,
+        {
+          id_practicante:
+            Number(id_practicante),
+          fecha,
+          hora_entrada_real,
+          hora_salida_real,
+        },
+        { headers }
+      );
+
+      setMensaje(
+        response.data.mensaje ||
+          "Asistencia historica registrada correctamente."
+      );
+
+      setMostrandoAsistenciaHistorica(false);
+      setFormAsistenciaHistorica(
+        asistenciaHistoricaInicial()
+      );
+
+      await Promise.all([
+        cargarAsistencias(),
+        cargarEstadisticas(),
+        cargarHistorial(),
+      ]);
+    } catch (error) {
+      console.error(
+        "Error registrando asistencia historica:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo registrar la asistencia historica."
+      );
+    } finally {
+      setGuardandoAsistenciaHistorica(false);
+    }
+  };
+
   const abrirEdicionAsistencia = (asistencia) => {
     setEditandoAsistencia({
       ...asistencia,
@@ -2375,6 +2532,7 @@ const formatearFechaHora = (fecha) => {
     abrirArchivoBitacoraAdmin,
     abrirEdicionActividad,
     abrirEdicionAsistencia,
+    abrirFormularioAsistenciaHistorica,
     abrirEdicionCarrera,
     abrirEdicionHorario,
     abrirEdicionRegistroHoras,
@@ -2394,6 +2552,7 @@ const formatearFechaHora = (fecha) => {
     calcularTiempoReal,
     cambiarCampoActividad,
     cambiarCampoAsistencia,
+    cambiarCampoAsistenciaHistorica,
     cambiarCampoEdicion,
     cambiarCampoNuevoPracticante,
     cambiarCampoHorario,
@@ -2404,6 +2563,7 @@ const formatearFechaHora = (fecha) => {
     cambiarEstadoPracticante,
     cambiarFiltroCarrera,
     cancelarEdicionCarrera,
+    cancelarAsistenciaHistorica,
     cancelarNuevoPracticante,
     cancelarHorario,
     cargando,
@@ -2441,12 +2601,14 @@ const formatearFechaHora = (fecha) => {
     filtroFechaAsistencia,
     filtroEstadoBitacora,
     formActividad,
+    formAsistenciaHistorica,
     formHorario,
     formatearFecha,
     formatearFechaHora,
     formatearHora,
     guardandoActividad,
     guardandoAsistencia,
+    guardandoAsistenciaHistorica,
     guardandoCarrera,
     guardandoHorario,
     guardandoPracticante,
@@ -2454,6 +2616,7 @@ const formatearFechaHora = (fecha) => {
     guardandoRegistroHoras,
     guardarActividadBitacora,
     guardarAsistencia,
+    guardarAsistenciaHistorica,
     guardarCarrera,
     guardarHorario,
     guardarPracticante,
@@ -2464,6 +2627,7 @@ const formatearFechaHora = (fecha) => {
     horariosPracticante,
     iniciarEdicion,
     mensaje,
+    mostrandoAsistenciaHistorica,
     mostrandoFormularioActividad,
     mostrandoFormularioCarrera,
     mostrandoFormularioHorario,

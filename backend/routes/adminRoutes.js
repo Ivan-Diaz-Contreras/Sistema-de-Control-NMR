@@ -16,6 +16,7 @@ const {
     obtenerHorarioPracticante,
     obtenerAsistenciasPracticante,
     obtenerAsistenciasGeneral,
+    crearAsistenciaHistorica,
     actualizarAsistencia,
     crearHorarioPracticante,
     actualizarHorario,
@@ -140,6 +141,15 @@ router.get(
     verificarToken,
     verificarAdmin,
     obtenerAsistenciasGeneral
+);
+
+
+// Registrar una asistencia de una fecha anterior
+router.post(
+    "/asistencias/historica",
+    verificarToken,
+    verificarAdmin,
+    crearAsistenciaHistorica
 );
 
 
