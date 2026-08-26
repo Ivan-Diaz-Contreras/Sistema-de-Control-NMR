@@ -10,8 +10,19 @@ const registrarEntrada = (req, res) => {
 
     const ahora = new Date();
 
-    const fechaActual = ahora.toISOString().split("T")[0];
-    const horaActual = ahora.toTimeString().split(" ")[0];
+    // Usamos fecha y hora locales del servidor
+    // para evitar diferencias con UTC.
+    const anio = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+    const dia = String(ahora.getDate()).padStart(2, "0");
+
+    const fechaActual = `${anio}-${mes}-${dia}`;
+
+    const horaActual = [
+        String(ahora.getHours()).padStart(2, "0"),
+        String(ahora.getMinutes()).padStart(2, "0"),
+        String(ahora.getSeconds()).padStart(2, "0")
+    ].join(":");
 
     const dias = [
         "Domingo",
@@ -314,13 +325,12 @@ const registrarSalida = (req, res) => {
                     const horasReales =
                         segundosTrabajados / 3600;
 
-                    // Máximo permitido: 3 horas por día
-                    const horasContabilizadas =
-                        Math.min(horasReales, 3);
-
+                    // Se contabiliza todo el tiempo real trabajado,
+                    // sin limitarlo al horario asignado
+                    // ni a un máximo diario.
                     const horasRedondeadas =
                         Number(
-                            horasContabilizadas.toFixed(2)
+                            horasReales.toFixed(2)
                         );
 
                     // ==========================================
@@ -379,11 +389,7 @@ const registrarSalida = (req, res) => {
                             `;
 
                             const descripcion =
-                                horasReales > 3
-                                    ? `Horas generadas por asistencia. Tiempo real: ${horasReales.toFixed(
-                                          2
-                                      )} h. Se aplicó el límite diario de 3 horas.`
-                                    : "Horas generadas automáticamente por asistencia.";
+                                "Horas generadas automáticamente por asistencia según la hora real de entrada y salida.";
 
                             db.query(
                                 sqlHoras,
@@ -433,9 +439,7 @@ const registrarSalida = (req, res) => {
                                                     )
                                                 ),
                                             horas_contabilizadas:
-                                                horasRedondeadas,
-                                            limite_diario:
-                                                3
+                                                horasRedondeadas
                                         });
                                 }
                             );

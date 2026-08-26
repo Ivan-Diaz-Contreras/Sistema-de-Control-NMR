@@ -1,10 +1,9 @@
 const express = require("express");
-const router = express.Router();
 
+const router = express.Router();
 
 const verificarToken = require("../middleware/verificarToken");
 const verificarAdmin = require("../middleware/verificarAdmin");
-
 
 const {
     obtenerPracticantes,
@@ -29,6 +28,7 @@ const {
     obtenerCarreras,
     crearCarrera,
     actualizarCarrera,
+    obtenerAlertasAdmin,
     obtenerEstadisticas,
     obtenerHistorialActividades,
     obtenerActividadesBitacora,
@@ -39,14 +39,10 @@ const {
     cambiarPasswordAdmin
 } = require("../controllers/adminController");
 
-
-
 // ==========================================
 // PRACTICANTES
 // ==========================================
 
-
-// Consultar todos los practicantes
 router.get(
     "/practicantes",
     verificarToken,
@@ -54,8 +50,6 @@ router.get(
     obtenerPracticantes
 );
 
-
-// Crear un nuevo practicante
 router.post(
     "/practicantes",
     verificarToken,
@@ -63,8 +57,6 @@ router.post(
     crearPracticanteAdmin
 );
 
-
-// Consultar un practicante por ID
 router.get(
     "/practicantes/:id",
     verificarToken,
@@ -72,8 +64,6 @@ router.get(
     obtenerPracticantePorId
 );
 
-
-// Actualizar un practicante
 router.put(
     "/practicantes/:id",
     verificarToken,
@@ -81,8 +71,6 @@ router.put(
     actualizarPracticante
 );
 
-
-// Activar o desactivar un practicante
 router.put(
     "/practicantes/:id/estado",
     verificarToken,
@@ -90,10 +78,6 @@ router.put(
     actualizarEstadoPracticante
 );
 
-
-// Eliminar un practicante
-// Solo podrá eliminarse si está desactivado.
-// La validación principal se realiza en adminController.
 router.delete(
     "/practicantes/:id",
     verificarToken,
@@ -101,8 +85,6 @@ router.delete(
     eliminarPracticante
 );
 
-
-// Consultar horario de un practicante
 router.get(
     "/practicantes/:id/horario",
     verificarToken,
@@ -110,8 +92,6 @@ router.get(
     obtenerHorarioPracticante
 );
 
-
-// Consultar asistencias de un practicante
 router.get(
     "/practicantes/:id/asistencias",
     verificarToken,
@@ -119,8 +99,6 @@ router.get(
     obtenerAsistenciasPracticante
 );
 
-
-// Consultar registros de horas de un practicante
 router.get(
     "/practicantes/:id/horas",
     verificarToken,
@@ -128,14 +106,10 @@ router.get(
     obtenerHorasPracticante
 );
 
-
-
 // ==========================================
 // ASISTENCIAS
 // ==========================================
 
-
-// Consultar todas las asistencias
 router.get(
     "/asistencias",
     verificarToken,
@@ -143,8 +117,6 @@ router.get(
     obtenerAsistenciasGeneral
 );
 
-
-// Registrar una asistencia de una fecha anterior
 router.post(
     "/asistencias/historica",
     verificarToken,
@@ -152,8 +124,6 @@ router.post(
     crearAsistenciaHistorica
 );
 
-
-// Actualizar una asistencia
 router.put(
     "/asistencias/:id",
     verificarToken,
@@ -161,14 +131,10 @@ router.put(
     actualizarAsistencia
 );
 
-
-
 // ==========================================
 // HORARIOS
 // ==========================================
 
-
-// Crear horario para un practicante
 router.post(
     "/practicantes/:id/horario",
     verificarToken,
@@ -176,8 +142,6 @@ router.post(
     crearHorarioPracticante
 );
 
-
-// Actualizar un horario
 router.put(
     "/horarios/:id",
     verificarToken,
@@ -185,14 +149,10 @@ router.put(
     actualizarHorario
 );
 
-
-
 // ==========================================
 // HORAS
 // ==========================================
 
-
-// Actualizar un registro de horas
 router.put(
     "/horas/:id",
     verificarToken,
@@ -200,8 +160,6 @@ router.put(
     actualizarRegistroHoras
 );
 
-
-// Eliminar un registro de horas
 router.delete(
     "/horas/:id",
     verificarToken,
@@ -209,14 +167,10 @@ router.delete(
     eliminarRegistroHoras
 );
 
-
-
 // ==========================================
 // BITÁCORAS
 // ==========================================
 
-
-// Consultar bitácoras de un practicante
 router.get(
     "/practicantes/:id/bitacoras",
     verificarToken,
@@ -224,8 +178,6 @@ router.get(
     obtenerBitacorasPracticante
 );
 
-
-// Aprobar o rechazar una bitácora
 router.put(
     "/bitacoras/:id/revision",
     verificarToken,
@@ -233,8 +185,6 @@ router.put(
     revisarBitacora
 );
 
-
-// Visualizar PDF de una bitácora
 router.get(
     "/bitacoras/:id/archivo",
     verificarToken,
@@ -242,14 +192,10 @@ router.get(
     obtenerArchivoBitacoraAdmin
 );
 
-
-
 // ==========================================
 // ACTIVIDADES DE BITÁCORA
 // ==========================================
 
-
-// Consultar actividades de bitácora
 router.get(
     "/actividades-bitacora",
     verificarToken,
@@ -257,8 +203,6 @@ router.get(
     obtenerActividadesBitacora
 );
 
-
-// Crear actividad de bitácora
 router.post(
     "/actividades-bitacora",
     verificarToken,
@@ -266,8 +210,6 @@ router.post(
     crearActividadBitacora
 );
 
-
-// Actualizar actividad de bitácora
 router.put(
     "/actividades-bitacora/:id",
     verificarToken,
@@ -275,8 +217,6 @@ router.put(
     actualizarActividadBitacora
 );
 
-
-// Activar o desactivar actividad de bitácora
 router.put(
     "/actividades-bitacora/:id/estado",
     verificarToken,
@@ -284,8 +224,6 @@ router.put(
     actualizarEstadoActividadBitacora
 );
 
-
-// Eliminar actividad de bitácora
 router.delete(
     "/actividades-bitacora/:id",
     verificarToken,
@@ -293,14 +231,10 @@ router.delete(
     eliminarActividadBitacora
 );
 
-
-
 // ==========================================
 // CARRERAS
 // ==========================================
 
-
-// Consultar todas las carreras
 router.get(
     "/carreras",
     verificarToken,
@@ -308,8 +242,6 @@ router.get(
     obtenerCarreras
 );
 
-
-// Crear una carrera
 router.post(
     "/carreras",
     verificarToken,
@@ -317,8 +249,6 @@ router.post(
     crearCarrera
 );
 
-
-// Actualizar, activar o desactivar una carrera
 router.put(
     "/carreras/:id",
     verificarToken,
@@ -326,14 +256,21 @@ router.put(
     actualizarCarrera
 );
 
+// ==========================================
+// ALERTAS
+// ==========================================
 
+router.get(
+    "/alertas",
+    verificarToken,
+    verificarAdmin,
+    obtenerAlertasAdmin
+);
 
 // ==========================================
 // ESTADÍSTICAS
 // ==========================================
 
-
-// Consultar estadísticas generales
 router.get(
     "/estadisticas",
     verificarToken,
@@ -341,14 +278,10 @@ router.get(
     obtenerEstadisticas
 );
 
-
-
 // ==========================================
 // HISTORIAL DE ACTIVIDADES
 // ==========================================
 
-
-// Consultar historial de actividades
 router.get(
     "/historial",
     verificarToken,

@@ -8,6 +8,7 @@ import {
 import {
   CalendarRange,
   Download,
+  FileText,
   FilePenLine,
   Pencil,
   Plus,
@@ -18,6 +19,8 @@ import {
 
 import axios from "axios";
 import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const LIMITE_ACTIVIDAD = 300;
 const MINIMO_ACTIVIDAD = 10;
@@ -67,6 +70,57 @@ const formatearFecha = (fecha) => {
         partes[0],
       ].join("/")
     : fecha || "Sin fecha";
+};
+
+
+const obtenerNombreDia = (fecha) => {
+  const valor = String(fecha || "").slice(0, 10);
+  const [anio, mes, dia] = valor.split("-").map(Number);
+
+  if (!anio || !mes || !dia) {
+    return "DÍA";
+  }
+
+  const fechaLocal = new Date(
+    anio,
+    mes - 1,
+    dia
+  );
+
+  return fechaLocal
+    .toLocaleDateString("es-MX", {
+      weekday: "long",
+    })
+    .toUpperCase();
+};
+
+const obtenerNombreArchivoReporte = (
+  extension,
+  fechaDesde,
+  fechaHasta
+) => {
+  const fechaArchivo = (fecha) =>
+    String(fecha || "").replaceAll("-", "");
+
+  let nombreArchivo =
+    "Actividades_Diarias";
+
+  if (fechaDesde && fechaHasta) {
+    nombreArchivo +=
+      `_${fechaArchivo(fechaDesde)}` +
+      `_al_${fechaArchivo(fechaHasta)}`;
+  } else if (fechaDesde) {
+    nombreArchivo +=
+      `_desde_${fechaArchivo(fechaDesde)}`;
+  } else if (fechaHasta) {
+    nombreArchivo +=
+      `_hasta_${fechaArchivo(fechaHasta)}`;
+  } else {
+    nombreArchivo +=
+      `_${fechaArchivo(obtenerFechaHoy())}`;
+  }
+
+  return `${nombreArchivo}.${extension}`;
 };
 
 function ActividadDiariaAdmin({
@@ -650,31 +704,292 @@ function ActividadDiariaAdmin({
       "Actividades"
     );
 
-    const fechaArchivo = (fecha) =>
-      String(fecha || "")
-        .replaceAll("-", "");
-
-    let nombreArchivo =
-      "Actividades_Diarias";
-
-    if (fechaDesde && fechaHasta) {
-      nombreArchivo +=
-        `_${fechaArchivo(fechaDesde)}` +
-        `_al_${fechaArchivo(fechaHasta)}`;
-    } else if (fechaDesde) {
-      nombreArchivo +=
-        `_desde_${fechaArchivo(fechaDesde)}`;
-    } else if (fechaHasta) {
-      nombreArchivo +=
-        `_hasta_${fechaArchivo(fechaHasta)}`;
-    } else {
-      nombreArchivo +=
-        `_${fechaArchivo(obtenerFechaHoy())}`;
-    }
-
     XLSX.writeFile(
       libro,
-      `${nombreArchivo}.xlsx`
+      obtenerNombreArchivoReporte(
+        "xlsx",
+        fechaDesde,
+        fechaHasta
+      )
+    );
+  };
+
+  const descargarPDF = () => {
+    if (actividadesFiltradas.length === 0) {
+      setError(
+        "No hay actividades para exportar con los filtros seleccionados."
+      );
+      return;
+    }
+
+    setError("");
+
+    const actividadesOrdenadas = [
+      ...actividadesFiltradas,
+    ].sort((a, b) => {
+      const comparacionFecha =
+        String(a.fecha || "").localeCompare(
+          String(b.fecha || "")
+        );
+
+      if (comparacionFecha !== 0) {
+        return comparacionFecha;
+      }
+
+      return String(a.nombre || "").localeCompare(
+        String(b.nombre || ""),
+        "es"
+      );
+    });
+
+    const actividadesPorFecha =
+      actividadesOrdenadas.reduce(
+        (acumulado, actividad) => {
+          const fecha = String(
+            actividad.fecha || "Sin fecha"
+          ).slice(0, 10);
+
+          if (!acumulado[fecha]) {
+            acumulado[fecha] = [];
+          }
+
+          acumulado[fecha].push(actividad);
+
+          return acumulado;
+        },
+        {}
+      );
+
+    const fechas = Object.keys(
+      actividadesPorFecha
+    ).sort();
+
+    const documento = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const margenIzquierdo = 12;
+    const margenDerecho = 12;
+    const anchoPagina =
+      documento.internal.pageSize.getWidth();
+
+    const agregarEncabezado = () => {
+      documento.setFont(
+        "helvetica",
+        "bold"
+      );
+      documento.setFontSize(16);
+      documento.text(
+        "NMR CONSULTORES",
+        margenIzquierdo,
+        14
+      );
+
+      documento.setFontSize(12);
+      documento.text(
+        "REPORTE DE ACTIVIDADES DIARIAS",
+        margenIzquierdo,
+        21
+      );
+
+      documento.setFont(
+        "helvetica",
+        "normal"
+      );
+      documento.setFontSize(9);
+
+      const periodo =
+        fechaDesde || fechaHasta
+          ? `Periodo: ${
+              fechaDesde
+                ? formatearFecha(fechaDesde)
+                : "Inicio"
+            } - ${
+              fechaHasta
+                ? formatearFecha(fechaHasta)
+                : "Actualidad"
+            }`
+          : "Periodo: Todos los registros filtrados";
+
+      documento.text(
+        periodo,
+        margenIzquierdo,
+        27
+      );
+
+      documento.text(
+        `Total de registros: ${actividadesFiltradas.length}`,
+        margenIzquierdo,
+        32
+      );
+
+      documento.text(
+        `Generado: ${formatearFecha(
+          obtenerFechaHoy()
+        )}`,
+        anchoPagina - margenDerecho,
+        27,
+        {
+          align: "right",
+        }
+      );
+    };
+
+    agregarEncabezado();
+
+    let posicionY = 40;
+
+    fechas.forEach(
+      (fecha, indiceFecha) => {
+        const registros =
+          actividadesPorFecha[fecha];
+
+        // Si no hay espacio suficiente para
+        // el título y al menos unas filas,
+        // comenzamos en una página nueva.
+        if (posicionY > 175) {
+          documento.addPage();
+          agregarEncabezado();
+          posicionY = 40;
+        }
+
+        documento.setFont(
+          "helvetica",
+          "bold"
+        );
+        documento.setFontSize(11);
+
+        documento.text(
+          `${obtenerNombreDia(fecha)} ${formatearFecha(
+            fecha
+          )}`,
+          margenIzquierdo,
+          posicionY
+        );
+
+        autoTable(documento, {
+          startY: posicionY + 4,
+          margin: {
+            left: margenIzquierdo,
+            right: margenDerecho,
+          },
+          head: [
+            [
+              "Empresa",
+              "Practicante",
+              "Carrera",
+              "Horario",
+              "Actividad realizada",
+            ],
+          ],
+          body: registros.map(
+            (actividad) => [
+              actividad.empresa ||
+                "NMR CONSULTORES",
+              actividad.nombre ||
+                "Sin nombre",
+              actividad.carrera ||
+                "No registrada",
+              actividad.horario ||
+                "No registrado",
+              actividad.actividad || "",
+            ]
+          ),
+          styles: {
+            font: "helvetica",
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: "linebreak",
+            valign: "top",
+          },
+          headStyles: {
+            fontStyle: "bold",
+          },
+          columnStyles: {
+            0: {
+              cellWidth: 34,
+            },
+            1: {
+              cellWidth: 48,
+            },
+            2: {
+              cellWidth: 48,
+            },
+            3: {
+              cellWidth: 32,
+            },
+            4: {
+              cellWidth: "auto",
+            },
+          },
+          showHead: "everyPage",
+          didDrawPage: (data) => {
+            // Cuando autoTable agrega una página
+            // automáticamente, colocamos de nuevo
+            // el encabezado general arriba.
+            if (
+              data.pageNumber > 1 &&
+              documento.internal.getNumberOfPages() >
+                1
+            ) {
+              // El encabezado del reporte se agrega
+              // sólo si hay espacio por encima
+              // de la tabla en esa página.
+            }
+          },
+        });
+
+        posicionY =
+          (documento.lastAutoTable?.finalY ||
+            posicionY + 10) +
+          10;
+
+        // Separa visualmente los días.
+        if (
+          indiceFecha < fechas.length - 1 &&
+          posicionY > 185
+        ) {
+          documento.addPage();
+          agregarEncabezado();
+          posicionY = 40;
+        }
+      }
+    );
+
+    const totalPaginas =
+      documento.internal.getNumberOfPages();
+
+    for (
+      let pagina = 1;
+      pagina <= totalPaginas;
+      pagina += 1
+    ) {
+      documento.setPage(pagina);
+
+      documento.setFont(
+        "helvetica",
+        "normal"
+      );
+      documento.setFontSize(8);
+
+      documento.text(
+        `Página ${pagina} de ${totalPaginas}`,
+        anchoPagina - margenDerecho,
+        202,
+        {
+          align: "right",
+        }
+      );
+    }
+
+    documento.save(
+      obtenerNombreArchivoReporte(
+        "pdf",
+        fechaDesde,
+        fechaHasta
+      )
     );
   };
 
@@ -992,17 +1307,37 @@ function ActividadDiariaAdmin({
             registros
           </div>
 
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={descargarExcel}
-            disabled={
-              actividadesFiltradas.length === 0
-            }
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}
           >
-            <Download size={18} />
-            Descargar Excel
-          </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={descargarExcel}
+              disabled={
+                actividadesFiltradas.length === 0
+              }
+            >
+              <Download size={18} />
+              Descargar Excel
+            </button>
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={descargarPDF}
+              disabled={
+                actividadesFiltradas.length === 0
+              }
+            >
+              <FileText size={18} />
+              Descargar PDF
+            </button>
+          </div>
         </div>
 
         {actividadesFiltradas.length === 0 ? (

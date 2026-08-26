@@ -73,9 +73,9 @@ function AsistenciaAdmin({
 
               <p className="panel-description">
                 Consulta las entradas y salidas reales de los
-                practicantes. Al corregir una asistencia, las horas
-                contabilizadas se recalculan automáticamente con un
-                máximo de 3 horas por día.
+                practicantes. Las horas contabilizadas corresponden al
+                tiempo real transcurrido entre la entrada y la salida,
+                incluyendo el tiempo adicional realizado.
               </p>
 
               <div className="asistencia-toolbar">

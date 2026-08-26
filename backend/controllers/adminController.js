@@ -1189,10 +1189,7 @@ const crearAsistenciaHistorica = (req, res) => {
 
                                     const horasContabilizadas =
                                         Number(
-                                            Math.min(
-                                                horasReales,
-                                                3
-                                            ).toFixed(2)
+                                            horasReales.toFixed(2)
                                         );
 
                                     const sqlAsistencia = `
@@ -1239,11 +1236,9 @@ const crearAsistenciaHistorica = (req, res) => {
                                                     .insertId;
 
                                             const descripcion =
-                                                horasReales > 3
-                                                    ? `Registro historico. Tiempo real: ${horasReales.toFixed(
-                                                          2
-                                                      )} h. Se aplico el limite diario de 3 horas.`
-                                                    : "Horas generadas automaticamente desde una asistencia historica.";
+                                                `Registro historico. Tiempo real contabilizado: ${horasReales.toFixed(
+                                                    2
+                                                )} h.`;
 
                                             const sqlHoras = `
                                                 INSERT INTO registros_horas (
@@ -1319,9 +1314,7 @@ const crearAsistenciaHistorica = (req, res) => {
                                                                             )
                                                                         ),
                                                                     horas_contabilizadas:
-                                                                        horasContabilizadas,
-                                                                    limite_diario:
-                                                                        3
+                                                                        horasContabilizadas
                                                                 });
                                                         }
                                                     );
@@ -1597,26 +1590,15 @@ const actualizarAsistencia = (req, res) => {
                             segundosTrabajados /
                             3600;
 
-                        // Máximo permitido:
-                        // 3 horas por día
-                        const horasContabilizadas =
-                            Math.min(
-                                horasReales,
-                                3
-                            );
-
                         const horasRedondeadas =
                             Number(
-                                horasContabilizadas
-                                    .toFixed(2)
+                                horasReales.toFixed(2)
                             );
 
                         const descripcion =
-                            horasReales > 3
-                                ? `Horas recalculadas por corrección de asistencia. Tiempo real: ${horasReales.toFixed(
-                                      2
-                                  )} h. Se aplicó el límite diario de 3 horas.`
-                                : "Horas recalculadas automáticamente por corrección de asistencia.";
+                            `Horas recalculadas automáticamente por corrección de asistencia. Tiempo real contabilizado: ${horasReales.toFixed(
+                                2
+                            )} h.`;
 
                         const sqlHoras = `
                             INSERT INTO registros_horas (
@@ -1703,10 +1685,7 @@ const actualizarAsistencia = (req, res) => {
                                             ),
 
                                         horas_contabilizadas:
-                                            horasRedondeadas,
-
-                                        limite_diario:
-                                            3
+                                            horasRedondeadas
                                     });
                             }
                         );
@@ -2698,6 +2677,343 @@ const actualizarCarrera = (req, res) => {
             return res.status(200).json({
                 mensaje:
                     "Carrera actualizada correctamente"
+            });
+        }
+    );
+};
+
+
+// ==========================================
+// OBTENER ALERTAS DEL ADMINISTRADOR
+// ==========================================
+
+const obtenerAlertasAdmin = (req, res) => {
+    const sql = `
+        SELECT *
+        FROM (
+            -- ==========================================
+            -- ENTRADA REGISTRADA, PERO SIN SALIDA
+            -- ==========================================
+            SELECT
+                'sin_salida' AS tipo,
+                'alta' AS nivel,
+                1 AS prioridad,
+                p.id_practicante,
+                CONCAT_WS(
+                    ' ',
+                    u.nombre,
+                    u.apellido_paterno,
+                    u.apellido_materno
+                ) AS practicante,
+                c.nombre AS carrera,
+                DATE_FORMAT(a.fecha, '%Y-%m-%d') AS fecha,
+                CONCAT(
+                    'Registró entrada a las ',
+                    TIME_FORMAT(
+                        a.hora_entrada_real,
+                        '%H:%i'
+                    ),
+                    ' y todavía no registra salida.'
+                ) AS detalle
+            FROM asistencias a
+            INNER JOIN practicantes p
+                ON a.id_practicante =
+                    p.id_practicante
+            INNER JOIN usuarios u
+                ON p.id_usuario =
+                    u.id_usuario
+            INNER JOIN carreras c
+                ON p.id_carrera =
+                    c.id_carrera
+            WHERE a.fecha = CURDATE()
+              AND u.activo = 1
+              AND a.hora_entrada_real IS NOT NULL
+              AND a.hora_salida_real IS NULL
+
+            UNION ALL
+
+            -- ==========================================
+            -- TERMINÓ SU HORARIO Y NO REGISTRÓ
+            -- ACTIVIDAD DIARIA
+            -- ==========================================
+            SELECT
+                'sin_actividad' AS tipo,
+                'media' AS nivel,
+                2 AS prioridad,
+                p.id_practicante,
+                CONCAT_WS(
+                    ' ',
+                    u.nombre,
+                    u.apellido_paterno,
+                    u.apellido_materno
+                ) AS practicante,
+                c.nombre AS carrera,
+                DATE_FORMAT(
+                    CURDATE(),
+                    '%Y-%m-%d'
+                ) AS fecha,
+                CONCAT(
+                    'Terminó su horario de hoy (',
+                    TIME_FORMAT(
+                        h.hora_entrada,
+                        '%H:%i'
+                    ),
+                    ' - ',
+                    TIME_FORMAT(
+                        h.hora_salida,
+                        '%H:%i'
+                    ),
+                    ') y no ha registrado su actividad diaria.'
+                ) AS detalle
+            FROM practicantes p
+            INNER JOIN usuarios u
+                ON p.id_usuario =
+                    u.id_usuario
+            INNER JOIN carreras c
+                ON p.id_carrera =
+                    c.id_carrera
+            INNER JOIN horarios h
+                ON h.id_practicante =
+                    p.id_practicante
+               AND h.activo = 1
+            WHERE u.activo = 1
+              AND h.dia_semana =
+                    CASE DAYOFWEEK(CURDATE())
+                        WHEN 1 THEN 'Domingo'
+                        WHEN 2 THEN 'Lunes'
+                        WHEN 3 THEN 'Martes'
+                        WHEN 4 THEN 'Miércoles'
+                        WHEN 5 THEN 'Jueves'
+                        WHEN 6 THEN 'Viernes'
+                        WHEN 7 THEN 'Sábado'
+                    END
+              AND CURTIME() >= h.hora_salida
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM actividades_diarias ad
+                    WHERE ad.id_practicante =
+                            p.id_practicante
+                      AND ad.fecha = CURDATE()
+              )
+
+            UNION ALL
+
+            -- ==========================================
+            -- BITÁCORA NO ENTREGADA DESPUÉS DEL
+            -- LÍMITE O ENTREGADA PENDIENTE DE REVISIÓN
+            -- ==========================================
+            SELECT
+                'bitacora_pendiente' AS tipo,
+                CASE
+                    WHEN b.id_bitacora IS NULL
+                         AND NOW() > ab.fecha_limite
+                        THEN 'alta'
+                    ELSE 'media'
+                END AS nivel,
+                3 AS prioridad,
+                p.id_practicante,
+                CONCAT_WS(
+                    ' ',
+                    u.nombre,
+                    u.apellido_paterno,
+                    u.apellido_materno
+                ) AS practicante,
+                c.nombre AS carrera,
+                DATE_FORMAT(
+                    ab.fecha_limite,
+                    '%Y-%m-%d'
+                ) AS fecha,
+                CASE
+                    WHEN b.id_bitacora IS NULL
+                        THEN CONCAT(
+                            'No entregó la bitácora de la semana ',
+                            ab.numero_semana,
+                            '. Fecha límite: ',
+                            DATE_FORMAT(
+                                ab.fecha_limite,
+                                '%d/%m/%Y %H:%i'
+                            ),
+                            '.'
+                        )
+                    ELSE CONCAT(
+                        'La bitácora de la semana ',
+                        ab.numero_semana,
+                        ' está pendiente de revisión.'
+                    )
+                END AS detalle
+            FROM practicantes p
+            INNER JOIN usuarios u
+                ON p.id_usuario =
+                    u.id_usuario
+            INNER JOIN carreras c
+                ON p.id_carrera =
+                    c.id_carrera
+            INNER JOIN actividades_bitacora ab
+                ON ab.activa = 1
+               AND CURDATE() >= ab.fecha_inicio
+            LEFT JOIN bitacoras b
+                ON b.id_practicante =
+                    p.id_practicante
+               AND b.numero_semana =
+                    ab.numero_semana
+            WHERE u.activo = 1
+              AND (
+                    (
+                        b.id_bitacora IS NULL
+                        AND NOW() >
+                            ab.fecha_limite
+                    )
+                    OR b.estado = 'Pendiente'
+              )
+
+            UNION ALL
+
+            -- ==========================================
+            -- PRACTICANTE ENTRE 90% Y MENOS DE 100%
+            -- DE SUS HORAS REQUERIDAS
+            -- ==========================================
+            SELECT
+                'proximo_horas' AS tipo,
+                'informativa' AS nivel,
+                4 AS prioridad,
+                p.id_practicante,
+                CONCAT_WS(
+                    ' ',
+                    u.nombre,
+                    u.apellido_paterno,
+                    u.apellido_materno
+                ) AS practicante,
+                c.nombre AS carrera,
+                DATE_FORMAT(
+                    CURDATE(),
+                    '%Y-%m-%d'
+                ) AS fecha,
+                CONCAT(
+                    'Lleva ',
+                    FORMAT(
+                        COALESCE(
+                            SUM(rh.horas),
+                            0
+                        ),
+                        2
+                    ),
+                    ' de ',
+                    FORMAT(
+                        p.horas_requeridas,
+                        2
+                    ),
+                    ' horas (',
+                    FORMAT(
+                        (
+                            COALESCE(
+                                SUM(rh.horas),
+                                0
+                            ) /
+                            NULLIF(
+                                p.horas_requeridas,
+                                0
+                            )
+                        ) * 100,
+                        1
+                    ),
+                    '%).'
+                ) AS detalle
+            FROM practicantes p
+            INNER JOIN usuarios u
+                ON p.id_usuario =
+                    u.id_usuario
+            INNER JOIN carreras c
+                ON p.id_carrera =
+                    c.id_carrera
+            LEFT JOIN registros_horas rh
+                ON p.id_practicante =
+                    rh.id_practicante
+            WHERE u.activo = 1
+              AND p.horas_requeridas > 0
+            GROUP BY
+                p.id_practicante,
+                u.nombre,
+                u.apellido_paterno,
+                u.apellido_materno,
+                c.nombre,
+                p.horas_requeridas
+            HAVING
+                COALESCE(
+                    SUM(rh.horas),
+                    0
+                ) >= p.horas_requeridas * 0.90
+                AND
+                COALESCE(
+                    SUM(rh.horas),
+                    0
+                ) < p.horas_requeridas
+        ) alertas
+        ORDER BY
+            prioridad ASC,
+            practicante ASC
+    `;
+
+    db.query(
+        sql,
+        (error, resultados) => {
+            if (error) {
+                console.error(
+                    "Error obteniendo alertas del administrador:",
+                    error
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al consultar las alertas"
+                });
+            }
+
+            const alertas = resultados.map(
+                (alerta, indice) => ({
+                    id:
+                        `${alerta.tipo}-${alerta.id_practicante}-${indice}`,
+                    tipo:
+                        alerta.tipo,
+                    nivel:
+                        alerta.nivel,
+                    id_practicante:
+                        Number(
+                            alerta.id_practicante
+                        ),
+                    practicante:
+                        alerta.practicante,
+                    carrera:
+                        alerta.carrera,
+                    fecha:
+                        alerta.fecha,
+                    mensaje:
+                        alerta.detalle
+                })
+            );
+
+            const resumen = alertas.reduce(
+                (acumulado, alerta) => {
+                    acumulado[alerta.tipo] =
+                        (
+                            acumulado[
+                                alerta.tipo
+                            ] || 0
+                        ) + 1;
+
+                    return acumulado;
+                },
+                {
+                    sin_salida: 0,
+                    sin_actividad: 0,
+                    bitacora_pendiente: 0,
+                    proximo_horas: 0
+                }
+            );
+
+            return res.status(200).json({
+                total: alertas.length,
+                resumen,
+                alertas
             });
         }
     );
@@ -4532,7 +4848,8 @@ module.exports = {
     crearCarrera,
     actualizarCarrera,
 
-    // Estadísticas
+    // Alertas y estadísticas
+    obtenerAlertasAdmin,
     obtenerEstadisticas,
 
     // Actividades de bitácora

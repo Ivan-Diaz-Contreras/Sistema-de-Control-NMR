@@ -1,5 +1,8 @@
+import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import {
   AlertTriangle,
+  BellRing,
   Building2,
   CheckCircle2,
   ClipboardList,
@@ -9,11 +12,96 @@ import {
   Users,
 } from "lucide-react";
 
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:3000";
+
+const API = `${API_URL}/api`;
+
 function DashboardAdmin({
   cargando,
   estadisticas,
   usuario,
 }) {
+  const [alertas, setAlertas] = useState([]);
+  const [resumenAlertas, setResumenAlertas] =
+    useState({
+      sin_salida: 0,
+      sin_actividad: 0,
+      bitacora_pendiente: 0,
+      proximo_horas: 0,
+    });
+  const [cargandoAlertas, setCargandoAlertas] =
+    useState(true);
+  const [errorAlertas, setErrorAlertas] =
+    useState("");
+
+  const cargarAlertas = useCallback(async () => {
+    const token =
+      localStorage.getItem("token");
+
+    if (!token) {
+      setAlertas([]);
+      setCargandoAlertas(false);
+      return;
+    }
+
+    try {
+      setCargandoAlertas(true);
+      setErrorAlertas("");
+
+      const response = await axios.get(
+        `${API}/admin/alertas`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setAlertas(
+        Array.isArray(response.data?.alertas)
+          ? response.data.alertas
+          : []
+      );
+
+      setResumenAlertas({
+        sin_salida:
+          Number(
+            response.data?.resumen?.sin_salida
+          ) || 0,
+        sin_actividad:
+          Number(
+            response.data?.resumen?.sin_actividad
+          ) || 0,
+        bitacora_pendiente:
+          Number(
+            response.data?.resumen?.bitacora_pendiente
+          ) || 0,
+        proximo_horas:
+          Number(
+            response.data?.resumen?.proximo_horas
+          ) || 0,
+      });
+    } catch (error) {
+      console.error(
+        "Error cargando alertas del administrador:",
+        error
+      );
+
+      setErrorAlertas(
+        error.response?.data?.mensaje ||
+          "No se pudieron cargar las alertas."
+      );
+    } finally {
+      setCargandoAlertas(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarAlertas();
+  }, [cargarAlertas]);
+
   const totalPracticantes =
     estadisticas?.total_practicantes ?? 0;
 
@@ -94,6 +182,29 @@ function DashboardAdmin({
       weekday: "short",
       day: "2-digit",
     });
+  };
+
+  const obtenerTituloAlerta = (tipo) => {
+    switch (tipo) {
+      case "sin_salida":
+        return "Salida pendiente";
+      case "sin_actividad":
+        return "Actividad diaria pendiente";
+      case "bitacora_pendiente":
+        return "Bitácora pendiente";
+      case "proximo_horas":
+        return "Próximo a completar horas";
+      default:
+        return "Alerta";
+    }
+  };
+
+  const obtenerIconoAlerta = (tipo) => {
+    if (tipo === "proximo_horas") {
+      return <CheckCircle2 size={20} />;
+    }
+
+    return <AlertTriangle size={20} />;
   };
 
   return (
@@ -192,6 +303,193 @@ function DashboardAdmin({
                 </small>
               </div>
             </article>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <p className="section-label">
+                  ALERTAS
+                </p>
+
+                <h3>
+                  Pendientes y seguimiento
+                </h3>
+
+                <p className="panel-description dashboard-section-description">
+                  Avisos automáticos sobre asistencias,
+                  actividades, bitácoras y avance de horas.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={cargarAlertas}
+                disabled={cargandoAlertas}
+              >
+                <BellRing size={18} />
+                {cargandoAlertas
+                  ? "Actualizando..."
+                  : "Actualizar alertas"}
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "12px",
+                marginBottom: "18px",
+              }}
+            >
+              <article className="dashboard-mini-card">
+                <span>
+                  <AlertTriangle size={20} />
+                </span>
+                <div>
+                  <p>Sin salida</p>
+                  <strong>
+                    {resumenAlertas.sin_salida}
+                  </strong>
+                  <small>entradas incompletas</small>
+                </div>
+              </article>
+
+              <article className="dashboard-mini-card">
+                <span>
+                  <ClipboardList size={20} />
+                </span>
+                <div>
+                  <p>Sin actividad</p>
+                  <strong>
+                    {resumenAlertas.sin_actividad}
+                  </strong>
+                  <small>reportes diarios pendientes</small>
+                </div>
+              </article>
+
+              <article className="dashboard-mini-card">
+                <span>
+                  <ClipboardList size={20} />
+                </span>
+                <div>
+                  <p>Bitácoras</p>
+                  <strong>
+                    {resumenAlertas.bitacora_pendiente}
+                  </strong>
+                  <small>pendientes o no entregadas</small>
+                </div>
+              </article>
+
+              <article className="dashboard-mini-card">
+                <span>
+                  <CheckCircle2 size={20} />
+                </span>
+                <div>
+                  <p>Próximos a terminar</p>
+                  <strong>
+                    {resumenAlertas.proximo_horas}
+                  </strong>
+                  <small>90% o más de avance</small>
+                </div>
+              </article>
+            </div>
+
+            {errorAlertas ? (
+              <div
+                style={{
+                  padding: "14px",
+                  border: "1px solid #e1e6ef",
+                  borderRadius: "10px",
+                }}
+              >
+                {errorAlertas}
+              </div>
+            ) : cargandoAlertas ? (
+              <p>Cargando alertas...</p>
+            ) : alertas.length === 0 ? (
+              <div
+                style={{
+                  padding: "18px",
+                  border: "1px solid #e1e6ef",
+                  borderRadius: "10px",
+                }}
+              >
+                <strong>
+                  No hay alertas pendientes.
+                </strong>
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                  }}
+                >
+                  Los practicantes activos se encuentran
+                  al corriente.
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gap: "10px",
+                }}
+              >
+                {alertas.map((alerta) => (
+                  <article
+                    key={alerta.id}
+                    style={{
+                      display: "flex",
+                      gap: "12px",
+                      alignItems: "flex-start",
+                      padding: "14px",
+                      border: "1px solid #e1e6ef",
+                      borderRadius: "10px",
+                    }}
+                  >
+                    <span>
+                      {obtenerIconoAlerta(
+                        alerta.tipo
+                      )}
+                    </span>
+
+                    <div
+                      style={{
+                        flex: 1,
+                      }}
+                    >
+                      <strong>
+                        {obtenerTituloAlerta(
+                          alerta.tipo
+                        )}
+                      </strong>
+
+                      <div
+                        style={{
+                          marginTop: "4px",
+                        }}
+                      >
+                        <strong>
+                          {alerta.practicante}
+                        </strong>
+                        {alerta.carrera
+                          ? ` · ${alerta.carrera}`
+                          : ""}
+                      </div>
+
+                      <p
+                        style={{
+                          margin:
+                            "5px 0 0",
+                        }}
+                      >
+                        {alerta.mensaje}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="panel dashboard-attendance-panel">
