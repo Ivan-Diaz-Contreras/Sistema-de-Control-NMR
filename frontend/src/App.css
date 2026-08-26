@@ -2991,3 +2991,325 @@ body,
 .status-dot-circle {
   background: #a0aec0;
 }
+/* ==========================================
+   SEGURIDAD ADMIN
+========================================== */
+
+.seguridad-admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.seguridad-icon-box {
+  width: 46px;
+  height: 46px;
+
+  border-radius: 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #eef2f7;
+  color: #172746;
+}
+
+/* ==========================================
+   FORMULARIO NUEVO ADMIN
+========================================== */
+
+.nuevo-admin-form {
+  margin-top: 25px;
+  margin-bottom: 28px;
+
+  padding: 24px;
+
+  border: 1px solid #e2e6ec;
+  border-radius: 14px;
+
+  background: #f9fafc;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon svg {
+  position: absolute;
+
+  left: 13px;
+
+  color: #8893a5;
+
+  pointer-events: none;
+}
+
+.input-with-icon input {
+  width: 100%;
+  padding-left: 42px;
+}
+
+/* ==========================================
+   ADMINISTRADORES
+========================================== */
+
+/* ==========================================
+   LISTADO DE ADMINISTRADORES
+========================================== */
+
+.administradores-grid {
+  margin-top: 24px;
+
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 16px;
+}
+
+.administrador-card {
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  min-width: 0;
+
+  padding: 18px 20px;
+
+  background: #ffffff;
+
+  border: 1px solid #e1e6ee;
+  border-radius: 14px;
+
+  box-shadow:
+    0 3px 10px rgba(16, 28, 54, 0.04);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.administrador-card:hover {
+  transform: translateY(-2px);
+
+  border-color: #cad2df;
+
+  box-shadow:
+    0 8px 22px rgba(16, 28, 54, 0.08);
+}
+
+.administrador-card-avatar {
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  border-radius: 50%;
+
+  background: #172746;
+  color: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.administrador-card-info {
+  flex: 1;
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+}
+
+.administrador-card-name {
+  color: #172033;
+
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.administrador-card-email {
+  color: #788397;
+
+  font-size: 12px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-password-status {
+  display: inline-flex;
+  align-items: center;
+
+  width: fit-content;
+
+  margin-top: 5px;
+
+  padding: 5px 9px;
+
+  border-radius: 20px;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-password-status.ready {
+  background: #eaf7ef;
+  color: #327a4d;
+}
+
+.admin-password-status.pending {
+  background: #fff4dd;
+  color: #a56812;
+}
+
+.administrador-card:hover {
+  transform: translateY(-1px);
+
+  border-color: #ccd3de;
+
+  box-shadow:
+    0 8px 20px rgba(16, 28, 54, 0.07);
+}
+
+.administrador-card-avatar {
+  width: 46px;
+  height: 46px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #172746;
+  color: white;
+
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.administrador-card-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.administrador-card-info strong {
+  color: #172033;
+  font-size: 14px;
+}
+
+.administrador-card-info > span {
+  color: #778297;
+
+  font-size: 12px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-password-status {
+  width: fit-content;
+
+  margin-top: 7px;
+
+  padding: 4px 8px;
+
+  border-radius: 20px;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-password-status.ready {
+  background: #edf8f1;
+  color: #388653;
+}
+
+.admin-password-status.pending {
+  background: #fff5df;
+  color: #a76b13;
+}
+
+/* EMPTY */
+
+.admin-empty-state {
+  margin-top: 25px;
+
+  min-height: 150px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border: 1px dashed #d8dee8;
+  border-radius: 13px;
+
+  color: #8792a5;
+
+  text-align: center;
+}
+
+.admin-empty-state strong {
+  color: #354158;
+}
+
+/* ==========================================
+   INPUTS CON ICONO
+========================================== */
+
+.input-with-icon {
+  position: relative;
+  width: 100%;
+}
+
+.input-with-icon svg {
+  position: absolute;
+
+  left: 13px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  color: #748096;
+
+  pointer-events: none;
+
+  z-index: 2;
+}
+
+.input-with-icon input {
+  width: 100%;
+
+  padding-left: 42px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1000px) {
+  .administradores-grid {
+    grid-template-columns: 1fr;
+  }
+}

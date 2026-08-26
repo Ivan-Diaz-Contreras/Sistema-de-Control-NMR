@@ -13,6 +13,206 @@ const {
 } = require("../utils/validaciones");
 
 // ==========================================
+// Crear administrador
+// ==========================================
+const crearAdministrador = async (req, res) => {
+    const {
+        nombre,
+        apellido_paterno,
+        apellido_materno,
+        correo,
+        password,
+        confirmar_password
+    } = req.body || {};
+
+    // ==========================================
+    // VALIDACIONES
+    // ==========================================
+
+    if (
+        !nombre ||
+        !apellido_paterno ||
+        !correo ||
+        !password ||
+        !confirmar_password
+    ) {
+        return res.status(400).json({
+            mensaje: "Completa todos los campos obligatorios"
+        });
+    }
+
+    if (password !== confirmar_password) {
+        return res.status(400).json({
+            mensaje: "Las contraseñas no coinciden"
+        });
+    }
+
+    if (password.length < 8) {
+        return res.status(400).json({
+            mensaje:
+                "La contraseña debe tener al menos 8 caracteres"
+        });
+    }
+
+    const tieneMayuscula = /[A-Z]/.test(password);
+    const tieneMinuscula = /[a-z]/.test(password);
+    const tieneNumero = /\d/.test(password);
+
+    if (
+        !tieneMayuscula ||
+        !tieneMinuscula ||
+        !tieneNumero
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La contraseña debe incluir una mayúscula, una minúscula y un número"
+        });
+    }
+
+    try {
+        // ==========================================
+        // VERIFICAR CORREO
+        // ==========================================
+
+        const [usuariosExistentes] = await db
+            .promise()
+            .query(
+                `
+                SELECT id_usuario
+                FROM usuarios
+                WHERE correo = ?
+                LIMIT 1
+                `,
+                [correo.trim().toLowerCase()]
+            );
+
+        if (usuariosExistentes.length > 0) {
+            return res.status(409).json({
+                mensaje:
+                    "Ya existe una cuenta registrada con ese correo"
+            });
+        }
+
+        // ==========================================
+        // OBTENER ROL ADMINISTRADOR
+        // ==========================================
+
+        const [roles] = await db
+            .promise()
+            .query(
+                `
+                SELECT id_rol
+                FROM roles
+                WHERE nombre = 'Administrador'
+                LIMIT 1
+                `
+            );
+
+        if (roles.length === 0) {
+            return res.status(500).json({
+                mensaje:
+                    "No se encontró el rol Administrador"
+            });
+        }
+
+        const idRolAdministrador =
+            roles[0].id_rol;
+
+        // ==========================================
+        // CIFRAR CONTRASEÑA
+        // ==========================================
+
+        const passwordHash =
+            await bcrypt.hash(password, 10);
+
+        // ==========================================
+        // CREAR USUARIO
+        // ==========================================
+
+        const [resultado] = await db
+            .promise()
+            .query(
+                `
+                INSERT INTO usuarios (
+                    nombre,
+                    apellido_paterno,
+                    apellido_materno,
+                    correo,
+                    password_hash,
+                    id_rol,
+                    debe_cambiar_password
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 1)
+                `,
+                [
+                    nombre.trim(),
+                    apellido_paterno.trim(),
+                    apellido_materno?.trim() || null,
+                    correo.trim().toLowerCase(),
+                    passwordHash,
+                    idRolAdministrador
+                ]
+            );
+
+        return res.status(201).json({
+            mensaje:
+                "Administrador creado correctamente",
+            id_usuario:
+                resultado.insertId
+        });
+
+    } catch (error) {
+        console.error(
+            "Error creando administrador:",
+            error
+        );
+
+        return res.status(500).json({
+            mensaje:
+                "Error al crear la cuenta de administrador"
+        });
+    }
+};
+
+const obtenerAdministradores = async (req, res) => {
+    try {
+        const [administradores] = await db
+            .promise()
+            .query(
+                `
+                SELECT
+                    u.id_usuario,
+                    u.nombre,
+                    u.apellido_paterno,
+                    u.apellido_materno,
+                    u.correo,
+                    u.debe_cambiar_password
+                FROM usuarios u
+                INNER JOIN roles r
+                    ON u.id_rol = r.id_rol
+                WHERE r.nombre = 'Administrador'
+                ORDER BY u.nombre ASC,
+                         u.apellido_paterno ASC
+                `
+            );
+
+        return res.status(200).json({
+            administradores
+        });
+    } catch (error) {
+        console.error(
+            "Error obteniendo administradores:",
+            error
+        );
+
+        return res.status(500).json({
+            mensaje:
+                "Error al consultar las cuentas de administrador"
+        });
+    }
+};
+
+// ==========================================
 // OBTENER TODOS LOS PRACTICANTES
 // ==========================================
 
@@ -4934,6 +5134,8 @@ module.exports = {
     obtenerHistorialActividades,
 
     // Administrador
-    cambiarPasswordAdmin
+    cambiarPasswordAdmin,
+    crearAdministrador,
+    obtenerAdministradores
     
 };

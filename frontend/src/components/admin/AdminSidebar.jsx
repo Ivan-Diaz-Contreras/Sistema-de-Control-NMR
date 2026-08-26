@@ -24,6 +24,7 @@ function AdminSidebar({
   cargarHistorial,
   notificaciones = {},
   marcarSeccionComoLeida,
+  cargarAdministradores,
 }) {
   // ==========================================
   // OBTENER CANTIDAD DE NOTIFICACIONES
@@ -94,7 +95,6 @@ function AdminSidebar({
         </div>
 
         <div>
-          <h1>NMR</h1>
 
           <span>
             Control de Pr&aacute;cticas
@@ -317,7 +317,9 @@ function AdminSidebar({
               : ""
           }`}
           onClick={() =>
-            cambiarSeccion("seguridad")
+            cambiarSeccion("seguridad",
+            cargarAdministradores
+            )
           }
         >
           <span className="nav-item-icon">

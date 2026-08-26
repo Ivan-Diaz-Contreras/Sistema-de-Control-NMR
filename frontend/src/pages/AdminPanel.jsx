@@ -627,6 +627,117 @@ function AdminPanel({ usuario, onLogout }) {
     }
   };
 
+  // ==========================================
+  // CREAR NUEVO ADMINISTRADOR
+  // ==========================================
+
+  const [administradores, setAdministradores] = useState([]);
+const [cargandoAdministradores, setCargandoAdministradores] =
+  useState(false);
+
+const [mostrandoNuevoAdmin, setMostrandoNuevoAdmin] =
+  useState(false);
+
+const [nuevoAdministrador, setNuevoAdministrador] = useState({
+  nombre: "",
+  apellido_paterno: "",
+  apellido_materno: "",
+  correo: "",
+  password: "",
+  confirmar_password: "",
+});
+
+const [guardandoAdministrador, setGuardandoAdministrador] =
+  useState(false);
+const cargarAdministradores = async () => {
+  try {
+    setCargandoAdministradores(true);
+
+    const response = await axios.get(
+      `${API}/admin/administradores`,
+      { headers }
+    );
+
+    setAdministradores(
+      response.data.administradores || []
+    );
+  } catch (error) {
+    console.error(
+      "Error cargando administradores:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudieron cargar los administradores."
+    );
+  } finally {
+    setCargandoAdministradores(false);
+  }
+};
+
+const cambiarCampoNuevoAdministrador = (e) => {
+  const { name, value } = e.target;
+
+  setNuevoAdministrador((actual) => ({
+    ...actual,
+    [name]: value,
+  }));
+};
+
+const guardarNuevoAdministrador = async (e) => {
+  e.preventDefault();
+
+  if (
+    nuevoAdministrador.password !==
+    nuevoAdministrador.confirmar_password
+  ) {
+    setMensaje("Las contraseñas no coinciden.");
+    return;
+  }
+
+  try {
+    setGuardandoAdministrador(true);
+    setMensaje("");
+
+    const response = await axios.post(
+      `${API}/admin/administradores`,
+      nuevoAdministrador,
+      { headers }
+    );
+
+    setMensaje(
+      response.data.mensaje ||
+        "Administrador creado correctamente."
+    );
+
+    setNuevoAdministrador({
+      nombre: "",
+      apellido_paterno: "",
+      apellido_materno: "",
+      correo: "",
+      password: "",
+      confirmar_password: "",
+    });
+
+    setMostrandoNuevoAdmin(false);
+
+    await cargarAdministradores();
+  } catch (error) {
+    console.error(
+      "Error creando administrador:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo crear el administrador."
+    );
+  } finally {
+    setGuardandoAdministrador(false);
+  }
+};
+
 
   // ==========================================
   // CREAR NUEVO PRACTICANTE
@@ -3749,6 +3860,7 @@ const formatearFechaHora = (fecha) => {
         cargarHistorial={cargarHistorial}
         notificaciones={notificaciones}
         marcarSeccionComoLeida={marcarSeccionComoLeida}
+        cargarAdministradores={cargarAdministradores}
       />
 
       {/* ==========================================
@@ -3805,6 +3917,15 @@ const formatearFechaHora = (fecha) => {
             cambiarCampoPasswordAdmin={cambiarCampoPasswordAdmin}
             guardarPasswordAdmin={guardarPasswordAdmin}
             setMostrarPasswordsAdmin={setMostrarPasswordsAdmin}
+
+            administradores={administradores}
+            cargandoAdministradores={cargandoAdministradores}
+            mostrandoNuevoAdmin={mostrandoNuevoAdmin}
+            setMostrandoNuevoAdmin={setMostrandoNuevoAdmin}
+            nuevoAdministrador={nuevoAdministrador}
+            cambiarCampoNuevoAdministrador={cambiarCampoNuevoAdministrador}
+            guardarNuevoAdministrador={guardarNuevoAdministrador}
+            guardandoAdministrador={guardandoAdministrador}
           />
         )}
 

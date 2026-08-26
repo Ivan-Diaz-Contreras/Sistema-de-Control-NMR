@@ -36,7 +36,9 @@ const {
     actualizarActividadBitacora,
     actualizarEstadoActividadBitacora,
     eliminarActividadBitacora,
-    cambiarPasswordAdmin
+    cambiarPasswordAdmin,
+    crearAdministrador,
+    obtenerAdministradores
 } = require("../controllers/adminController");
 
 // ==========================================
@@ -299,5 +301,24 @@ router.put(
     verificarAdmin,
     cambiarPasswordAdmin
 );
+
+// ==========================================
+// ADMINISTRADORES
+// ==========================================
+router.get(
+    "/administradores",
+    verificarToken,
+    verificarAdmin,
+    obtenerAdministradores
+);
+
+router.post(
+    "/administradores",
+    verificarToken,
+    verificarAdmin,
+    crearAdministrador
+);
+
+
 
 module.exports = router;
