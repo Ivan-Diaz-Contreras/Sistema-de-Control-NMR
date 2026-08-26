@@ -22,10 +22,12 @@ function DashboardAdmin({
   cargando,
   estadisticas,
   usuario,
+  irASeccionDesdeAlerta,
 }) {
   const [alertas, setAlertas] = useState([]);
   const [resumenAlertas, setResumenAlertas] =
     useState({
+      sin_entrada: 0,
       sin_salida: 0,
       sin_actividad: 0,
       bitacora_pendiente: 0,
@@ -66,6 +68,10 @@ function DashboardAdmin({
       );
 
       setResumenAlertas({
+        sin_entrada:
+          Number(
+            response.data?.resumen?.sin_entrada
+          ) || 0,
         sin_salida:
           Number(
             response.data?.resumen?.sin_salida
@@ -186,6 +192,8 @@ function DashboardAdmin({
 
   const obtenerTituloAlerta = (tipo) => {
     switch (tipo) {
+      case "sin_entrada":
+        return "Entrada pendiente";
       case "sin_salida":
         return "Salida pendiente";
       case "sin_actividad":
@@ -205,6 +213,33 @@ function DashboardAdmin({
     }
 
     return <AlertTriangle size={20} />;
+  };
+
+  const obtenerSeccionAlerta = (tipo) => {
+    switch (tipo) {
+      case "sin_entrada":
+        return "asistencia";
+      case "sin_salida":
+        return "asistencia";
+      case "sin_actividad":
+        return "actividad-diaria";
+      case "bitacora_pendiente":
+        return "bitacoras";
+      case "proximo_horas":
+        return "practicantes";
+      default:
+        return "dashboard";
+    }
+  };
+
+  const abrirSeccionAlerta = (tipo) => {
+    if (typeof irASeccionDesdeAlerta !== "function") {
+      return;
+    }
+
+    irASeccionDesdeAlerta(
+      obtenerSeccionAlerta(tipo)
+    );
   };
 
   return (
@@ -343,7 +378,44 @@ function DashboardAdmin({
                 marginBottom: "18px",
               }}
             >
-              <article className="dashboard-mini-card">
+              <article
+                className="dashboard-mini-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirSeccionAlerta("sin_entrada")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    abrirSeccionAlerta("sin_entrada");
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+                title="Ir a Asistencia"
+              >
+                <span>
+                  <AlertTriangle size={20} />
+                </span>
+                <div>
+                  <p>Sin entrada</p>
+                  <strong>
+                    {resumenAlertas.sin_entrada}
+                  </strong>
+                  <small>entradas pendientes</small>
+                </div>
+              </article>
+
+              <article
+                className="dashboard-mini-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirSeccionAlerta("sin_salida")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    abrirSeccionAlerta("sin_salida");
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+                title="Ir a Asistencia"
+              >
                 <span>
                   <AlertTriangle size={20} />
                 </span>
@@ -356,7 +428,19 @@ function DashboardAdmin({
                 </div>
               </article>
 
-              <article className="dashboard-mini-card">
+              <article
+                className="dashboard-mini-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirSeccionAlerta("sin_actividad")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    abrirSeccionAlerta("sin_actividad");
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+                title="Ir a Actividad diaria"
+              >
                 <span>
                   <ClipboardList size={20} />
                 </span>
@@ -365,11 +449,23 @@ function DashboardAdmin({
                   <strong>
                     {resumenAlertas.sin_actividad}
                   </strong>
-                  <small>reportes diarios pendientes</small>
+                  <small>actividades diarias pendientes</small>
                 </div>
               </article>
 
-              <article className="dashboard-mini-card">
+              <article
+                className="dashboard-mini-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirSeccionAlerta("bitacora_pendiente")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    abrirSeccionAlerta("bitacora_pendiente");
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+                title="Ir a Bitácoras"
+              >
                 <span>
                   <ClipboardList size={20} />
                 </span>
@@ -382,7 +478,19 @@ function DashboardAdmin({
                 </div>
               </article>
 
-              <article className="dashboard-mini-card">
+              <article
+                className="dashboard-mini-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirSeccionAlerta("proximo_horas")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    abrirSeccionAlerta("proximo_horas");
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+                title="Ir a Practicantes"
+              >
                 <span>
                   <CheckCircle2 size={20} />
                 </span>
@@ -438,6 +546,17 @@ function DashboardAdmin({
                 {alertas.map((alerta) => (
                   <article
                     key={alerta.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      abrirSeccionAlerta(alerta.tipo)
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        abrirSeccionAlerta(alerta.tipo);
+                      }
+                    }}
+                    title="Abrir sección relacionada"
                     style={{
                       display: "flex",
                       gap: "12px",
@@ -445,6 +564,7 @@ function DashboardAdmin({
                       padding: "14px",
                       border: "1px solid #e1e6ef",
                       borderRadius: "10px",
+                      cursor: "pointer",
                     }}
                   >
                     <span>

@@ -2528,6 +2528,1002 @@ const formatearFechaHora = (fecha) => {
     }
   };
 
+  // ==========================================
+  // NAVEGACIÓN DESDE LAS ALERTAS DEL DASHBOARD
+  // ==========================================
+
+  const irASeccionDesdeAlerta = async (nombreSeccion) => {
+    setSeccion(nombreSeccion);
+    setMensaje("");
+
+    try {
+      if (nombreSeccion === "asistencia") {
+        await cargarAsistencias();
+        return;
+      }
+
+      if (nombreSeccion === "bitacoras") {
+        await Promise.all([
+          cargarActividadesBitacora(),
+          cargarEntregasBitacoras(),
+        ]);
+        return;
+      }
+
+      if (nombreSeccion === "practicantes") {
+        await cargarPracticantes(filtroCarrera);
+      }
+    } catch (error) {
+      console.error(
+        `Error cargando la sección ${nombreSeccion}:`,
+        error
+      );
+    }
+  };
+
+  // ==========================================
+  // REPORTE PDF INDIVIDUAL DEL PRACTICANTE
+  // ==========================================
+
+  const descargarReportePracticantePDF = async () => {
+    if (!practicanteSeleccionado?.id_practicante) {
+      setMensaje("Selecciona un practicante.");
+      return;
+    }
+
+    try {
+      setMensaje("Generando reporte PDF...");
+
+      const { jsPDF } = await import("jspdf");
+      const autoTableModule =
+        await import("jspdf-autotable");
+
+      const autoTable =
+        autoTableModule.default ||
+        autoTableModule.autoTable;
+
+      const idPracticante =
+        practicanteSeleccionado.id_practicante;
+
+      const [
+        responseAsistencias,
+        responseBitacoras,
+        responseActividades,
+      ] = await Promise.all([
+        axios.get(
+          `${API}/admin/practicantes/${idPracticante}/asistencias`,
+          { headers }
+        ),
+        axios.get(
+          `${API}/admin/practicantes/${idPracticante}/bitacoras`,
+          { headers }
+        ),
+        axios.get(
+          `${API}/actividades-diarias/admin`,
+          { headers }
+        ),
+      ]);
+
+      const asistenciasReporte =
+        responseAsistencias.data?.asistencias ||
+        responseAsistencias.data?.registros ||
+        [];
+
+      const bitacorasReporte =
+        responseBitacoras.data?.bitacoras ||
+        responseBitacoras.data?.entregas ||
+        [];
+
+      const actividadesTodas =
+        responseActividades.data?.actividades || [];
+
+      const actividadesReporte =
+        actividadesTodas.filter(
+          (actividad) =>
+            Number(actividad.id_practicante) ===
+            Number(idPracticante)
+        );
+
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      // ==========================================
+      // COLORES DEL REPORTE
+      // ==========================================
+
+      const AZUL_PRINCIPAL = [20, 48, 86];
+      const AZUL_MEDIO = [29, 78, 137];
+      const AZUL_CLARO = [238, 244, 251];
+      const AZUL_MUY_CLARO = [247, 250, 254];
+      const GRIS_TEXTO = [38, 48, 65];
+      const GRIS_BORDE = [216, 225, 236];
+
+      const nombreCompleto = [
+        practicanteSeleccionado.nombre,
+        practicanteSeleccionado.apellido_paterno,
+        practicanteSeleccionado.apellido_materno,
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      const texto = (
+        valor,
+        fallback = "—"
+      ) => {
+        if (
+          valor === null ||
+          valor === undefined ||
+          String(valor).trim() === ""
+        ) {
+          return fallback;
+        }
+
+        return String(valor);
+      };
+
+      const obtenerFechaRegistro = (
+        objeto,
+        campos = []
+      ) => {
+        for (const campo of campos) {
+          if (
+            objeto?.[campo] !== null &&
+            objeto?.[campo] !== undefined &&
+            String(objeto[campo]).trim() !== ""
+          ) {
+            return objeto[campo];
+          }
+        }
+
+        return null;
+      };
+
+      const fechaPDF = (valor) => {
+        if (!valor) {
+          return "—";
+        }
+
+        const valorTexto = String(valor);
+
+        const coincidenciaISO =
+          valorTexto.match(
+            /^(\d{4})-(\d{2})-(\d{2})/
+          );
+
+        if (coincidenciaISO) {
+          return `${coincidenciaISO[3]}/${coincidenciaISO[2]}/${coincidenciaISO[1]}`;
+        }
+
+        return valorTexto;
+      };
+
+      const fechaHoraPDF = (valor) => {
+        if (!valor) {
+          return "—";
+        }
+
+        const fecha = new Date(valor);
+
+        if (!Number.isNaN(fecha.getTime())) {
+          return fecha.toLocaleString(
+            "es-MX",
+            {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }
+          );
+        }
+
+        return String(valor);
+      };
+
+      const horaPDF = (valor) =>
+        valor
+          ? String(valor).slice(0, 5)
+          : "—";
+
+      const ahora = new Date();
+
+      const fechaGeneracion =
+        ahora.toLocaleDateString(
+          "es-MX",
+          {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          }
+        );
+
+      const horaGeneracion =
+        ahora.toLocaleTimeString(
+          "es-MX",
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+          }
+        );
+
+      // ==========================================
+      // ENCABEZADO
+      // ==========================================
+
+      const dibujarEncabezado = () => {
+        doc.setFillColor(
+          ...AZUL_PRINCIPAL
+        );
+
+        doc.rect(
+          0,
+          0,
+          210,
+          29,
+          "F"
+        );
+
+        doc.setTextColor(
+          255,
+          255,
+          255
+        );
+
+        doc.setFont(
+          "helvetica",
+          "bold"
+        );
+
+        doc.setFontSize(17);
+
+        doc.text(
+          "NMR CONSULTORES",
+          14,
+          12
+        );
+
+        doc.setFontSize(11);
+
+        doc.text(
+          "REPORTE COMPLETO DEL PRACTICANTE",
+          196,
+          11,
+          {
+            align: "right",
+          }
+        );
+
+        doc.setFont(
+          "helvetica",
+          "normal"
+        );
+
+        doc.setFontSize(8);
+
+        doc.text(
+          "Sistema de Control de Prácticas Profesionales",
+          14,
+          19
+        );
+
+        doc.text(
+          `Fecha del reporte: ${fechaGeneracion}`,
+          196,
+          18,
+          {
+            align: "right",
+          }
+        );
+
+        doc.text(
+          `Hora: ${horaGeneracion}`,
+          196,
+          23,
+          {
+            align: "right",
+          }
+        );
+
+        doc.setTextColor(
+          ...GRIS_TEXTO
+        );
+      };
+
+      // ==========================================
+      // TÍTULO DE CADA SECCIÓN
+      // ==========================================
+
+      const tituloSeccion = (
+        titulo,
+        posicionY
+      ) => {
+        let y = posicionY;
+
+        if (y > 267) {
+          doc.addPage();
+          dibujarEncabezado();
+          y = 39;
+        }
+
+        doc.setFillColor(
+          ...AZUL_MEDIO
+        );
+
+        doc.roundedRect(
+          14,
+          y - 5.5,
+          75,
+          8.5,
+          2,
+          2,
+          "F"
+        );
+
+        doc.setTextColor(
+          255,
+          255,
+          255
+        );
+
+        doc.setFont(
+          "helvetica",
+          "bold"
+        );
+
+        doc.setFontSize(9.5);
+
+        doc.text(
+          titulo,
+          18,
+          y
+        );
+
+        doc.setTextColor(
+          ...GRIS_TEXTO
+        );
+
+        return y + 5;
+      };
+
+      const configuracionTabla = {
+        theme: "grid",
+
+        styles: {
+          font: "helvetica",
+          fontSize: 8,
+          cellPadding: 2.2,
+          overflow: "linebreak",
+          valign: "top",
+          textColor: GRIS_TEXTO,
+          lineColor: GRIS_BORDE,
+          lineWidth: 0.2,
+        },
+
+        headStyles: {
+          fillColor: AZUL_PRINCIPAL,
+          textColor: [
+            255,
+            255,
+            255,
+          ],
+          fontStyle: "bold",
+          halign: "center",
+          lineColor: [
+            255,
+            255,
+            255,
+          ],
+          lineWidth: 0.15,
+        },
+
+        alternateRowStyles: {
+          fillColor: AZUL_MUY_CLARO,
+        },
+
+        margin: {
+          left: 14,
+          right: 14,
+          top: 34,
+          bottom: 18,
+        },
+      };
+
+      dibujarEncabezado();
+
+      let y = 40;
+
+      // ==========================================
+      // 1. INFORMACIÓN GENERAL
+      // ==========================================
+
+      y = tituloSeccion(
+        "1. INFORMACIÓN GENERAL",
+        y
+      );
+
+      autoTable(doc, {
+        ...configuracionTabla,
+
+        startY: y,
+
+        body: [
+          [
+            "Nombre completo",
+            nombreCompleto,
+          ],
+          [
+            "Carrera",
+            texto(
+              practicanteSeleccionado.carrera
+            ),
+          ],
+          [
+            "Universidad",
+            texto(
+              practicanteSeleccionado.universidad
+            ),
+          ],
+          [
+            "Correo",
+            texto(
+              practicanteSeleccionado.correo
+            ),
+          ],
+          [
+            "Teléfono",
+            texto(
+              practicanteSeleccionado.telefono
+            ),
+          ],
+          [
+            "Fecha de inicio",
+            fechaPDF(
+              practicanteSeleccionado.fecha_inicio
+            ),
+          ],
+          [
+            "Fecha de fin",
+            fechaPDF(
+              practicanteSeleccionado.fecha_fin
+            ),
+          ],
+          [
+            "Estado",
+            Number(
+              practicanteSeleccionado.activo
+            ) === 1
+              ? "Activo"
+              : "Inactivo",
+          ],
+        ],
+
+        columnStyles: {
+          0: {
+            cellWidth: 48,
+            fontStyle: "bold",
+            fillColor: AZUL_CLARO,
+            textColor: AZUL_PRINCIPAL,
+          },
+        },
+      });
+
+      y =
+        (doc.lastAutoTable?.finalY ||
+          y) + 11;
+
+      // ==========================================
+      // 2. RESUMEN DE HORAS
+      // ==========================================
+
+      y = tituloSeccion(
+        "2. RESUMEN DE HORAS",
+        y
+      );
+
+      autoTable(doc, {
+        ...configuracionTabla,
+
+        startY: y,
+
+        head: [
+          [
+            "Horas requeridas",
+            "Horas acumuladas",
+            "Horas restantes",
+            "Avance",
+          ],
+        ],
+
+        body: [
+          [
+            texto(
+              practicanteSeleccionado.horas_requeridas,
+              "0"
+            ),
+            texto(
+              practicanteSeleccionado.horas_acumuladas,
+              "0"
+            ),
+            texto(
+              practicanteSeleccionado.horas_restantes,
+              "0"
+            ),
+            `${texto(
+              practicanteSeleccionado.porcentaje_avance,
+              "0"
+            )}%`,
+          ],
+        ],
+
+        styles: {
+          ...configuracionTabla.styles,
+          halign: "center",
+        },
+
+        headStyles:
+          configuracionTabla.headStyles,
+
+        alternateRowStyles:
+          configuracionTabla.alternateRowStyles,
+
+        margin:
+          configuracionTabla.margin,
+      });
+
+      y =
+        (doc.lastAutoTable?.finalY ||
+          y) + 11;
+
+      // ==========================================
+      // 3. REGISTROS DE HORAS
+      // ==========================================
+
+      y = tituloSeccion(
+        "3. REGISTROS DE HORAS",
+        y
+      );
+
+      autoTable(doc, {
+        ...configuracionTabla,
+
+        startY: y,
+
+        head: [
+          [
+            "Fecha",
+            "Horas",
+            "Descripción",
+            "Fecha de registro",
+          ],
+        ],
+
+        body:
+          registrosHoras.length > 0
+            ? registrosHoras.map(
+                (registro) => [
+                  fechaPDF(
+                    obtenerFechaRegistro(
+                      registro,
+                      [
+                        "fecha",
+                        "fecha_registro",
+                        "fecha_asistencia",
+                      ]
+                    )
+                  ),
+                  texto(
+                    registro.horas,
+                    "0"
+                  ),
+                  texto(
+                    registro.descripcion
+                  ),
+                  fechaHoraPDF(
+                    obtenerFechaRegistro(
+                      registro,
+                      [
+                        "fecha_creacion",
+                        "created_at",
+                        "fecha_actualizacion",
+                      ]
+                    )
+                  ),
+                ]
+              )
+            : [
+                [
+                  "—",
+                  "—",
+                  "Sin registros",
+                  "—",
+                ],
+              ],
+
+        columnStyles: {
+          0: {
+            cellWidth: 27,
+            halign: "center",
+          },
+
+          1: {
+            cellWidth: 18,
+            halign: "center",
+          },
+
+          3: {
+            cellWidth: 35,
+            halign: "center",
+          },
+        },
+      });
+
+      y =
+        (doc.lastAutoTable?.finalY ||
+          y) + 11;
+
+      // ==========================================
+      // 4. ASISTENCIAS
+      // ==========================================
+
+      y = tituloSeccion(
+        "4. ASISTENCIAS",
+        y
+      );
+
+      autoTable(doc, {
+        ...configuracionTabla,
+
+        startY: y,
+
+        head: [
+          [
+            "Fecha",
+            "Entrada",
+            "Salida",
+            "Horas",
+            "Estado",
+          ],
+        ],
+
+        body:
+          asistenciasReporte.length > 0
+            ? asistenciasReporte.map(
+                (asistencia) => [
+                  fechaPDF(
+                    obtenerFechaRegistro(
+                      asistencia,
+                      [
+                        "fecha",
+                        "fecha_asistencia",
+                        "fecha_registro",
+                        "fecha_creacion",
+                      ]
+                    )
+                  ),
+
+                  horaPDF(
+                    asistencia.hora_entrada_real
+                  ),
+
+                  horaPDF(
+                    asistencia.hora_salida_real
+                  ),
+
+                  texto(
+                    asistencia.horas_contabilizadas ??
+                      asistencia.horas_trabajadas ??
+                      asistencia.horas,
+                    "—"
+                  ),
+
+                  texto(
+                    asistencia.estado
+                  ),
+                ]
+              )
+            : [
+                [
+                  "—",
+                  "—",
+                  "—",
+                  "—",
+                  "Sin registros",
+                ],
+              ],
+
+        styles: {
+          ...configuracionTabla.styles,
+          halign: "center",
+        },
+
+        headStyles:
+          configuracionTabla.headStyles,
+
+        alternateRowStyles:
+          configuracionTabla.alternateRowStyles,
+
+        margin:
+          configuracionTabla.margin,
+      });
+
+      y =
+        (doc.lastAutoTable?.finalY ||
+          y) + 11;
+
+      // ==========================================
+      // 5. ACTIVIDADES DIARIAS
+      // ==========================================
+
+      y = tituloSeccion(
+        "5. ACTIVIDADES DIARIAS",
+        y
+      );
+
+      autoTable(doc, {
+        ...configuracionTabla,
+
+        startY: y,
+
+        head: [
+          [
+            "Fecha",
+            "Horario",
+            "Actividad realizada",
+          ],
+        ],
+
+        body:
+          actividadesReporte.length > 0
+            ? actividadesReporte.map(
+                (actividad) => [
+                  fechaPDF(
+                    obtenerFechaRegistro(
+                      actividad,
+                      [
+                        "fecha",
+                        "fecha_actividad",
+                        "fecha_creacion",
+                      ]
+                    )
+                  ),
+
+                  texto(
+                    actividad.horario
+                  ),
+
+                  texto(
+                    actividad.actividad
+                  ),
+                ]
+              )
+            : [
+                [
+                  "—",
+                  "—",
+                  "Sin actividades registradas",
+                ],
+              ],
+
+        columnStyles: {
+          0: {
+            cellWidth: 27,
+            halign: "center",
+          },
+
+          1: {
+            cellWidth: 32,
+            halign: "center",
+          },
+        },
+      });
+
+      y =
+        (doc.lastAutoTable?.finalY ||
+          y) + 11;
+
+      // ==========================================
+      // 6. BITÁCORAS
+      // ==========================================
+
+      y = tituloSeccion(
+        "6. BITÁCORAS",
+        y
+      );
+
+      autoTable(doc, {
+        ...configuracionTabla,
+
+        startY: y,
+
+        head: [
+          [
+            "Semana",
+            "Fecha de entrega",
+            "Estado",
+            "Observaciones",
+          ],
+        ],
+
+        body:
+          bitacorasReporte.length > 0
+            ? bitacorasReporte.map(
+                (bitacora) => [
+                  texto(
+                    bitacora.numero_semana ??
+                      bitacora.semana
+                  ),
+
+                  fechaHoraPDF(
+                    obtenerFechaRegistro(
+                      bitacora,
+                      [
+                        "fecha_envio",
+                        "fecha_entrega",
+                        "fecha_subida",
+                        "fecha_creacion",
+                        "fecha",
+                      ]
+                    )
+                  ),
+
+                  texto(
+                    bitacora.estado
+                  ),
+
+                  texto(
+                    bitacora.observaciones
+                  ),
+                ]
+              )
+            : [
+                [
+                  "—",
+                  "—",
+                  "—",
+                  "Sin bitácoras registradas",
+                ],
+              ],
+
+        columnStyles: {
+          0: {
+            cellWidth: 20,
+            halign: "center",
+          },
+
+          1: {
+            cellWidth: 32,
+            halign: "center",
+          },
+
+          2: {
+            cellWidth: 25,
+            halign: "center",
+          },
+        },
+      });
+
+      // ==========================================
+      // ENCABEZADOS Y PIES DE TODAS LAS PÁGINAS
+      // ==========================================
+
+      const totalPaginas =
+        doc.getNumberOfPages();
+
+      for (
+        let pagina = 1;
+        pagina <= totalPaginas;
+        pagina += 1
+      ) {
+        doc.setPage(pagina);
+
+        if (pagina > 1) {
+          dibujarEncabezado();
+        }
+
+        doc.setFillColor(
+          ...AZUL_PRINCIPAL
+        );
+
+        doc.rect(
+          0,
+          282.5,
+          210,
+          14.5,
+          "F"
+        );
+
+        doc.setTextColor(
+          255,
+          255,
+          255
+        );
+
+        doc.setFont(
+          "helvetica",
+          "bold"
+        );
+
+        doc.setFontSize(8);
+
+        doc.text(
+          "NMR CONSULTORES",
+          14,
+          289
+        );
+
+        doc.setFont(
+          "helvetica",
+          "normal"
+        );
+
+        doc.setFontSize(7);
+
+        doc.text(
+          `Fecha del reporte: ${fechaGeneracion}`,
+          14,
+          293
+        );
+
+        doc.text(
+          `Página ${pagina} de ${totalPaginas}`,
+          196,
+          291,
+          {
+            align: "right",
+          }
+        );
+
+        doc.setTextColor(
+          ...GRIS_TEXTO
+        );
+      }
+
+      const nombreArchivo =
+        nombreCompleto
+          .normalize("NFD")
+          .replace(
+            /[\u0300-\u036f]/g,
+            ""
+          )
+          .replace(
+            /[^a-zA-Z0-9]+/g,
+            "_"
+          )
+          .replace(
+            /^_+|_+$/g,
+            ""
+          );
+
+      doc.save(
+        `reporte_${
+          nombreArchivo ||
+          "practicante"
+        }_${fechaGeneracion.replace(
+          /\//g,
+          "-"
+        )}.pdf`
+      );
+
+      setMensaje(
+        "Reporte PDF generado correctamente."
+      );
+    } catch (error) {
+      console.error(
+        "Error generando reporte PDF del practicante:",
+        error
+      );
+
+      setMensaje(
+        error.response?.data?.mensaje ||
+          "No se pudo generar el reporte PDF."
+      );
+    }
+  };
+
+
   const adminProps = {
     abrirArchivoBitacoraAdmin,
     abrirEdicionActividad,
@@ -2577,6 +3573,7 @@ const formatearFechaHora = (fecha) => {
     cargandoHoras,
     cargandoPracticantes,
     cerrarCredencialesCreadas,
+    descargarReportePracticantePDF,
     cargarAsistencias,
     cargarEntregasBitacoras,
     cargarHistorial,
@@ -2626,6 +3623,7 @@ const formatearFechaHora = (fecha) => {
     historialFiltrado,
     horariosPracticante,
     iniciarEdicion,
+    irASeccionDesdeAlerta,
     mensaje,
     mostrandoAsistenciaHistorica,
     mostrandoFormularioActividad,

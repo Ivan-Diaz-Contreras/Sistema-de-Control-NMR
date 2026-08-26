@@ -2692,10 +2692,11 @@ const obtenerAlertasAdmin = (req, res) => {
         SELECT *
         FROM (
             -- ==========================================
-            -- ENTRADA REGISTRADA, PERO SIN SALIDA
+            -- PASARON 15 MINUTOS DE SU HORA DE ENTRADA
+            -- Y TODAVÍA NO REGISTRA ASISTENCIA
             -- ==========================================
             SELECT
-                'sin_salida' AS tipo,
+                'sin_entrada' AS tipo,
                 'alta' AS nivel,
                 1 AS prioridad,
                 p.id_practicante,
@@ -2706,7 +2707,76 @@ const obtenerAlertasAdmin = (req, res) => {
                     u.apellido_materno
                 ) AS practicante,
                 c.nombre AS carrera,
-                DATE_FORMAT(a.fecha, '%Y-%m-%d') AS fecha,
+                DATE_FORMAT(
+                    CURDATE(),
+                    '%Y-%m-%d'
+                ) AS fecha,
+                CONCAT(
+                    'Su entrada estaba programada a las ',
+                    TIME_FORMAT(
+                        h.hora_entrada,
+                        '%H:%i'
+                    ),
+                    ' y todavía no registra asistencia.'
+                ) AS detalle
+            FROM practicantes p
+            INNER JOIN usuarios u
+                ON p.id_usuario =
+                    u.id_usuario
+            INNER JOIN carreras c
+                ON p.id_carrera =
+                    c.id_carrera
+            INNER JOIN horarios h
+                ON h.id_practicante =
+                    p.id_practicante
+               AND h.activo = 1
+            WHERE u.activo = 1
+              AND h.dia_semana =
+                    CASE DAYOFWEEK(CURDATE())
+                        WHEN 1 THEN 'Domingo'
+                        WHEN 2 THEN 'Lunes'
+                        WHEN 3 THEN 'Martes'
+                        WHEN 4 THEN 'Miércoles'
+                        WHEN 5 THEN 'Jueves'
+                        WHEN 6 THEN 'Viernes'
+                        WHEN 7 THEN 'Sábado'
+                    END
+              AND CURTIME() >=
+                    ADDTIME(
+                        h.hora_entrada,
+                        '00:15:00'
+                    )
+              AND NOT EXISTS (
+                    SELECT 1
+                    FROM asistencias a
+                    WHERE a.id_practicante =
+                            p.id_practicante
+                      AND a.fecha = CURDATE()
+                      AND a.hora_entrada_real
+                            IS NOT NULL
+              )
+
+            UNION ALL
+
+            -- ==========================================
+            -- ENTRADA REGISTRADA, PERO SIN SALIDA
+            -- ==========================================
+            SELECT
+                'sin_salida' AS tipo,
+                'alta' AS nivel,
+                2 AS prioridad,
+                p.id_practicante,
+                CONCAT_WS(
+                    ' ',
+                    u.nombre,
+                    u.apellido_paterno,
+                    u.apellido_materno
+                ) AS practicante,
+                c.nombre AS carrera,
+                DATE_FORMAT(
+                    a.fecha,
+                    '%Y-%m-%d'
+                ) AS fecha,
                 CONCAT(
                     'Registró entrada a las ',
                     TIME_FORMAT(
@@ -2739,7 +2809,7 @@ const obtenerAlertasAdmin = (req, res) => {
             SELECT
                 'sin_actividad' AS tipo,
                 'media' AS nivel,
-                2 AS prioridad,
+                3 AS prioridad,
                 p.id_practicante,
                 CONCAT_WS(
                     ' ',
@@ -2810,7 +2880,7 @@ const obtenerAlertasAdmin = (req, res) => {
                         THEN 'alta'
                     ELSE 'media'
                 END AS nivel,
-                3 AS prioridad,
+                4 AS prioridad,
                 p.id_practicante,
                 CONCAT_WS(
                     ' ',
@@ -2875,7 +2945,7 @@ const obtenerAlertasAdmin = (req, res) => {
             SELECT
                 'proximo_horas' AS tipo,
                 'informativa' AS nivel,
-                4 AS prioridad,
+                5 AS prioridad,
                 p.id_practicante,
                 CONCAT_WS(
                     ' ',
@@ -3003,6 +3073,7 @@ const obtenerAlertasAdmin = (req, res) => {
                     return acumulado;
                 },
                 {
+                    sin_entrada: 0,
                     sin_salida: 0,
                     sin_actividad: 0,
                     bitacora_pendiente: 0,

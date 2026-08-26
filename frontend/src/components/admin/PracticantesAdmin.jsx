@@ -37,6 +37,7 @@ function PracticantesAdmin({
   carreras,
   cerrarCredencialesCreadas,
   credencialesCreadas,
+  descargarReportePracticantePDF,
   editandoHorario,
   editandoPracticante,
   editandoRegistroHoras,
@@ -928,16 +929,27 @@ function PracticantesAdmin({
                       </h3>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPracticanteSeleccionado(
-                          null
-                        )
-                      }
-                    >
-                      Cerrar
-                    </button>
+                    <div className="admin-actions">
+                      <button
+                        type="button"
+                        onClick={
+                          descargarReportePracticantePDF
+                        }
+                      >
+                        Descargar reporte PDF
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPracticanteSeleccionado(
+                            null
+                          )
+                        }
+                      >
+                        Cerrar
+                      </button>
+                    </div>
                   </div>
 
                   <div className="profile-list practicante-detail-grid">
