@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../services/axiosInstance";
 import {
   normalizarTexto,
   validarCorreo,
@@ -22,11 +22,6 @@ import EstadisticasAdmin from "../components/admin/EstadisticasAdmin";
 import HistorialAdmin from "../components/admin/HistorialAdmin";
 import SeguridadAdmin from "../components/admin/SeguridadAdmin";
 
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:3000";
-
-const API = `${API_URL}/api`;
 
 function AdminPanel({ usuario, onLogout }) {
   const [seccion, setSeccion] = useState("dashboard");
@@ -226,19 +221,14 @@ function AdminPanel({ usuario, onLogout }) {
 
   const token = localStorage.getItem("token");
 
-  const headers = {
-    Authorization: `Bearer ${token}`,
-  };
-
   // ==========================================
   // CARGAR RESUMEN DE NOTIFICACIONES
   // ==========================================
 
   const cargarResumenNotificaciones = async () => {
     try {
-      const response = await axios.get(
-        `${API}/notificaciones/resumen`,
-        { headers }
+      const response = await api.get(
+        "/notificaciones/resumen"
       );
 
       setNotificaciones(
@@ -271,12 +261,11 @@ function AdminPanel({ usuario, onLogout }) {
     }
 
     try {
-      await axios.put(
-        `${API}/notificaciones/seccion/${encodeURIComponent(
+      await api.put(
+        `/notificaciones/seccion/${encodeURIComponent(
           nombreSeccion
         )}/leer`,
-        {},
-        { headers }
+        {}
       );
 
       setNotificaciones((actual) => {
@@ -305,9 +294,8 @@ function AdminPanel({ usuario, onLogout }) {
       setCargando(true);
       setMensaje("");
 
-      const response = await axios.get(
-        `${API}/admin/estadisticas`,
-        { headers }
+      const response = await api.get(
+        "/admin/estadisticas"
       );
 
       setEstadisticas(response.data);
@@ -334,9 +322,8 @@ function AdminPanel({ usuario, onLogout }) {
     try {
       setCargandoCarreras(true);
 
-      const response = await axios.get(
-        `${API}/admin/carreras`,
-        { headers }
+      const response = await api.get(
+        "/admin/carreras"
       );
 
       setCarreras(response.data.carreras || []);
@@ -392,22 +379,20 @@ function AdminPanel({ usuario, onLogout }) {
       let response;
 
       if (editandoCarrera) {
-        response = await axios.put(
-          `${API}/admin/carreras/${editandoCarrera.id_carrera}`,
+        response = await api.put(
+          `/admin/carreras/${editandoCarrera.id_carrera}`,
           {
             nombre,
             activa:
               editandoCarrera.activa ??
               editandoCarrera.activo ??
               1,
-          },
-          { headers }
+          }
         );
       } else {
-        response = await axios.post(
-          `${API}/admin/carreras`,
-          { nombre },
-          { headers }
+        response = await api.post(
+          `/admin/carreras`,
+          { nombre }
         );
       }
 
@@ -461,13 +446,12 @@ function AdminPanel({ usuario, onLogout }) {
     try {
       setMensaje("");
 
-      const response = await axios.put(
-        `${API}/admin/carreras/${carrera.id_carrera}`,
+      const response = await api.put(
+        `/admin/carreras/${carrera.id_carrera}`,
         {
           nombre: carrera.nombre,
           activa: nuevoEstado,
-        },
-        { headers }
+        }
       );
 
       setMensaje(
@@ -503,13 +487,11 @@ function AdminPanel({ usuario, onLogout }) {
       setMensaje("");
 
       const url = idCarrera
-        ? `${API}/admin/practicantes?id_carrera=${idCarrera}`
-        : `${API}/admin/practicantes`;
+        ? `/admin/practicantes?id_carrera=${idCarrera}`
+        : `/admin/practicantes`;
 
-      const response = await axios.get(
-        url,
-        { headers }
-      );
+       const response = await api.get(url);
+
 
       setPracticantes(
         response.data.practicantes || []
@@ -596,9 +578,8 @@ function AdminPanel({ usuario, onLogout }) {
       setCargandoDetalle(true);
       setMensaje("");
 
-      const response = await axios.get(
-        `${API}/admin/practicantes/${idPracticante}`,
-        { headers }
+      const response = await api.get(
+        `/admin/practicantes/${idPracticante}`
       );
 
       setPracticanteSeleccionado(
@@ -653,9 +634,8 @@ const cargarAdministradores = async () => {
   try {
     setCargandoAdministradores(true);
 
-    const response = await axios.get(
-      `${API}/admin/administradores`,
-      { headers }
+    const response = await api.get(
+      "/admin/administradores"
     );
 
     setAdministradores(
@@ -700,10 +680,9 @@ const guardarNuevoAdministrador = async (e) => {
     setGuardandoAdministrador(true);
     setMensaje("");
 
-    const response = await axios.post(
-      `${API}/admin/administradores`,
-      nuevoAdministrador,
-      { headers }
+    const response = await api.post(
+      "/admin/administradores",
+      nuevoAdministrador
     );
 
     setMensaje(
@@ -964,10 +943,9 @@ const guardarNuevoAdministrador = async (e) => {
       const passwordTemporal =
         nuevoPracticante.password;
 
-      const response = await axios.post(
-        `${API}/admin/practicantes`,
-        payload,
-        { headers }
+      const response = await api.post(
+        `/admin/practicantes`,
+        payload
       );
 
       setCredencialesCreadas({
@@ -1013,9 +991,8 @@ const guardarNuevoAdministrador = async (e) => {
       setCargandoDetalle(true);
       setMensaje("");
 
-      const response = await axios.get(
-        `${API}/admin/practicantes/${idPracticante}`,
-        { headers }
+      const response = await api.get(
+        `/admin/practicantes/${idPracticante}`
       );
 
       const practicante = response.data.practicante;
@@ -1099,10 +1076,9 @@ const guardarNuevoAdministrador = async (e) => {
         ),
       };
 
-      const response = await axios.put(
-        `${API}/admin/practicantes/${editandoPracticante.id_practicante}`,
-        payload,
-        { headers }
+      const response = await api.put(
+        `/admin/practicantes/${editandoPracticante.id_practicante}`,
+        payload
       );
 
       setMensaje(
@@ -1137,9 +1113,8 @@ const guardarNuevoAdministrador = async (e) => {
     try {
       setCargandoHorarios(true);
 
-      const response = await axios.get(
-        `${API}/admin/practicantes/${idPracticante}/horario`,
-        { headers }
+      const response = await api.get(
+        `/admin/practicantes/${idPracticante}/horario`
       );
 
       setHorariosPracticante(
@@ -1236,16 +1211,14 @@ const guardarNuevoAdministrador = async (e) => {
       let response;
 
       if (editandoHorario) {
-        response = await axios.put(
-          `${API}/admin/horarios/${editandoHorario.id_horario}`,
-          payload,
-          { headers }
+        response = await api.put(
+          `/admin/horarios/${editandoHorario.id_horario}`,
+          payload
         );
       } else {
-        response = await axios.post(
-          `${API}/admin/practicantes/${practicanteSeleccionado.id_practicante}/horario`,
-          payload,
-          { headers }
+        response = await api.post(
+          `/admin/practicantes/${practicanteSeleccionado.id_practicante}/horario`,
+          payload
         );
       }
 
@@ -1291,15 +1264,14 @@ const guardarNuevoAdministrador = async (e) => {
     try {
       setMensaje("");
 
-      const response = await axios.put(
-        `${API}/admin/horarios/${horario.id_horario}`,
+      const response = await api.put(
+        `/admin/horarios/${horario.id_horario}`,
         {
           dia_semana: horario.dia_semana,
           hora_entrada: String(horario.hora_entrada).slice(0, 5),
           hora_salida: String(horario.hora_salida).slice(0, 5),
           activo: nuevoEstado,
-        },
-        { headers }
+        }
       );
 
       setMensaje(
@@ -1332,9 +1304,8 @@ const guardarNuevoAdministrador = async (e) => {
       setCargandoHoras(true);
       setMensaje("");
 
-      const response = await axios.get(
-        `${API}/admin/practicantes/${idPracticante}/horas`,
-        { headers }
+      const response = await api.get(
+        `/admin/practicantes/${idPracticante}/horas`
       );
 
       setRegistrosHoras(
@@ -1390,15 +1361,14 @@ const guardarNuevoAdministrador = async (e) => {
       setGuardandoRegistroHoras(true);
       setMensaje("");
 
-      const response = await axios.put(
-        `${API}/admin/horas/${editandoRegistroHoras.id_registro}`,
+      const response = await api.put(
+        `/admin/horas/${editandoRegistroHoras.id_registro}`,
         {
           fecha: editandoRegistroHoras.fecha,
           horas: Number(editandoRegistroHoras.horas),
           descripcion:
             editandoRegistroHoras.descripcion.trim() || null,
-        },
-        { headers }
+        }
       );
 
       setMensaje(
@@ -1443,9 +1413,8 @@ const guardarNuevoAdministrador = async (e) => {
     try {
       setMensaje("");
 
-      const response = await axios.delete(
-        `${API}/admin/horas/${registro.id_registro}`,
-        { headers }
+      const response = await api.delete(
+        `/admin/horas/${registro.id_registro}`
       );
 
       setMensaje(
@@ -1507,12 +1476,11 @@ const guardarNuevoAdministrador = async (e) => {
     try {
       setMensaje("");
 
-      const response = await axios.put(
-        `${API}/admin/practicantes/${practicante.id_practicante}/estado`,
+      const response = await api.put(
+        `/admin/practicantes/${practicante.id_practicante}/estado`,
         {
           activo: nuevoEstado,
-        },
-        { headers }
+        }
       );
 
       setMensaje(
@@ -1578,9 +1546,8 @@ const guardarNuevoAdministrador = async (e) => {
     try {
       setMensaje("");
 
-      const response = await axios.delete(
-        `${API}/admin/practicantes/${practicante.id_practicante}`,
-        { headers }
+      const response = await api.delete(
+        `/admin/practicantes/${practicante.id_practicante}`
       );
 
       setMensaje(
@@ -1637,9 +1604,8 @@ const cargarActividadesBitacora = async () => {
     setCargandoActividades(true);
     setMensaje("");
 
-    const response = await axios.get(
-      `${API}/admin/actividades-bitacora`,
-      { headers }
+    const response = await api.get(
+      `/admin/actividades-bitacora`
     );
 
     setActividadesBitacora(
@@ -1742,16 +1708,14 @@ const guardarActividadBitacora = async (e) => {
     let response;
 
     if (editandoActividad) {
-      response = await axios.put(
-        `${API}/admin/actividades-bitacora/${editandoActividad.id_actividad}`,
-        payload,
-        { headers }
+      response = await api.put(
+        `/admin/actividades-bitacora/${editandoActividad.id_actividad}`,
+        payload
       );
     } else {
-      response = await axios.post(
-        `${API}/admin/actividades-bitacora`,
-        payload,
-        { headers }
+      response = await api.post(
+        `/admin/actividades-bitacora`,
+        payload
       );
     }
 
@@ -1804,12 +1768,11 @@ const cambiarEstadoActividad = async (
   try {
     setMensaje("");
 
-    const response = await axios.put(
-      `${API}/admin/actividades-bitacora/${actividad.id_actividad}/estado`,
+    const response = await api.put(
+      `/admin/actividades-bitacora/${actividad.id_actividad}/estado`,
       {
         activa: nuevoEstado,
-      },
-      { headers }
+      }
     );
 
     setMensaje(
@@ -1845,9 +1808,8 @@ const eliminarActividadBitacora = async (
   try {
     setMensaje("");
 
-    const response = await axios.delete(
-      `${API}/admin/actividades-bitacora/${actividad.id_actividad}`,
-      { headers }
+    const response = await api.delete(
+      `/admin/actividades-bitacora/${actividad.id_actividad}`
     );
 
     setMensaje(
@@ -1924,9 +1886,8 @@ const formatearFechaHora = (fecha) => {
 
       // Consultamos nuevamente los practicantes para no depender
       // de que el estado "practicantes" ya haya terminado de cargar.
-      const practicantesResponse = await axios.get(
-        `${API}/admin/practicantes`,
-        { headers }
+      const practicantesResponse = await api.get(
+        "/admin/practicantes"
       );
 
       const listaPracticantes =
@@ -1940,9 +1901,8 @@ const formatearFechaHora = (fecha) => {
       const respuestas = await Promise.all(
         listaPracticantes.map(async (practicante) => {
           try {
-            const response = await axios.get(
-              `${API}/admin/practicantes/${practicante.id_practicante}/bitacoras`,
-              { headers }
+            const response = await api.get(
+              `/admin/practicantes/${practicante.id_practicante}/bitacoras`
             );
 
             const bitacoras =
@@ -2057,10 +2017,9 @@ const formatearFechaHora = (fecha) => {
     try {
       setMensaje("");
 
-      const response = await axios.get(
-        `${API}/admin/bitacoras/${idBitacora}/archivo`,
+      const response = await api.get(
+        `/admin/bitacoras/${idBitacora}/archivo`,
         {
-          headers,
           responseType: "blob",
         }
       );
@@ -2131,14 +2090,13 @@ const formatearFechaHora = (fecha) => {
       );
       setMensaje("");
 
-      const response = await axios.put(
-        `${API}/admin/bitacoras/${entrega.id_bitacora}/revision`,
+      const response = await api.put(
+        `/admin/bitacoras/${entrega.id_bitacora}/revision`,
         {
           estado: nuevoEstado,
           observaciones:
             observaciones.trim() || null,
-        },
-        { headers }
+        }
       );
 
       setMensaje(
@@ -2174,9 +2132,8 @@ const formatearFechaHora = (fecha) => {
       setCargandoAsistencias(true);
       setMensaje("");
 
-      const response = await axios.get(
-        `${API}/admin/asistencias`,
-        { headers }
+      const response = await api.get(
+        "/admin/asistencias"
       );
 
       setAsistencias(
@@ -2280,16 +2237,15 @@ const formatearFechaHora = (fecha) => {
       setGuardandoAsistenciaHistorica(true);
       setMensaje("");
 
-      const response = await axios.post(
-        `${API}/admin/asistencias/historica`,
+      const response = await api.post(
+        `/admin/asistencias/historica`,
         {
           id_practicante:
             Number(id_practicante),
           fecha,
           hora_entrada_real,
           hora_salida_real,
-        },
-        { headers }
+        }
       );
 
       setMensaje(
@@ -2369,8 +2325,8 @@ const formatearFechaHora = (fecha) => {
       setGuardandoAsistencia(true);
       setMensaje("");
 
-      const response = await axios.put(
-        `${API}/admin/asistencias/${editandoAsistencia.id_asistencia}`,
+      const response = await api.put(
+        `/admin/asistencias/${editandoAsistencia.id_asistencia}`,
         {
           hora_entrada_real:
             editandoAsistencia.hora_entrada_real || null,
@@ -2378,8 +2334,7 @@ const formatearFechaHora = (fecha) => {
             editandoAsistencia.hora_salida_real || null,
           observaciones:
             editandoAsistencia.observaciones.trim() || null,
-        },
-        { headers }
+        }
       );
 
       setMensaje(
@@ -2523,9 +2478,8 @@ const formatearFechaHora = (fecha) => {
       setCargandoHistorial(true);
       setMensaje("");
 
-      const response = await axios.get(
-        `${API}/admin/historial`,
-        { headers }
+      const response = await api.get(
+        "/admin/historial"
       );
 
       setHistorial(
@@ -2701,17 +2655,14 @@ const formatearFechaHora = (fecha) => {
         responseBitacoras,
         responseActividades,
       ] = await Promise.all([
-        axios.get(
-          `${API}/admin/practicantes/${idPracticante}/asistencias`,
-          { headers }
+        api.get(
+          `/admin/practicantes/${idPracticante}/asistencias`
         ),
-        axios.get(
-          `${API}/admin/practicantes/${idPracticante}/bitacoras`,
-          { headers }
+        api.get(
+          `/admin/practicantes/${idPracticante}/bitacoras`
         ),
-        axios.get(
-          `${API}/actividades-diarias/admin`,
-          { headers }
+        api.get(
+          `/actividades-diarias/admin`
         ),
       ]);
 
@@ -3803,8 +3754,8 @@ const formatearFechaHora = (fecha) => {
       setGuardandoPasswordAdmin(true);
       setMensaje("");
 
-      const response = await axios.put(
-        `${API}/admin/password`,
+      const response = await api.put(
+        `/admin/password`,
         {
           password_actual:
             formPasswordAdmin.password_actual,
@@ -3812,8 +3763,7 @@ const formatearFechaHora = (fecha) => {
             formPasswordAdmin.password_nueva,
           confirmar_password:
             formPasswordAdmin.confirmar_password,
-        },
-        { headers }
+        }
       );
 
       setFormPasswordAdmin({
