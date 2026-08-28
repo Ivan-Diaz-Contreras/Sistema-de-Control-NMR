@@ -18,7 +18,11 @@ import axios from "axios";
 const LIMITE_ACTIVIDAD = 1000;
 const MINIMO_ACTIVIDAD = 10;
 
-const API = "http://localhost:3000/api";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:3000";
+
+const API = `${API_URL}/api`;
 
 const obtenerFechaLocal = () => {
   const fecha = new Date();
