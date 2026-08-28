@@ -15,13 +15,21 @@ const actividadDiariaRoutes = require(
 );
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // ==========================================
 // MIDDLEWARES
 // ==========================================
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://nmr-control-de-practicas.netlify.app"
+    ],
+    credentials: true
+  })
+);
 app.use(express.json());
 
 // ==========================================
