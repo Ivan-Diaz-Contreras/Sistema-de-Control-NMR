@@ -3313,3 +3313,207 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================
+   NAVEGACIÓN RESPONSIVE / MÓVIL
+   ========================================== */
+
+.mobile-menu-button {
+  display: none;
+}
+
+.sidebar-mobile-close {
+  display: none;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 650px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .sidebar {
+    display: flex;
+    width: min(82vw, 280px);
+    transform: translateX(-105%);
+    transition: transform 0.25s ease;
+    z-index: 1200;
+    box-shadow: 12px 0 30px rgba(4, 12, 28, 0.22);
+  }
+
+  .sidebar.sidebar-mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    border: 0;
+    padding: 0;
+    background: rgba(8, 18, 37, 0.52);
+    cursor: pointer;
+  }
+
+  .sidebar-mobile-close {
+    width: 36px;
+    height: 36px;
+    margin-left: auto;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    cursor: pointer;
+  }
+
+  .sidebar-mobile-close:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .mobile-menu-button {
+    min-height: 42px;
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 9px 13px;
+    border: 1px solid #d8dee9;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #172746;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(16, 28, 54, 0.06);
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .topbar {
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .topbar h2 {
+    font-size: 22px;
+  }
+
+  .panel,
+  .progress-panel {
+    padding: 18px;
+  }
+
+  .welcome-card {
+    padding: 20px;
+  }
+
+  .welcome-card h1 {
+    font-size: 24px;
+  }
+
+  .attendance-hero {
+    padding: 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .attendance-hero h2 {
+    font-size: 23px;
+  }
+
+  .attendance-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-form-grid,
+  .admin-form-grid-compact,
+  .actividad-diaria-form-grid,
+  .actividad-admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actividad-admin-textarea,
+  .admin-form-full {
+    grid-column: auto;
+  }
+
+  .panel-header {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .user-info-text {
+    display: none;
+  }
+
+  .user-info-button {
+    padding: 6px;
+  }
+
+  .admin-actions {
+    flex-wrap: wrap;
+  }
+
+  .admin-actions button {
+    min-height: 40px;
+  }
+
+  .practicantes-toolbar,
+  .asistencia-toolbar {
+    width: 100%;
+  }
+
+  .practicantes-search,
+  .practicantes-filter,
+  .asistencia-search,
+  .asistencia-filter {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .main-content {
+    padding: 12px;
+  }
+
+  .panel,
+  .progress-panel,
+  .welcome-card,
+  .attendance-control-card {
+    padding: 15px;
+    border-radius: 10px;
+  }
+
+  .brand {
+    padding-bottom: 18px;
+  }
+
+  .navigation {
+    margin-top: 20px;
+  }
+
+  .nav-item {
+    min-height: 44px;
+  }
+}
+

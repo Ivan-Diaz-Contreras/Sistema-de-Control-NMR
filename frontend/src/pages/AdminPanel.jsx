@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Menu } from "lucide-react";
 import api from "../services/axiosInstance";
 import {
   normalizarTexto,
@@ -25,6 +26,8 @@ import SeguridadAdmin from "../components/admin/SeguridadAdmin";
 
 function AdminPanel({ usuario, onLogout }) {
   const [seccion, setSeccion] = useState("dashboard");
+  const [menuLateralAbierto, setMenuLateralAbierto] =
+    useState(false);
 
   const [estadisticas, setEstadisticas] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -3811,6 +3814,10 @@ const formatearFechaHora = (fecha) => {
         notificaciones={notificaciones}
         marcarSeccionComoLeida={marcarSeccionComoLeida}
         cargarAdministradores={cargarAdministradores}
+        abierto={menuLateralAbierto}
+        onCerrar={() =>
+          setMenuLateralAbierto(false)
+        }
       />
 
       {/* ==========================================
@@ -3818,6 +3825,18 @@ const formatearFechaHora = (fecha) => {
       ========================================== */}
 
       <main className="main-content">
+        <button
+          type="button"
+          className="mobile-menu-button"
+          onClick={() =>
+            setMenuLateralAbierto(true)
+          }
+          aria-label="Abrir menú"
+        >
+          <Menu size={20} />
+          Menú
+        </button>
+
         <AdminTopbar
           usuario={usuario}
           titulo={obtenerTitulo()}

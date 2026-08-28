@@ -9,6 +9,7 @@ import {
   NotebookTabs,
   Users,
   ShieldCheck,
+  X,
 } from "lucide-react";
 
 import logoNMR from "../../assets/logo-nmr.png";
@@ -25,6 +26,8 @@ function AdminSidebar({
   notificaciones = {},
   marcarSeccionComoLeida,
   cargarAdministradores,
+  abierto = false,
+  onCerrar,
 }) {
   // ==========================================
   // OBTENER CANTIDAD DE NOTIFICACIONES
@@ -69,6 +72,10 @@ function AdminSidebar({
   ) => {
     setSeccion(nombreSeccion);
 
+    if (typeof onCerrar === "function") {
+      onCerrar();
+    }
+
     if (typeof callback === "function") {
       callback();
     }
@@ -83,266 +90,300 @@ function AdminSidebar({
     }
   };
 
+  const cerrarSesion = () => {
+    if (typeof onCerrar === "function") {
+      onCerrar();
+    }
+
+    onLogout?.();
+  };
+
   return (
-    <aside className="sidebar">
-      <div className="brand">
-        <div className="brand-icon">
-          <img
-            src={logoNMR}
-            alt="NMR Consultores"
-            className="brand-logo"
-          />
-        </div>
-
-        <div>
-
-          <span>
-            Control de Pr&aacute;cticas
-          </span>
-        </div>
-      </div>
-
-      <nav className="navigation">
-        {/* DASHBOARD */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "dashboard"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion("dashboard")
-          }
-        >
-          <span className="nav-item-icon">
-            <LayoutDashboard size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Dashboard
-          </span>
-
-          {mostrarBadge("dashboard")}
-        </button>
-
-        {/* PRACTICANTES */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "practicantes"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion("practicantes")
-          }
-        >
-          <span className="nav-item-icon">
-            <Users size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Practicantes
-          </span>
-
-          {mostrarBadge("practicantes")}
-        </button>
-
-        {/* ASISTENCIA */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "asistencia"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion(
-              "asistencia",
-              cargarAsistencias
-            )
-          }
-        >
-          <span className="nav-item-icon">
-            <ClipboardClock size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Asistencia
-          </span>
-
-          {mostrarBadge("asistencia")}
-        </button>
-
-        {/* ACTIVIDAD DIARIA */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "actividad-diaria"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion(
-              "actividad-diaria",
-              null,
-              "actividad_diaria"
-            )
-          }
-        >
-          <span className="nav-item-icon">
-            <ClipboardPenLine size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Actividad diaria
-          </span>
-
-          {mostrarBadge(
-            "actividad_diaria"
-          )}
-        </button>
-
-        {/* BITÁCORAS */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "bitacoras"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion(
-              "bitacoras",
-              () => {
-                cargarActividadesBitacora();
-                cargarEntregasBitacoras();
-              }
-            )
-          }
-        >
-          <span className="nav-item-icon">
-            <NotebookTabs size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Bit&aacute;coras
-          </span>
-
-          {mostrarBadge("bitacoras")}
-        </button>
-
-        {/* CARRERAS */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "carreras"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion(
-              "carreras",
-              cargarCarreras
-            )
-          }
-        >
-          <span className="nav-item-icon">
-            <GraduationCap size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Carreras
-          </span>
-
-          {mostrarBadge("carreras")}
-        </button>
-
-        {/* ESTADÍSTICAS */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "estadisticas"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion("estadisticas")
-          }
-        >
-          <span className="nav-item-icon">
-            <BarChart3 size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Estad&iacute;sticas
-          </span>
-
-          {mostrarBadge("estadisticas")}
-        </button>
-
-        {/* HISTORIAL */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "historial"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion(
-              "historial",
-              cargarHistorial
-            )
-          }
-        >
-          <span className="nav-item-icon">
-            <History size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Historial
-          </span>
-
-          {mostrarBadge("historial")}
-        </button>
-
-        {/* SEGURIDAD */}
-        <button
-          type="button"
-          className={`nav-item ${
-            seccion === "seguridad"
-              ? "active"
-              : ""
-          }`}
-          onClick={() =>
-            cambiarSeccion("seguridad",
-            cargarAdministradores
-            )
-          }
-        >
-          <span className="nav-item-icon">
-            <ShieldCheck size={18} />
-          </span>
-
-          <span className="nav-item-text">
-            Seguridad
-          </span>
-
-          {mostrarBadge("seguridad")}
-        </button>
-      </nav>
-
-      <button
-        type="button"
-        className="logout-button"
-        onClick={onLogout}
+    <>
+      <aside
+        className={`sidebar ${
+          abierto
+            ? "sidebar-mobile-open"
+            : ""
+        }`}
       >
-        <LogOut size={18} />
-        Cerrar sesi&oacute;n
-      </button>
-    </aside>
+        <div className="brand">
+          <div className="brand-icon">
+            <img
+              src={logoNMR}
+              alt="NMR Consultores"
+              className="brand-logo"
+            />
+          </div>
+
+          <div>
+            <span>
+              Control de Pr&aacute;cticas
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className="sidebar-mobile-close"
+            onClick={onCerrar}
+            aria-label="Cerrar menú"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <nav className="navigation">
+          {/* DASHBOARD */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "dashboard"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion("dashboard")
+            }
+          >
+            <span className="nav-item-icon">
+              <LayoutDashboard size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Dashboard
+            </span>
+
+            {mostrarBadge("dashboard")}
+          </button>
+
+          {/* PRACTICANTES */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "practicantes"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion("practicantes")
+            }
+          >
+            <span className="nav-item-icon">
+              <Users size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Practicantes
+            </span>
+
+            {mostrarBadge("practicantes")}
+          </button>
+
+          {/* ASISTENCIA */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "asistencia"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion(
+                "asistencia",
+                cargarAsistencias
+              )
+            }
+          >
+            <span className="nav-item-icon">
+              <ClipboardClock size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Asistencia
+            </span>
+
+            {mostrarBadge("asistencia")}
+          </button>
+
+          {/* ACTIVIDAD DIARIA */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "actividad-diaria"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion(
+                "actividad-diaria",
+                null,
+                "actividad_diaria"
+              )
+            }
+          >
+            <span className="nav-item-icon">
+              <ClipboardPenLine size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Actividad diaria
+            </span>
+
+            {mostrarBadge(
+              "actividad_diaria"
+            )}
+          </button>
+
+          {/* BITÁCORAS */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "bitacoras"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion(
+                "bitacoras",
+                () => {
+                  cargarActividadesBitacora();
+                  cargarEntregasBitacoras();
+                }
+              )
+            }
+          >
+            <span className="nav-item-icon">
+              <NotebookTabs size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Bit&aacute;coras
+            </span>
+
+            {mostrarBadge("bitacoras")}
+          </button>
+
+          {/* CARRERAS */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "carreras"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion(
+                "carreras",
+                cargarCarreras
+              )
+            }
+          >
+            <span className="nav-item-icon">
+              <GraduationCap size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Carreras
+            </span>
+
+            {mostrarBadge("carreras")}
+          </button>
+
+          {/* ESTADÍSTICAS */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "estadisticas"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion("estadisticas")
+            }
+          >
+            <span className="nav-item-icon">
+              <BarChart3 size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Estad&iacute;sticas
+            </span>
+
+            {mostrarBadge("estadisticas")}
+          </button>
+
+          {/* HISTORIAL */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "historial"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion(
+                "historial",
+                cargarHistorial
+              )
+            }
+          >
+            <span className="nav-item-icon">
+              <History size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Historial
+            </span>
+
+            {mostrarBadge("historial")}
+          </button>
+
+          {/* SEGURIDAD */}
+          <button
+            type="button"
+            className={`nav-item ${
+              seccion === "seguridad"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              cambiarSeccion(
+                "seguridad",
+                cargarAdministradores
+              )
+            }
+          >
+            <span className="nav-item-icon">
+              <ShieldCheck size={18} />
+            </span>
+
+            <span className="nav-item-text">
+              Seguridad
+            </span>
+
+            {mostrarBadge("seguridad")}
+          </button>
+        </nav>
+
+        <button
+          type="button"
+          className="logout-button"
+          onClick={cerrarSesion}
+        >
+          <LogOut size={18} />
+          Cerrar sesi&oacute;n
+        </button>
+      </aside>
+
+      {abierto && (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          onClick={onCerrar}
+          aria-label="Cerrar menú lateral"
+        />
+      )}
+    </>
   );
 }
 

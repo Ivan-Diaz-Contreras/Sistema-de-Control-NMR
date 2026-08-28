@@ -5,8 +5,8 @@ import {
 } from "react";
 import axios from "axios";
 import "../App.css";
-import logoNMR from "../assets/logo-nmr.png";
 import ActividadDiariaPracticante from "../components/practicante/ActividadDiariaPracticante";
+import PracticanteSidebar from "../components/practicante/PracticanteSidebar";
 import {
   User,
   Hand,
@@ -20,11 +20,8 @@ import {
   AlertTriangle,
   ChevronDown,
   LogOut,
+  Menu,
   CircleUserRound,
-  ClipboardPenLine,
-  LayoutDashboard,
-  ClipboardClock,
-  NotebookTabs,
 } from "lucide-react";
 
 const API_URL =
@@ -52,6 +49,8 @@ function PracticantePanel({
   const [filtroPeriodoHoras, setFiltroPeriodoHoras] = useState("todos");
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] =
   useState(false);
+  const [menuLateralAbierto, setMenuLateralAbierto] =
+    useState(false);
 
   // ==========================================
   // SEGURIDAD / CAMBIO DE CONTRASEÑA
@@ -1001,131 +1000,31 @@ const formatearFechaHoraBitacora = (fecha) => {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-icon">
-             <img src={logoNMR} alt="NMR Consultores" />
-          </div>
 
-          <div>
-            <span>
-              Control de<br /> 
-              Prácticas
-              </span>
-          </div>
-        </div>
-
-        <nav className="navigation">
-          <button
-            className={`nav-item ${
-              seccion === "dashboard" ? "active" : ""
-            }`}
-            onClick={() => cambiarSeccion("dashboard")}
-          >
-            <span className="nav-item-icon">
-              <LayoutDashboard size={18} />
-            </span>
-            <span className="nav-item-text">
-              Dashboard
-            </span>
-            {mostrarBadgeNotificacion("dashboard")}
-          </button>
-
-          <button
-            className={`nav-item ${
-              seccion === "perfil" ? "active" : ""
-            }`}
-            onClick={() => cambiarSeccion("perfil")}
-          >
-            <span className="nav-item-icon">
-              <CircleUserRound size={18} />
-            </span>
-            <span className="nav-item-text">
-              Mi perfil
-            </span>
-            {mostrarBadgeNotificacion("perfil")}
-          </button>
-
-          <button
-            className={`nav-item ${
-              seccion === "asistencia" ? "active" : ""
-            }`}
-            onClick={() => cambiarSeccion("asistencia")}
-          >
-            <span className="nav-item-icon">
-              <ClipboardClock size={18} />
-            </span>
-            <span className="nav-item-text">
-              Asistencia
-            </span>
-            {mostrarBadgeNotificacion("asistencia")}
-          </button>
-
-          <button
-            className={`nav-item ${
-              seccion === "horas" ? "active" : ""
-            }`}
-            onClick={() => cambiarSeccion("horas")}
-          >
-            <span className="nav-item-icon">
-              <Clock3 size={18} />
-            </span>
-            <span className="nav-item-text">
-              Mis horas
-            </span>
-            {mostrarBadgeNotificacion("horas")}
-          </button>
-
-          <button
-            type="button"
-            className={`nav-item ${
-              seccion === "actividad-diaria"
-                ? "active"
-                : ""
-            }`}
-            onClick={() =>
-              cambiarSeccion(
-                "actividad-diaria"
-              )
-            }
-          >
-            <span className="nav-item-icon">
-              <ClipboardPenLine size={18} />
-            </span>
-
-            <span className="nav-item-text">
-              Actividad diaria
-            </span>
-
-            {mostrarBadgeNotificacion(
-              "actividad-diaria"
-            )}
-          </button>
-
-          <button
-            className={`nav-item ${
-              seccion === "bitacoras" ? "active" : ""
-            }`}
-            onClick={() => cambiarSeccion("bitacoras")}
-          >
-            <span className="nav-item-icon">
-              <NotebookTabs size={18} />
-            </span>
-            <span className="nav-item-text">
-              Bitácoras
-            </span>
-            {mostrarBadgeNotificacion("bitacoras")}
-          </button>
-
-        </nav>
-
-        <button className="logout-button" onClick={onLogout}>
-          <LogOut size={18} />
-          Cerrar sesión
-        </button>
-      </aside>
+      <PracticanteSidebar
+        seccion={seccion}
+        cambiarSeccion={cambiarSeccion}
+        onLogout={onLogout}
+        notificaciones={notificaciones}
+        abierto={menuLateralAbierto}
+        onCerrar={() =>
+          setMenuLateralAbierto(false)
+        }
+      />
 
       <main className="main-content">
+        <button
+          type="button"
+          className="mobile-menu-button"
+          onClick={() =>
+            setMenuLateralAbierto(true)
+          }
+          aria-label="Abrir menú"
+        >
+          <Menu size={20} />
+          Menú
+        </button>
+
         <header className="topbar">
           <div>
             <p className="section-label">PANEL DEL PRACTICANTE</p>
