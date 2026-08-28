@@ -18,7 +18,7 @@ function AdminTopbar({
     <header className="topbar">
       <div>
         <p className="section-label">
-          PANEL DEL ADMINISTRADOR
+          PANEL DEL ADMINISTRADORA
         </p>
 
         <h2>{titulo}</h2>
