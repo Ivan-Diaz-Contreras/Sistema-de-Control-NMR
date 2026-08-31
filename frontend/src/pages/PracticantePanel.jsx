@@ -18,6 +18,7 @@ import {
   ChartNoAxesColumnIncreasing,
   ListChecks,
   AlertTriangle,
+  CheckCircle2,
   ChevronDown,
   LogOut,
   Menu,
@@ -101,6 +102,7 @@ function PracticantePanel({
   // ==========================================
 
   const [notificaciones, setNotificaciones] = useState({});
+  const [notificacionAprobada, setNotificacionAprobada] = useState(null);
 
   const cargarNotificaciones = useCallback(async () => {
     if (!token || usuario?.rol !== "Practicante") {
@@ -108,18 +110,53 @@ function PracticantePanel({
     }
 
     try {
-      const response = await axios.get(
-        `${API}/notificaciones/resumen`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
+
+      const [resumenResponse, listaResponse] =
+        await Promise.all([
+          axios.get(
+            `${API}/notificaciones/resumen`,
+            { headers }
+          ),
+          axios.get(
+            `${API}/notificaciones`,
+            { headers }
+          ),
+        ]);
 
       setNotificaciones(
-        response.data?.secciones || {}
+        resumenResponse.data?.secciones || {}
       );
+
+      const lista =
+        listaResponse.data?.notificaciones || [];
+
+      const aprobacionPendiente = lista.find(
+        (notificacion) =>
+          notificacion.tipo ===
+            "BITACORA_APROBADA" &&
+          Number(notificacion.leida) === 0
+      );
+
+      if (aprobacionPendiente) {
+        const claveAprobacion = String(
+          aprobacionPendiente.id_notificacion
+        );
+
+        const claveVista = sessionStorage.getItem(
+          "bitacora_aprobada_vista"
+        );
+
+        if (claveVista !== claveAprobacion) {
+          setNotificacionAprobada(
+            aprobacionPendiente
+          );
+        }
+      } else {
+        setNotificacionAprobada(null);
+      }
     } catch (error) {
       console.error(
         "Error cargando notificaciones:",
@@ -525,6 +562,22 @@ useEffect(() => {
   usuario?.rol,
   cargarNotificaciones,
 ]);
+
+const cerrarNotificacionAprobada = () => {
+  if (notificacionAprobada?.id_notificacion) {
+    sessionStorage.setItem(
+      "bitacora_aprobada_vista",
+      String(notificacionAprobada.id_notificacion)
+    );
+  }
+
+  setNotificacionAprobada(null);
+};
+
+const verBitacoraAprobada = () => {
+  cerrarNotificacionAprobada();
+  cambiarSeccion("bitacoras");
+};
 
 const cerrarNotificacionBitacora = () => {
   if (notificacionBitacora?.claveNotificacion) {
@@ -1258,6 +1311,53 @@ const formatearFechaHoraBitacora = (fecha) => {
         </header>
 
         {mensaje && <div className="message">{mensaje}</div>}
+
+        {notificacionAprobada && (
+          <div
+            className="bitacora-alert-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-bitacora-aprobada"
+          >
+            <div className="bitacora-alert-modal bitacora-alert-modal-success">
+              <div className="bitacora-alert-icon bitacora-alert-icon-success">
+                <CheckCircle2 size={34} />
+              </div>
+
+              <div className="bitacora-alert-content">
+                <p className="section-label">
+                  REVISI&Oacute;N DE BIT&Aacute;CORA
+                </p>
+
+                <h2 id="titulo-bitacora-aprobada">
+                  Bit&aacute;cora aprobada
+                </h2>
+
+                <p>
+                  {notificacionAprobada.mensaje ||
+                    "Tu bit&aacute;cora fue aprobada correctamente."}
+                </p>
+
+                <div className="bitacora-alert-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={cerrarNotificacionAprobada}
+                  >
+                    Cerrar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={verBitacoraAprobada}
+                  >
+                    Ver bit&aacute;cora
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {notificacionBitacora && (
           <div
