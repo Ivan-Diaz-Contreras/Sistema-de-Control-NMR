@@ -1353,7 +1353,7 @@ function ActividadDiariaAdmin({
             </span>
           </div>
         ) : (
-          <div className="actividad-tabla-wrapper">
+          <div className="actividad-tabla-wrapper table-scroll-guide">
             <table className="actividad-tabla actividad-admin-table">
               <thead>
                 <tr>

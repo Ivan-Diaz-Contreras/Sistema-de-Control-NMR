@@ -441,7 +441,7 @@ function AsistenciaAdmin({
                   No se encontraron registros de asistencia.
                 </p>
               ) : (
-                <div className="admin-table-wrapper">
+                <div className="admin-table-wrapper table-scroll-guide">
                   <table className="admin-table asistencia-table">
                     <thead>
                       <tr>

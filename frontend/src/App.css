@@ -3553,3 +3553,24 @@ body,
   }
 }
 
+
+
+/* GUIA PARA TABLAS CON SCROLL HORIZONTAL */
+
+.table-scroll-guide::before {
+  content: "\2194  Desliza horizontalmente para ver todas las columnas";
+  position: sticky;
+  left: 0;
+  display: block;
+  width: fit-content;
+  margin: 8px 10px 10px;
+  padding: 7px 11px;
+  border: 1px solid #d8dee9;
+  border-radius: 7px;
+  background: #f7f9fc;
+  color: #59667c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  z-index: 2;
+}

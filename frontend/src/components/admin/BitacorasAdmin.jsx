@@ -192,7 +192,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                   Todavía no hay actividades semanales registradas.
                 </p>
               ) : (
-                <div style={{ overflowX: "auto" }}>
+                <div className="table-scroll-guide" style={{ overflowX: "auto" }}>
                   <table
                     style={{
                       width: "100%",
@@ -455,6 +455,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                 </p>
               ) : (
                 <div
+                  className="table-scroll-guide"
                   style={{
                     overflowX: "auto",
                   }}
