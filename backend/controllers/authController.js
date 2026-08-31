@@ -544,7 +544,7 @@ const login = async (req, res) => {
                 },
                 process.env.JWT_SECRET,
                 {
-                    expiresIn: "8h"
+                    expiresIn: "9h"
                 }
             );
 

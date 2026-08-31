@@ -25,9 +25,92 @@ import SeguridadAdmin from "../components/admin/SeguridadAdmin";
 
 
 function AdminPanel({ usuario, onLogout }) {
-  const [seccion, setSeccion] = useState("dashboard");
+  const [seccion, setSeccion] = useState(() => {
+    const estado = window.history.state;
+
+    if (
+      estado?.panel === "admin" &&
+      estado?.seccion
+    ) {
+      return estado.seccion;
+    }
+
+    return "dashboard";
+  });
+
   const [menuLateralAbierto, setMenuLateralAbierto] =
     useState(false);
+
+  // ==========================================
+  // HISTORIAL DE NAVEGACIÓN DEL ADMINISTRADOR
+  // ==========================================
+
+  const cambiarSeccionConHistorial = (
+    nuevaSeccion
+  ) => {
+    if (
+      !nuevaSeccion ||
+      nuevaSeccion === seccion
+    ) {
+      return;
+    }
+
+    window.history.pushState(
+      {
+        ...(window.history.state || {}),
+        panel: "admin",
+        seccion: nuevaSeccion,
+      },
+      ""
+    );
+
+    setSeccion(nuevaSeccion);
+  };
+
+  useEffect(() => {
+    const estadoActual =
+      window.history.state;
+
+    if (
+      estadoActual?.panel !== "admin" ||
+      !estadoActual?.seccion
+    ) {
+      window.history.replaceState(
+        {
+          ...(estadoActual || {}),
+          panel: "admin",
+          seccion,
+        },
+        ""
+      );
+    }
+
+    const manejarNavegacion = (event) => {
+      const nuevaSeccion =
+        event.state?.panel === "admin" &&
+        event.state?.seccion
+          ? event.state.seccion
+          : "dashboard";
+
+      setSeccion(nuevaSeccion);
+      setMensaje("");
+      setMenuLateralAbierto(false);
+    };
+
+    window.addEventListener(
+      "popstate",
+      manejarNavegacion
+    );
+
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        manejarNavegacion
+      );
+    };
+    // Se registra una sola vez al montar el panel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [estadisticas, setEstadisticas] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -2601,7 +2684,7 @@ const formatearFechaHora = (fecha) => {
   // ==========================================
 
   const irASeccionDesdeAlerta = async (nombreSeccion) => {
-    setSeccion(nombreSeccion);
+    cambiarSeccionConHistorial(nombreSeccion);
     setMensaje("");
 
     try {
@@ -3804,7 +3887,7 @@ const formatearFechaHora = (fecha) => {
 
       <AdminSidebar
         seccion={seccion}
-        setSeccion={setSeccion}
+        setSeccion={cambiarSeccionConHistorial}
         onLogout={onLogout}
         cargarAsistencias={cargarAsistencias}
         cargarActividadesBitacora={cargarActividadesBitacora}
@@ -3841,7 +3924,7 @@ const formatearFechaHora = (fecha) => {
           usuario={usuario}
           titulo={obtenerTitulo()}
           onLogout={onLogout}
-          setSeccion={setSeccion}
+          setSeccion={cambiarSeccionConHistorial}
         />
 
         {mensaje && (

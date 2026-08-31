@@ -1,4 +1,7 @@
 const db = require("../config/db");
+const {
+    obtenerFechaActual
+} = require("../utils/fechaHora");
 
 // ==========================================
 // UTILIDADES
@@ -14,14 +17,8 @@ const esPracticante = (req) =>
         .trim()
         .toLowerCase() === "practicante";
 
-const fechaHoySQL = () => {
-    const ahora = new Date();
-    const anio = ahora.getFullYear();
-    const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-    const dia = String(ahora.getDate()).padStart(2, "0");
-
-    return `${anio}-${mes}-${dia}`;
-};
+const fechaHoySQL = () =>
+    obtenerFechaActual();
 
 const normalizarActividad = (valor) =>
     String(valor ?? "")

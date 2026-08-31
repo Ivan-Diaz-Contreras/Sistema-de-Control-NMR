@@ -4378,9 +4378,17 @@ const crearActividadBitacora = (req, res) => {
         });
     }
 
+    const fechaInicioLimpia =
+        String(fecha_inicio || "")
+            .slice(0, 10);
+
+    const fechaFinLimpia =
+        String(fecha_fin || "")
+            .slice(0, 10);
+
     if (
-        new Date(fecha_fin) <
-        new Date(fecha_inicio)
+        fechaFinLimpia <
+        fechaInicioLimpia
     ) {
         return res.status(400).json({
             mensaje:

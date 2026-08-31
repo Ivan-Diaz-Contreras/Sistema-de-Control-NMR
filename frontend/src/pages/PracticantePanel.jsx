@@ -42,7 +42,18 @@ function PracticantePanel({
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(true);
   const [procesandoAsistencia, setProcesandoAsistencia] = useState(false);
-  const [seccion, setSeccion] = useState("dashboard");
+  const [seccion, setSeccion] = useState(() => {
+    const estado = window.history.state;
+
+    if (
+      estado?.panel === "practicante" &&
+      estado?.seccion
+    ) {
+      return estado.seccion;
+    }
+
+    return "dashboard";
+  });
   const [horario, setHorario] = useState(null);
   const [asistenciaHoy, setAsistenciaHoy] = useState(null);
   const [registrosHoras, setRegistrosHoras] = useState([]);
@@ -210,6 +221,15 @@ useEffect(() => {
             0
         ) === 1
       ) {
+        window.history.replaceState(
+          {
+            ...(window.history.state || {}),
+            panel: "practicante",
+            seccion: "perfil",
+          },
+          ""
+        );
+
         setSeccion("perfil");
         setMensaje(
           "Por seguridad debes cambiar la contraseña temporal antes de continuar."
@@ -533,6 +553,98 @@ const cambiarCampoPassword = (e) => {
   }));
 };
 
+// ==========================================
+// HISTORIAL DE NAVEGACIÓN DEL PRACTICANTE
+// ==========================================
+
+useEffect(() => {
+  const estadoActual =
+    window.history.state;
+
+  if (
+    estadoActual?.panel !== "practicante" ||
+    !estadoActual?.seccion
+  ) {
+    window.history.replaceState(
+      {
+        ...(estadoActual || {}),
+        panel: "practicante",
+        seccion,
+      },
+      ""
+    );
+  }
+
+  const manejarNavegacion = async (
+    event
+  ) => {
+    const nuevaSeccion =
+      event.state?.panel === "practicante" &&
+      event.state?.seccion
+        ? event.state.seccion
+        : "dashboard";
+
+    const cambioObligatorio =
+      Number(
+        perfil?.debe_cambiar_password ||
+          usuario?.debe_cambiar_password ||
+          0
+      ) === 1;
+
+    if (
+      cambioObligatorio &&
+      nuevaSeccion !== "perfil"
+    ) {
+      window.history.replaceState(
+        {
+          ...(window.history.state || {}),
+          panel: "practicante",
+          seccion: "perfil",
+        },
+        ""
+      );
+
+      setSeccion("perfil");
+      setMensaje(
+        "Debes cambiar tu contraseña temporal antes de utilizar las demás secciones."
+      );
+      setMenuLateralAbierto(false);
+      return;
+    }
+
+    setSeccion(nuevaSeccion);
+    setMensaje("");
+    setMenuLateralAbierto(false);
+
+    if (nuevaSeccion === "asistencia") {
+      cargarHorario();
+      cargarAsistenciaHoy();
+    }
+
+    if (nuevaSeccion === "bitacoras") {
+      await cargarBitacorasPracticante();
+    }
+  };
+
+  window.addEventListener(
+    "popstate",
+    manejarNavegacion
+  );
+
+  return () => {
+    window.removeEventListener(
+      "popstate",
+      manejarNavegacion
+    );
+  };
+}, [
+  perfil?.debe_cambiar_password,
+  usuario?.debe_cambiar_password,
+  cargarHorario,
+  cargarAsistenciaHoy,
+  cargarBitacorasPracticante,
+]);
+
 const cambiarSeccion = async (nuevaSeccion) => {
   const cambioObligatorio =
     Number(
@@ -545,6 +657,15 @@ const cambiarSeccion = async (nuevaSeccion) => {
     cambioObligatorio &&
     nuevaSeccion !== "perfil"
   ) {
+    window.history.replaceState(
+      {
+        ...(window.history.state || {}),
+        panel: "practicante",
+        seccion: "perfil",
+      },
+      ""
+    );
+
     setSeccion("perfil");
 
     setMensaje(
@@ -552,6 +673,17 @@ const cambiarSeccion = async (nuevaSeccion) => {
     );
 
     return;
+  }
+
+  if (nuevaSeccion !== seccion) {
+    window.history.pushState(
+      {
+        ...(window.history.state || {}),
+        panel: "practicante",
+        seccion: nuevaSeccion,
+      },
+      ""
+    );
   }
 
   setSeccion(nuevaSeccion);

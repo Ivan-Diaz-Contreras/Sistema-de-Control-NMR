@@ -1,5 +1,10 @@
 const db = require("../config/db");
 const registrarActividad = require("../utils/registrarActividad");
+const {
+    obtenerFechaActual,
+    obtenerHoraActual,
+    obtenerDiaSemanaActual
+} = require("../utils/fechaHora");
 
 // ==========================================
 // REGISTRAR ENTRADA
@@ -8,33 +13,12 @@ const registrarActividad = require("../utils/registrarActividad");
 const registrarEntrada = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
 
-    const ahora = new Date();
-
-    // Usamos fecha y hora locales del servidor
-    // para evitar diferencias con UTC.
-    const anio = ahora.getFullYear();
-    const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-    const dia = String(ahora.getDate()).padStart(2, "0");
-
-    const fechaActual = `${anio}-${mes}-${dia}`;
-
-    const horaActual = [
-        String(ahora.getHours()).padStart(2, "0"),
-        String(ahora.getMinutes()).padStart(2, "0"),
-        String(ahora.getSeconds()).padStart(2, "0")
-    ].join(":");
-
-    const dias = [
-        "Domingo",
-        "Lunes",
-        "Martes",
-        "Miércoles",
-        "Jueves",
-        "Viernes",
-        "Sábado"
-    ];
-
-    const diaSemana = dias[ahora.getDay()];
+    // Fecha y hora oficiales del sistema NMR.
+    // Se obtienen siempre con APP_TIMEZONE
+    // (America/Mexico_City) desde utils/fechaHora.
+    const fechaActual = obtenerFechaActual();
+    const horaActual = obtenerHoraActual();
+    const diaSemana = obtenerDiaSemanaActual();
 
     // Buscar practicante
     db.query(
@@ -201,20 +185,11 @@ const registrarEntrada = (req, res) => {
 const registrarSalida = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
 
-    const ahora = new Date();
-
-    // Usamos fecha y hora locales del servidor
-    const anio = ahora.getFullYear();
-    const mes = String(ahora.getMonth() + 1).padStart(2, "0");
-    const dia = String(ahora.getDate()).padStart(2, "0");
-
-    const fechaActual = `${anio}-${mes}-${dia}`;
-
-    const horaActual = [
-        String(ahora.getHours()).padStart(2, "0"),
-        String(ahora.getMinutes()).padStart(2, "0"),
-        String(ahora.getSeconds()).padStart(2, "0")
-    ].join(":");
+    // Fecha y hora oficiales del sistema NMR.
+    // Se obtienen siempre con APP_TIMEZONE
+    // (America/Mexico_City) desde utils/fechaHora.
+    const fechaActual = obtenerFechaActual();
+    const horaActual = obtenerHoraActual();
 
     // Buscar practicante
     db.query(
