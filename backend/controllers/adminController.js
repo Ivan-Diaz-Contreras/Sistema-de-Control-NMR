@@ -4437,6 +4437,53 @@ const crearActividadBitacora = (req, res) => {
                 `El administrador creó la actividad de bitácora de la semana ${semana}: ${titulo.trim()}`
             );
 
+            
+            // ==========================================
+            // NOTIFICAR NUEVA BITÁCORA A PRACTICANTES
+            // ==========================================
+
+            const sqlNotificacion = `
+                INSERT INTO notificaciones (
+                    id_usuario,
+                    seccion,
+                    tipo,
+                    titulo,
+                    mensaje
+                )
+                SELECT
+                    u.id_usuario,
+                    'bitacoras',
+                    'NUEVA_ACTIVIDAD_BITACORA',
+                    'Nueva bitácora disponible',
+                    ?
+                FROM usuarios u
+                INNER JOIN roles r
+                    ON u.id_rol = r.id_rol
+                WHERE r.nombre = 'Practicante'
+                  AND u.activo = 1
+            `;
+
+            const mensajeNotificacion =
+                `Se publicó la bitácora de la semana ${semana}: ${titulo.trim()}. Revisa la sección de Bitácoras para consultar las instrucciones y la fecha límite.`;
+
+            db.query(
+                sqlNotificacion,
+                [mensajeNotificacion],
+                (errorNotificacion, resultadoNotificacion) => {
+                    if (errorNotificacion) {
+                        console.error(
+                            "Error creando notificación de nueva bitácora:",
+                            errorNotificacion
+                        );
+                    } else {
+                        console.log(
+                            "Notificaciones de nueva bitácora creadas:",
+                            resultadoNotificacion.affectedRows
+                        );
+                    }
+                }
+            );
+
             return res.status(201).json({
                 mensaje:
                     "Actividad de bitácora creada correctamente",
