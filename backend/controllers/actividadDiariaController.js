@@ -1,7 +1,4 @@
 const db = require("../config/db");
-const {
-    obtenerFechaActual
-} = require("../utils/fechaHora");
 
 // ==========================================
 // UTILIDADES
@@ -17,8 +14,14 @@ const esPracticante = (req) =>
         .trim()
         .toLowerCase() === "practicante";
 
-const fechaHoySQL = () =>
-    obtenerFechaActual();
+const fechaHoySQL = () => {
+    const ahora = new Date();
+    const anio = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+    const dia = String(ahora.getDate()).padStart(2, "0");
+
+    return `${anio}-${mes}-${dia}`;
+};
 
 const normalizarActividad = (valor) =>
     String(valor ?? "")
@@ -137,6 +140,8 @@ const obtenerMisActividades = (req, res) => {
                     ad.id_practicante,
                     ad.fecha,
                     ad.actividad,
+                    ad.sincronizada_sheets,
+                    ad.fecha_sincronizacion,
                     ad.fecha_creacion AS creado_en,
                     ad.fecha_actualizacion AS actualizado_en
                 FROM actividades_diarias ad
@@ -209,11 +214,11 @@ const crearMiActividad = (req, res) => {
 
     if (
         actividad.length < 10 ||
-        actividad.length > 1000
+        actividad.length > 300
     ) {
         return res.status(400).json({
             mensaje:
-                "La actividad debe tener entre 10 y 1000 caracteres"
+                "La actividad debe tener entre 10 y 300 caracteres"
         });
     }
 
@@ -385,7 +390,9 @@ const actualizarMiActividad = (req, res) => {
                 UPDATE actividades_diarias
                 SET
                     fecha = ?,
-                    actividad = ?
+                    actividad = ?,
+                    sincronizada_sheets = 0,
+                    fecha_sincronizacion = NULL
                 WHERE id_actividad_diaria = ?
                   AND id_practicante = ?
             `;
@@ -586,6 +593,8 @@ const obtenerActividadesAdmin = (req, res) => {
             p.id_usuario,
             ad.fecha,
             ad.actividad,
+            ad.sincronizada_sheets,
+            ad.fecha_sincronizacion,
             ad.fecha_creacion AS creado_en,
             ad.fecha_actualizacion AS actualizado_en,
             p.matricula,
@@ -853,7 +862,9 @@ const actualizarActividadAdmin = (
             UPDATE actividades_diarias
             SET
                 fecha = ?,
-                actividad = ?
+                actividad = ?,
+                sincronizada_sheets = 0,
+                fecha_sincronizacion = NULL
             WHERE id_actividad_diaria = ?
         `,
         [fecha, actividad, id],

@@ -7,14 +7,36 @@ const db = require("../config/db");
 const obtenerResumenNotificaciones = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
 
+    /*
+     * IMPORTANTE:
+     *
+     * - Las secciones normales siguen usando notificaciones no leídas.
+     * - "bitacoras" NO usa el historial de notificaciones para el badge.
+     *   El badge representa las bitácoras que realmente están Pendientes.
+     *
+     * De esta manera:
+     * entregar  -> +1
+     * cancelar  -> -1
+     * reenviar  -> +1
+     * aprobar/rechazar -> -1
+     */
     const sql = `
         SELECT
-            seccion,
+            n.seccion,
             COUNT(*) AS cantidad
-        FROM notificaciones
-        WHERE id_usuario = ?
-          AND leida = 0
-        GROUP BY seccion
+        FROM notificaciones n
+        WHERE n.id_usuario = ?
+          AND n.leida = 0
+          AND n.seccion <> 'bitacoras'
+        GROUP BY n.seccion
+
+        UNION ALL
+
+        SELECT
+            'bitacoras' AS seccion,
+            COUNT(*) AS cantidad
+        FROM bitacoras b
+        WHERE b.estado = 'Pendiente'
     `;
 
     db.query(
@@ -41,7 +63,14 @@ const obtenerResumenNotificaciones = (req, res) => {
                     fila.cantidad || 0
                 );
 
-                secciones[fila.seccion] = cantidad;
+                if (cantidad <= 0) {
+                    return;
+                }
+
+                secciones[fila.seccion] =
+                    (secciones[fila.seccion] || 0) +
+                    cantidad;
+
                 total += cantidad;
             });
 
@@ -69,11 +98,14 @@ const obtenerNotificaciones = (req, res) => {
             mensaje,
             leida,
             fecha_creacion,
-            fecha_lectura
+            fecha_lectura,
+            referencia_tipo,
+            id_referencia
         FROM notificaciones
         WHERE id_usuario = ?
-        ORDER BY fecha_creacion DESC,
-                 id_notificacion DESC
+        ORDER BY
+            fecha_creacion DESC,
+            id_notificacion DESC
         LIMIT 100
     `;
 
@@ -116,6 +148,9 @@ const marcarSeccionComoLeida = (req, res) => {
         });
     }
 
+    const seccionNormalizada =
+        String(seccion).trim();
+
     const sql = `
         UPDATE notificaciones
         SET
@@ -130,7 +165,7 @@ const marcarSeccionComoLeida = (req, res) => {
         sql,
         [
             idUsuario,
-            String(seccion).trim()
+            seccionNormalizada
         ],
         (error, resultado) => {
             if (error) {
