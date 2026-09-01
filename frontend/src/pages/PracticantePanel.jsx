@@ -907,6 +907,54 @@ const subirPdfBitacora = async (
   }
 };
 
+const cancelarEntregaBitacora = async (
+  idBitacora
+) => {
+  const confirmar = window.confirm(
+    "¿Deseas cancelar esta entrega? El archivo dejará de estar enviado y podrás subir uno nuevo."
+  );
+
+  if (!confirmar) {
+    return;
+  }
+
+  try {
+    setMensaje("");
+
+    const response = await axios.delete(
+      `${API}/practicantes/bitacoras/${idBitacora}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setMensaje(
+      response.data.mensaje ||
+        "Entrega cancelada correctamente."
+    );
+
+    setSubiendoBitacora(null);
+    setArchivoBitacora(null);
+
+    await Promise.all([
+      cargarBitacorasPracticante(),
+      cargarNotificaciones(),
+    ]);
+  } catch (error) {
+    console.error(
+      "Error cancelando entrega de bitácora:",
+      error
+    );
+
+    setMensaje(
+      error.response?.data?.mensaje ||
+        "No se pudo cancelar la entrega."
+    );
+  }
+};
+
 const abrirPdfBitacora = async (
   idBitacora
 ) => {
@@ -943,6 +991,45 @@ const abrirPdfBitacora = async (
         "No se pudo abrir el archivo PDF."
     );
   }
+};
+
+const obtenerTextoEstadoBitacora = (
+  elemento
+) => {
+  const entregada =
+    elemento?.entregada === true ||
+    Number(elemento?.entregada) === 1 ||
+    Boolean(elemento?.id_bitacora);
+
+  const estado = String(
+    elemento?.estado_entrega ||
+      elemento?.estado ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!entregada) {
+    return "Pendiente de entrega";
+  }
+
+  if (estado === "pendiente" || !estado) {
+    return "Pendiente de revisión";
+  }
+
+  if (estado === "aprobada") {
+    return "Aprobada";
+  }
+
+  if (estado === "rechazada") {
+    return "Rechazada";
+  }
+
+  return (
+    elemento?.estado_entrega ||
+    elemento?.estado ||
+    "Pendiente de revisión"
+  );
 };
 
 const obtenerClaseEstadoBitacoraPracticante = (
@@ -1022,6 +1109,57 @@ const formatearFechaHoraBitacora = (fecha) => {
   return texto;
 };
 
+
+
+
+  // ==========================================
+  // ACTUALIZACIÓN AUTOMÁTICA
+  // ==========================================
+  // Mantiene notificaciones y la sección visible actualizadas
+  // sin necesidad de recargar manualmente la página.
+  useEffect(() => {
+    if (!token || usuario?.rol !== "Practicante") {
+      return undefined;
+    }
+
+    const actualizarSeccionVisible = async () => {
+      await cargarNotificaciones();
+
+      if (seccion === "asistencia") {
+        await Promise.all([
+          cargarHorario(),
+          cargarAsistenciaHoy(),
+        ]);
+      }
+
+      if (seccion === "bitacoras") {
+        await cargarBitacorasPracticante();
+      }
+
+      if (seccion === "dashboard") {
+        await cargarAsistenciaHoy();
+      }
+    };
+
+    const intervalo = window.setInterval(() => {
+      // No hacemos peticiones mientras la pestaña no está visible.
+      if (document.visibilityState === "visible") {
+        actualizarSeccionVisible();
+      }
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalo);
+    };
+  }, [
+    token,
+    usuario?.rol,
+    seccion,
+    cargarNotificaciones,
+    cargarHorario,
+    cargarAsistenciaHoy,
+    cargarBitacorasPracticante,
+  ]);
 
 
   if (cargando) {
@@ -2252,10 +2390,9 @@ const formatearFechaHoraBitacora = (fecha) => {
                               ),
                             ].join(" ")}
                           >
-                            {actividad.entregada
-                              ? actividad.estado_entrega ||
-                                "Pendiente"
-                              : "Pendiente de entrega"}
+                            {obtenerTextoEstadoBitacora(
+                              actividad
+                            )}
                           </span>
                         </div>
 
@@ -2402,6 +2539,25 @@ const formatearFechaHoraBitacora = (fecha) => {
                               >
                                 Ver PDF actual
                               </button>
+
+                              {String(
+                                actividad.estado_entrega || ""
+                              )
+                                .trim()
+                                .toLowerCase() ===
+                                "pendiente" && (
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  onClick={() =>
+                                    cancelarEntregaBitacora(
+                                      actividad.id_bitacora
+                                    )
+                                  }
+                                >
+                                  Cancelar entrega
+                                </button>
+                              )}
 
                               {actividad.estado_entrega ===
                                 "Rechazada" && (
@@ -2570,8 +2726,9 @@ const formatearFechaHoraBitacora = (fecha) => {
                                 ),
                               ].join(" ")}
                             >
-                              {bitacora.estado ||
-                                "Pendiente"}
+                              {obtenerTextoEstadoBitacora(
+                                bitacora
+                              )}
                             </span>
                           </td>
 
@@ -2615,6 +2772,28 @@ const formatearFechaHoraBitacora = (fecha) => {
                             >
                               Ver PDF
                             </button>
+
+                            {String(
+                              bitacora.estado || ""
+                            )
+                              .trim()
+                              .toLowerCase() ===
+                              "pendiente" && (
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                style={{
+                                  marginLeft: "8px",
+                                }}
+                                onClick={() =>
+                                  cancelarEntregaBitacora(
+                                    bitacora.id_bitacora
+                                  )
+                                }
+                              >
+                                Cancelar
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}

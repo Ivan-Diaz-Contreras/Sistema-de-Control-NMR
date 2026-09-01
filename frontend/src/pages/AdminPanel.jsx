@@ -3879,6 +3879,79 @@ const formatearFechaHora = (fecha) => {
     }
   };
 
+
+  // ==========================================
+  // ACTUALIZACIÓN AUTOMÁTICA
+  // ==========================================
+  // Mantiene al administrador actualizado sin recargar la página.
+  // Solo consulta los datos necesarios para la sección visible.
+  useEffect(() => {
+    if (!token) {
+      return undefined;
+    }
+
+    const actualizarSeccionVisible = async () => {
+      // El resumen de notificaciones se mantiene actualizado
+      // independientemente de la sección abierta.
+      await cargarResumenNotificaciones();
+
+      switch (seccion) {
+        case "dashboard":
+          await cargarEstadisticas();
+          break;
+
+        case "practicantes":
+          await cargarPracticantes(filtroCarrera);
+          break;
+
+        case "asistencia":
+          await cargarAsistencias();
+          break;
+
+        case "bitacoras":
+          await cargarEntregasBitacoras();
+          break;
+
+        case "actividad-diaria":
+          // Esta sección obtiene sus propios datos desde su componente.
+          break;
+
+        case "carreras":
+          await cargarCarreras();
+          break;
+
+        case "estadisticas":
+          await cargarEstadisticas();
+          break;
+
+        case "historial":
+          await cargarHistorial();
+          break;
+
+        case "seguridad":
+          await cargarAdministradores();
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    const intervalo = window.setInterval(() => {
+      // Evita peticiones innecesarias cuando la pestaña está en segundo plano.
+      if (document.visibilityState === "visible") {
+        actualizarSeccionVisible();
+      }
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalo);
+    };
+    // Las funciones de carga ya usan el estado actual del panel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, seccion, filtroCarrera]);
+
+
   return (
     <div className="app">
       {/* ==========================================

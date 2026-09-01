@@ -580,6 +580,157 @@ const obtenerBitacoras = (req, res) => {
     );
 };
 
+
+// ==========================================
+// CANCELAR ENTREGA DE BITÁCORA
+// SOLO SI SIGUE PENDIENTE DE REVISIÓN
+// ==========================================
+
+const cancelarBitacora = (req, res) => {
+    const idUsuario = req.usuario.id_usuario;
+    const idBitacora = Number(req.params.id);
+
+    if (
+        !Number.isInteger(idBitacora) ||
+        idBitacora <= 0
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "El id de la bitácora es inválido"
+        });
+    }
+
+    const sqlConsultar = `
+        SELECT
+            b.id_bitacora,
+            b.numero_semana,
+            b.nombre_archivo,
+            b.estado
+        FROM bitacoras b
+        INNER JOIN practicantes p
+            ON b.id_practicante = p.id_practicante
+        WHERE b.id_bitacora = ?
+          AND p.id_usuario = ?
+        LIMIT 1
+    `;
+
+    db.query(
+        sqlConsultar,
+        [idBitacora, idUsuario],
+        (errorConsulta, resultados) => {
+            if (errorConsulta) {
+                console.error(
+                    "Error consultando bitácora para cancelar:",
+                    errorConsulta
+                );
+
+                return res.status(500).json({
+                    mensaje:
+                        "Error al consultar la bitácora"
+                });
+            }
+
+            if (resultados.length === 0) {
+                return res.status(404).json({
+                    mensaje:
+                        "Bitácora no encontrada"
+                });
+            }
+
+            const bitacora = resultados[0];
+
+            if (
+                String(bitacora.estado || "")
+                    .trim()
+                    .toLowerCase() !== "pendiente"
+            ) {
+                return res.status(409).json({
+                    mensaje:
+                        "La entrega ya fue revisada y no puede cancelarse"
+                });
+            }
+
+            const sqlEliminar = `
+                DELETE FROM bitacoras
+                WHERE id_bitacora = ?
+            `;
+
+            db.query(
+                sqlEliminar,
+                [idBitacora],
+                (errorEliminar, resultadoEliminar) => {
+                    if (errorEliminar) {
+                        console.error(
+                            "Error cancelando entrega de bitácora:",
+                            errorEliminar
+                        );
+
+                        return res.status(500).json({
+                            mensaje:
+                                "No se pudo cancelar la entrega de la bitácora"
+                        });
+                    }
+
+                    if (
+                        resultadoEliminar.affectedRows === 0
+                    ) {
+                        return res.status(404).json({
+                            mensaje:
+                                "Bitácora no encontrada"
+                        });
+                    }
+
+                    registrarActividad(
+                        idUsuario,
+                        "CANCELAR_ENTREGA_BITACORA",
+                        `El practicante canceló la entrega pendiente de la bitácora de la semana ${bitacora.numero_semana}: ${bitacora.nombre_archivo}`
+                    );
+
+                    // Avisar a administradores que la entrega fue retirada.
+                    db.query(
+                        `
+                            INSERT INTO notificaciones (
+                                id_usuario,
+                                seccion,
+                                tipo,
+                                titulo,
+                                mensaje
+                            )
+                            SELECT
+                                u.id_usuario,
+                                'bitacoras',
+                                'BITACORA_CANCELADA',
+                                'Entrega de bitácora cancelada',
+                                ?
+                            FROM usuarios u
+                            INNER JOIN roles r
+                                ON u.id_rol = r.id_rol
+                            WHERE r.nombre = 'Administrador'
+                              AND u.activo = 1
+                        `,
+                        [
+                            `Se canceló la entrega pendiente de la bitácora de la semana ${bitacora.numero_semana}: ${bitacora.nombre_archivo}`
+                        ],
+                        (errorNotificacion) => {
+                            if (errorNotificacion) {
+                                console.error(
+                                    "Error creando notificación de cancelación de bitácora:",
+                                    errorNotificacion
+                                );
+                            }
+                        }
+                    );
+
+                    return res.status(200).json({
+                        mensaje:
+                            "Entrega cancelada correctamente. Puedes subir un nuevo archivo mientras la actividad siga disponible."
+                    });
+                }
+            );
+        }
+    );
+};
+
 // ==========================================
 // OBTENER ARCHIVO PDF DEL PRACTICANTE
 // ==========================================
@@ -665,5 +816,6 @@ module.exports = {
     subirBitacora,
     obtenerActividadesDisponibles,
     obtenerBitacoras,
+    cancelarBitacora,
     obtenerArchivoBitacora
 };

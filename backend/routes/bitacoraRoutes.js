@@ -11,6 +11,7 @@ const {
     subirBitacora,
     obtenerActividadesDisponibles,
     obtenerBitacoras,
+    cancelarBitacora,
     obtenerArchivoBitacora
 } = require("../controllers/bitacoraController");
 
@@ -70,6 +71,17 @@ router.get(
     verificarToken,
     verificarPracticante,
     obtenerActividadesDisponibles
+);
+
+// ==========================================
+// CANCELAR ENTREGA PENDIENTE
+// ==========================================
+
+router.delete(
+    "/:id",
+    verificarToken,
+    verificarPracticante,
+    cancelarBitacora
 );
 
 // ==========================================
