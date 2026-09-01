@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   LogOut,
@@ -10,9 +10,56 @@ function AdminTopbar({
   titulo,
   onLogout,
   setSeccion,
+  seccion,
 }) {
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] =
     useState(false);
+
+  useEffect(() => {
+  setMenuUsuarioAbierto(false);
+}, [seccion]);
+
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const cerrarAlHacerScroll = () => {
+      setMenuUsuarioAbierto(false);
+    };
+  
+
+    const cerrarAlHacerClickFuera = (event) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target)
+      ) {
+        setMenuUsuarioAbierto(false);
+      }
+    };
+
+    window.addEventListener(
+      "scroll",
+      cerrarAlHacerScroll,
+      true
+    );
+
+    document.addEventListener(
+      "mousedown",
+      cerrarAlHacerClickFuera
+    );
+
+    return () => {
+      window.removeEventListener(
+        "scroll",
+        cerrarAlHacerScroll,
+        true
+      );
+
+      document.removeEventListener(
+        "mousedown",
+        cerrarAlHacerClickFuera
+      );
+    };
+  }, []);
 
   return (
     <header className="topbar">
@@ -24,7 +71,10 @@ function AdminTopbar({
         <h2>{titulo}</h2>
       </div>
 
-      <div className="user-menu-wrapper">
+      <div
+        className="user-menu-wrapper"
+        ref={menuRef}
+      >
 
         <button
           type="button"

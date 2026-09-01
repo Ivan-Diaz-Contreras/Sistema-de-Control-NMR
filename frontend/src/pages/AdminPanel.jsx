@@ -917,7 +917,7 @@ const guardarNuevoAdministrador = async (e) => {
       )
     ) {
       setMensaje(
-        "La contrasena temporal debe tener entre 8 y 20 caracteres e incluir mayuscula, minuscula y numero."
+        "La contraseña temporal debe tener entre 8 y 20 caracteres e incluir mayuscula, minuscula y numero."
       );
       return;
     }
@@ -927,14 +927,14 @@ const guardarNuevoAdministrador = async (e) => {
       nuevoPracticante.confirmar_password
     ) {
       setMensaje(
-        "La contrasena y su confirmacion no coinciden."
+        "La contraseña y su confirmacion no coinciden."
       );
       return;
     }
 
     if (!validarTelefono(telefonoLimpio)) {
       setMensaje(
-        "El telefono debe contener exactamente 10 digitos."
+        "El teléfono debe contener exactamente 10 digitos."
       );
       return;
     }
@@ -984,6 +984,37 @@ const guardarNuevoAdministrador = async (e) => {
       setMensaje(
         "La fecha de fin no puede ser anterior a la fecha de inicio."
       );
+      return;
+    }
+
+    if (!nuevoPracticante.fecha_fin) {
+      setMensaje(
+        "Selecciona una fecha de finalización para validar las horas requeridas."
+      );
+      return;
+    }
+
+    const diasLaborales =
+      contarDiasLaborales(
+        nuevoPracticante.fecha_inicio,
+        nuevoPracticante.fecha_fin
+      );
+
+    const horasRequeridas = Number(
+      nuevoPracticante.horas_requeridas
+    );
+
+    const horasPosibles =
+      diasLaborales * 3;
+
+    if (horasPosibles < horasRequeridas) {
+      const diasNecesarios =
+        Math.ceil(horasRequeridas / 3);
+
+      setMensaje(
+        `El periodo seleccionado solo contempla ${diasLaborales} días laborales (${horasPosibles} horas a 3 horas diarias). Para cumplir ${horasRequeridas} horas se requieren al menos ${diasNecesarios} días laborales.`
+      );
+
       return;
     }
 
@@ -1068,6 +1099,36 @@ const guardarNuevoAdministrador = async (e) => {
     }
   };
 
+      const contarDiasLaborales = (
+        fechaInicio,
+        fechaFin
+      ) => {
+        const inicio = new Date(
+          `${fechaInicio}T00:00:00`
+        );
+
+        const fin = new Date(
+          `${fechaFin}T00:00:00`
+        );
+
+        let dias = 0;
+
+        const actual = new Date(inicio);
+
+        while (actual <= fin) {
+          const dia = actual.getDay();
+
+          if (dia !== 0 && dia !== 6) {
+            dias++;
+          }
+
+          actual.setDate(
+            actual.getDate() + 1
+          );
+        }
+
+        return dias;
+      };
   // ==========================================
   // INICIAR EDICIÓN
   // ==========================================
@@ -3998,6 +4059,7 @@ const formatearFechaHora = (fecha) => {
           titulo={obtenerTitulo()}
           onLogout={onLogout}
           setSeccion={cambiarSeccionConHistorial}
+          seccion={seccion}
         />
 
         {mensaje && (

@@ -455,6 +455,43 @@ const crearPracticanteAdmin = async (req, res) => {
         });
     }
 
+    if (!fecha_fin) {
+        return res.status(400).json({
+            mensaje:
+                "Debes especificar una fecha de fin para validar el periodo de prácticas"
+        });
+    }
+
+        const diasLaborales =
+            contarDiasLaborales(
+                fecha_inicio,
+                fecha_fin
+            );
+
+        const HORAS_MINIMAS_DIARIAS = 3;
+
+        const capacidadPeriodo =
+            diasLaborales *
+            HORAS_MINIMAS_DIARIAS;
+
+        const diasNecesarios =
+            Math.ceil(
+                horasRequeridasNumero /
+                HORAS_MINIMAS_DIARIAS
+            );
+
+        if (
+            capacidadPeriodo <
+            horasRequeridasNumero
+        ) {
+            return res.status(400).json({
+                mensaje:
+                    `El periodo seleccionado no permite cumplir las ${horasRequeridasNumero} horas. ` +
+                    `Con ${diasLaborales} días laborales y un mínimo de 3 horas diarias solamente se contemplan ${capacidadPeriodo} horas. ` +
+                    `Se requieren al menos ${diasNecesarios} días laborales.`
+            });
+        }
+
     let passwordHash;
 
     try {
@@ -836,6 +873,60 @@ const crearPracticanteAdmin = async (req, res) => {
             }
         );
     });
+};
+
+// ==========================================
+// Contar días laborales
+// ==========================================
+
+const contarDiasLaborales = (
+    fechaInicio,
+    fechaFin
+) => {
+    const [anioInicio, mesInicio, diaInicio] =
+        fechaInicio.split("-").map(Number);
+
+    const [anioFin, mesFin, diaFin] =
+        fechaFin.split("-").map(Number);
+
+    const inicio = new Date(
+        Date.UTC(
+            anioInicio,
+            mesInicio - 1,
+            diaInicio
+        )
+    );
+
+    const fin = new Date(
+        Date.UTC(
+            anioFin,
+            mesFin - 1,
+            diaFin
+        )
+    );
+
+    let diasLaborales = 0;
+
+    const actual = new Date(inicio);
+
+    while (actual <= fin) {
+        const diaSemana = actual.getUTCDay();
+
+        // 0 = domingo
+        // 6 = sábado
+        if (
+            diaSemana !== 0 &&
+            diaSemana !== 6
+        ) {
+            diasLaborales++;
+        }
+
+        actual.setUTCDate(
+            actual.getUTCDate() + 1
+        );
+    }
+
+    return diasLaborales;
 };
 
 // ==========================================

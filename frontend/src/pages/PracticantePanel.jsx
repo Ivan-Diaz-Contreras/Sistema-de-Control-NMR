@@ -61,6 +61,32 @@ function PracticantePanel({
   const [filtroPeriodoHoras, setFiltroPeriodoHoras] = useState("todos");
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] =
   useState(false);
+
+  useEffect(() => {
+    setMenuUsuarioAbierto(false);
+  }, [seccion]);
+
+  useEffect(() => {
+    const cerrarMenuAlScroll = () => {
+      setMenuUsuarioAbierto(false);
+    };
+
+    window.addEventListener(
+      "scroll",
+      cerrarMenuAlScroll,
+      true
+    );
+
+    return () => {
+      window.removeEventListener(
+        "scroll",
+        cerrarMenuAlScroll,
+        true
+      );
+    };
+  }, []);
+
+
   const [menuLateralAbierto, setMenuLateralAbierto] =
     useState(false);
 
