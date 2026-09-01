@@ -59,39 +59,119 @@ const obtenerPracticantePorUsuario = (
 const crearNotificacionAdministradores = ({
     tipo,
     titulo,
-    mensaje
+    mensaje,
+    idReferencia
 }) => {
-    const sql = `
-        INSERT INTO notificaciones (
-            id_usuario,
-            seccion,
-            tipo,
-            titulo,
-            mensaje
-        )
-        SELECT
-            u.id_usuario,
-            'actividad_diaria',
-            ?,
-            ?,
-            ?
-        FROM usuarios u
+    const referenciaTipo = "actividad_diaria";
+
+    if (!idReferencia) {
+        console.error(
+            "No se pudo crear la notificación: falta idReferencia"
+        );
+        return;
+    }
+
+    // Primero actualizamos cualquier notificación NO LEÍDA que ya exista
+    // para esta misma actividad diaria. Así evitamos duplicados si el
+    // practicante edita varias veces antes de que el administrador la lea.
+    const sqlActualizar = `
+        UPDATE notificaciones n
+        INNER JOIN usuarios u
+            ON n.id_usuario = u.id_usuario
         INNER JOIN roles r
             ON u.id_rol = r.id_rol
+        SET
+            n.seccion = 'actividad_diaria',
+            n.tipo = ?,
+            n.titulo = ?,
+            n.mensaje = ?,
+            n.referencia_tipo = ?,
+            n.id_referencia = ?
         WHERE r.nombre = 'Administrador'
           AND u.activo = 1
+          AND n.leida = 0
+          AND n.seccion = 'actividad_diaria'
+          AND n.referencia_tipo = ?
+          AND n.id_referencia = ?
     `;
 
     db.query(
-        sql,
-        [tipo, titulo, mensaje],
-        (error) => {
-            if (error) {
+        sqlActualizar,
+        [
+            tipo,
+            titulo,
+            mensaje,
+            referenciaTipo,
+            idReferencia,
+            referenciaTipo,
+            idReferencia
+        ],
+        (errorActualizar) => {
+            if (errorActualizar) {
                 console.error(
-                    "Error creando notificación de actividad diaria:",
-                    error
+                    "Error actualizando notificación de actividad diaria:",
+                    errorActualizar
                 );
+                return;
             }
+
+            // Después insertamos la notificación únicamente para los
+            // administradores que todavía no tengan una NO LEÍDA de esta
+            // misma actividad. Si la anterior ya fue leída, se crea una nueva.
+            const sqlInsertar = `
+                INSERT INTO notificaciones (
+                    id_usuario,
+                    seccion,
+                    tipo,
+                    titulo,
+                    mensaje,
+                    referencia_tipo,
+                    id_referencia
+                )
+                SELECT
+                    u.id_usuario,
+                    'actividad_diaria',
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                FROM usuarios u
+                INNER JOIN roles r
+                    ON u.id_rol = r.id_rol
+                WHERE r.nombre = 'Administrador'
+                  AND u.activo = 1
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM notificaciones n
+                      WHERE n.id_usuario = u.id_usuario
+                        AND n.leida = 0
+                        AND n.seccion = 'actividad_diaria'
+                        AND n.referencia_tipo = ?
+                        AND n.id_referencia = ?
+                  )
+            `;
+
+            db.query(
+                sqlInsertar,
+                [
+                    tipo,
+                    titulo,
+                    mensaje,
+                    referenciaTipo,
+                    idReferencia,
+                    referenciaTipo,
+                    idReferencia
+                ],
+                (errorInsertar) => {
+                    if (errorInsertar) {
+                        console.error(
+                            "Error creando notificación de actividad diaria:",
+                            errorInsertar
+                        );
+                    }
+                }
+            );
         }
     );
 };
@@ -299,7 +379,9 @@ const crearMiActividad = (req, res) => {
                         titulo:
                             "Nueva actividad diaria",
                         mensaje:
-                            `${nombreCompleto} registró su actividad del ${fecha}.`
+                            `${nombreCompleto} registró su actividad del ${fecha}.`,
+                        idReferencia:
+                            resultado.insertId
                     });
 
                     return res.status(201).json({
@@ -451,7 +533,9 @@ const actualizarMiActividad = (req, res) => {
                         titulo:
                             "Actividad diaria actualizada",
                         mensaje:
-                            `${nombreCompleto} actualizó su actividad del ${fecha}.`
+                            `${nombreCompleto} actualizó su actividad del ${fecha}.`,
+                        idReferencia:
+                            id
                     });
 
                     return res.json({
