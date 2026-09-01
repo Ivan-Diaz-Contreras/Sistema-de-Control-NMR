@@ -10,10 +10,8 @@ import {
   Download,
   FileText,
   FilePenLine,
-  Pencil,
   Plus,
   Search,
-  Trash2,
   X,
 } from "lucide-react";
 
@@ -427,39 +425,6 @@ function ActividadDiariaAdmin({
     setMostrandoFormulario(false);
   };
 
-  const editarRegistro = (
-    actividad
-  ) => {
-    setFormulario({
-      id_practicante:
-        actividad.id_practicante || "",
-      empresa:
-        actividad.empresa || "",
-      nombre:
-        actividad.nombre || "",
-      carrera:
-        actividad.carrera || "",
-      horario:
-        actividad.horario || "",
-      fecha:
-        String(
-          actividad.fecha || ""
-        ).slice(0, 10),
-      actividad:
-        actividad.actividad || "",
-    });
-
-    setIdEditando(actividad.id);
-    setError("");
-    setMensaje("");
-    setMostrandoFormulario(true);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
   const guardarRegistro = async (evento) => {
     evento.preventDefault();
 
@@ -599,51 +564,6 @@ function ActividadDiariaAdmin({
       setError(
         errorPeticion.response?.data?.mensaje ||
           "No se pudo guardar el registro."
-      );
-    }
-  };
-
-  const eliminarRegistro = async (
-    actividad
-  ) => {
-    const confirmar = window.confirm(
-      "¿Deseas eliminar el registro de " +
-        actividad.nombre +
-        "?"
-    );
-
-    if (!confirmar) {
-      return;
-    }
-
-    try {
-      await axios.delete(
-        `${API}/actividades-diarias/admin/${actividad.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${tokenSesion}`,
-          },
-        }
-      );
-
-      if (idEditando === actividad.id) {
-        cancelarFormulario();
-      }
-
-      setMensaje(
-        "Registro eliminado correctamente."
-      );
-
-      await cargarActividades();
-    } catch (errorPeticion) {
-      console.error(
-        "Error eliminando actividad diaria desde administrador:",
-        errorPeticion
-      );
-
-      setError(
-        errorPeticion.response?.data?.mensaje ||
-          "No se pudo eliminar el registro."
       );
     }
   };
@@ -1010,6 +930,71 @@ function ActividadDiariaAdmin({
 
   return (
     <div className="actividad-admin-page">
+      <style>{`
+        .actividad-tabla-wrapper {
+          overflow-x: visible !important;
+        }
+
+        .actividad-admin-table {
+          width: 100% !important;
+          min-width: 0 !important;
+          table-layout: fixed;
+        }
+
+        .actividad-admin-table th,
+        .actividad-admin-table td {
+          white-space: normal !important;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+          vertical-align: top;
+        }
+
+        .actividad-admin-table th:nth-child(1),
+        .actividad-admin-table td:nth-child(1) {
+          width: 13%;
+        }
+
+        .actividad-admin-table th:nth-child(2),
+        .actividad-admin-table td:nth-child(2) {
+          width: 15%;
+        }
+
+        .actividad-admin-table th:nth-child(3),
+        .actividad-admin-table td:nth-child(3) {
+          width: 18%;
+        }
+
+        .actividad-admin-table th:nth-child(4),
+        .actividad-admin-table td:nth-child(4) {
+          width: 11%;
+        }
+
+        .actividad-admin-table th:nth-child(5),
+        .actividad-admin-table td:nth-child(5) {
+          width: 11%;
+        }
+
+        .actividad-admin-table th:nth-child(6),
+        .actividad-admin-table td:nth-child(6) {
+          width: 32%;
+        }
+
+        .actividad-admin-table .actividad-descripcion-cell {
+          max-width: none;
+          vertical-align: top;
+        }
+
+        .actividad-admin-table .actividad-descripcion-compacta {
+          display: block;
+          overflow: visible;
+          text-overflow: unset;
+          line-height: 1.35;
+          max-height: none;
+          white-space: normal;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+      `}</style>
       <section className="panel">
         <div className="panel-header">
           <div>
@@ -1363,7 +1348,6 @@ function ActividadDiariaAdmin({
                   <th>Horario</th>
                   <th>Fecha</th>
                   <th>Actividad realizada</th>
-                  <th>Acciones</th>
                 </tr>
               </thead>
 
@@ -1397,40 +1381,13 @@ function ActividadDiariaAdmin({
                         )}
                       </td>
 
-                      <td className="actividad-descripcion-cell">
-                        {actividad.actividad}
-                      </td>
-
-                      <td>
-                        <div className="actividad-acciones">
-                          <button
-                            type="button"
-                            className="actividad-action-button"
-                            onClick={() =>
-                              editarRegistro(
-                                actividad
-                              )
-                            }
-                            title="Editar"
-                            aria-label="Editar registro"
-                          >
-                            <Pencil size={17} />
-                          </button>
-
-                          <button
-                            type="button"
-                            className="actividad-action-button actividad-action-delete"
-                            onClick={() =>
-                              eliminarRegistro(
-                                actividad
-                              )
-                            }
-                            title="Eliminar"
-                            aria-label="Eliminar registro"
-                          >
-                            <Trash2 size={17} />
-                          </button>
-                        </div>
+                      <td
+                        className="actividad-descripcion-cell"
+                        title={actividad.actividad}
+                      >
+                        <span className="actividad-descripcion-compacta">
+                          {actividad.actividad}
+                        </span>
                       </td>
                     </tr>
                   )
