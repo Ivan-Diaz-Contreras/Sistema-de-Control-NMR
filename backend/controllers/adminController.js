@@ -5147,7 +5147,7 @@ const cambiarPasswordAdmin = async (req, res) => {
                     );
 
                 if (!passwordCorrecta) {
-                    return res.status(401).json({
+                    return res.status(400).json({
                         mensaje:
                             "La contraseña actual es incorrecta"
                     });
