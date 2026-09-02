@@ -243,6 +243,104 @@ function PracticantesAdmin({
 
   return (
           <>
+
+      <style>{`
+        /* Responsive exclusivo de la tabla principal de Practicantes.
+           La vista de escritorio conserva su tabla actual. */
+        @media (max-width: 650px) {
+          .practicantes-admin-table-wrapper {
+            overflow: visible !important;
+          }
+
+          .practicantes-admin-responsive-table,
+          .practicantes-admin-responsive-table tbody,
+          .practicantes-admin-responsive-table tr,
+          .practicantes-admin-responsive-table td {
+            display: block;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+          }
+
+          .practicantes-admin-responsive-table {
+            min-width: 0 !important;
+            table-layout: auto !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+          }
+
+          .practicantes-admin-responsive-table thead {
+            display: none;
+          }
+
+          .practicantes-admin-responsive-table tbody {
+            display: grid;
+            gap: 14px;
+          }
+
+          .practicantes-admin-responsive-table tr {
+            overflow: hidden;
+            border: 1px solid #e1e6ee;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(16, 28, 54, 0.04);
+          }
+
+          .practicantes-admin-responsive-table td {
+            display: grid !important;
+            grid-template-columns: 92px minmax(0, 1fr);
+            gap: 12px;
+            align-items: start;
+            box-sizing: border-box;
+            padding: 10px 12px !important;
+            border-bottom: 1px solid #edf0f5 !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: anywhere !important;
+            text-align: left !important;
+          }
+
+          .practicantes-admin-responsive-table td::before {
+            content: attr(data-label);
+            color: #66758c;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+          }
+
+          .practicantes-admin-responsive-table td:last-child {
+            border-bottom: none !important;
+          }
+
+          .practicantes-admin-responsive-table td[data-label="Acciones"] .admin-actions {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            min-width: 0 !important;
+          }
+
+          .practicantes-admin-responsive-table td[data-label="Acciones"] button {
+            min-height: 38px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .practicantes-admin-responsive-table td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+
+          .practicantes-admin-responsive-table td[data-label="Acciones"] .admin-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .practicantes-admin-responsive-table td[data-label="Acciones"] button {
+            width: 100%;
+          }
+        }
+      `}</style>
+
             <section className="panel">
               <div className="panel-header">
                 <div>
@@ -717,8 +815,8 @@ function PracticantesAdmin({
                   No se encontraron practicantes.
                 </p>
               ) : (
-                <div className="admin-table-wrapper">
-                  <table className="admin-table practicantes-table">
+                <div className="admin-table-wrapper practicantes-admin-table-wrapper">
+                  <table className="admin-table practicantes-table practicantes-admin-responsive-table">
                     <thead>
                       <tr>
                         {[
@@ -750,7 +848,7 @@ function PracticantesAdmin({
                           >
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Nombre">
                               {practicante.nombre}{" "}
                               {
                                 practicante.apellido_paterno
@@ -763,33 +861,33 @@ function PracticantesAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Correo">
                               {practicante.correo}
                             </td>
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Matrícula">
                               {practicante.matricula ||
                                 "—"}
                             </td>
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Carrera">
                               {practicante.carrera}
                             </td>
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Universidad">
                               {practicante.universidad ||
                                 "—"}
                             </td>
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Estado">
                               <span
                                 className={`admin-status ${
                                   Number(practicante.activo) === 1
@@ -805,7 +903,7 @@ function PracticantesAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Acciones">
                               <div className="admin-actions">
                                 <button
                                   type="button"

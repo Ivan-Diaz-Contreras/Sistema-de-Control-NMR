@@ -32,6 +32,7 @@ function TarjetaGrafica({
 }) {
   return (
     <article
+      className="estadisticas-grafica-card"
       style={{
         border: "1px solid #dfe5ee",
         borderRadius: "14px",
@@ -53,7 +54,10 @@ function TarjetaGrafica({
         </p>
       </div>
 
-      <div style={{ width: "100%", height: "290px" }}>
+      <div
+        className="estadisticas-grafica-contenido"
+        style={{ width: "100%", height: "290px" }}
+      >
         {children}
       </div>
     </article>
@@ -180,7 +184,45 @@ function EstadisticasAdmin({
   }));
 
   return (
-    <section className="panel">
+    <>
+      <style>{`
+        /*
+         * Responsive de Estadísticas.
+         * IMPORTANTE: no se modifican los elementos internos de Recharts,
+         * para evitar que ResponsiveContainer calcule ancho/alto incorrectos.
+         */
+        @media (max-width: 650px) {
+          .estadisticas-admin-grid {
+            grid-template-columns: 1fr !important;
+            gap: 14px !important;
+            margin-top: 16px !important;
+          }
+
+          .estadisticas-grafica-card {
+            width: 100%;
+            min-width: 0;
+            padding: 16px !important;
+          }
+
+          .estadisticas-grafica-contenido {
+            width: 100% !important;
+            height: 300px !important;
+            min-width: 0;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .estadisticas-grafica-card {
+            padding: 14px !important;
+          }
+
+          .estadisticas-grafica-contenido {
+            height: 285px !important;
+          }
+        }
+      `}</style>
+
+      <section className="panel">
       <div className="panel-header">
         <div>
           <p className="section-label">
@@ -200,6 +242,7 @@ function EstadisticasAdmin({
       </p>
 
       <div
+        className="estadisticas-admin-grid"
         style={{
           display: "grid",
           gridTemplateColumns:
@@ -400,7 +443,8 @@ function EstadisticasAdmin({
           </ResponsiveContainer>
         </TarjetaGrafica>
       </div>
-    </section>
+      </section>
+    </>
   );
 }
 

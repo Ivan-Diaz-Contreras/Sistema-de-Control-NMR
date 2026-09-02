@@ -999,6 +999,101 @@ function ActividadDiariaAdmin({
           word-break: break-word;
           overflow-wrap: anywhere;
         }
+
+        /*
+         * En móvil la tabla se transforma visualmente en tarjetas.
+         * Las reglas de escritorio anteriores permanecen intactas.
+         */
+        @media (max-width: 650px) {
+          .actividad-tabla-wrapper {
+            overflow: visible !important;
+          }
+
+          .actividad-tabla-wrapper.table-scroll-guide::before {
+            display: none !important;
+          }
+
+          .actividad-admin-table,
+          .actividad-admin-table tbody,
+          .actividad-admin-table tr,
+          .actividad-admin-table td {
+            display: block;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+          }
+
+          .actividad-admin-table {
+            table-layout: auto !important;
+            border-collapse: separate;
+            border-spacing: 0;
+          }
+
+          .actividad-admin-table thead {
+            display: none;
+          }
+
+          .actividad-admin-table tbody {
+            display: grid;
+            gap: 14px;
+          }
+
+          .actividad-admin-table tr {
+            overflow: hidden;
+            border: 1px solid #e1e6ee;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(16, 28, 54, 0.04);
+          }
+
+          .actividad-admin-table td {
+            display: grid;
+            grid-template-columns: 105px minmax(0, 1fr);
+            gap: 12px;
+            align-items: start;
+            padding: 10px 12px !important;
+            border-bottom: 1px solid #edf0f5;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
+
+          .actividad-admin-table td::before {
+            content: attr(data-label);
+            color: #66758c;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+          }
+
+          .actividad-admin-table td:last-child {
+            border-bottom: none;
+          }
+
+          .actividad-admin-table td strong,
+          .actividad-admin-table td span {
+            min-width: 0;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
+
+          .actividad-admin-table .actividad-descripcion-cell {
+            max-width: 100% !important;
+          }
+
+          .actividad-admin-table .actividad-descripcion-compacta {
+            line-height: 1.5;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .actividad-admin-table td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+        }
       `}</style>
       <section className="panel">
         <div className="panel-header">
@@ -1298,6 +1393,7 @@ function ActividadDiariaAdmin({
           </div>
 
           <div
+            className="actividad-admin-exportaciones"
             style={{
               display: "flex",
               gap: "10px",
@@ -1360,33 +1456,34 @@ function ActividadDiariaAdmin({
                 {actividadesFiltradas.map(
                   (actividad) => (
                     <tr key={actividad.id}>
-                      <td>
+                      <td data-label="Empresa">
                         <strong>
                           {actividad.empresa}
                         </strong>
                       </td>
 
-                      <td>
+                      <td data-label="Practicante">
                         <strong>
                           {actividad.nombre}
                         </strong>
                       </td>
 
-                      <td>
+                      <td data-label="Carrera">
                         {actividad.carrera}
                       </td>
 
-                      <td>
+                      <td data-label="Horario">
                         {actividad.horario}
                       </td>
 
-                      <td>
+                      <td data-label="Fecha">
                         {formatearFecha(
                           actividad.fecha
                         )}
                       </td>
 
                       <td
+                        data-label="Actividad realizada"
                         className="actividad-descripcion-cell"
                         title={actividad.actividad}
                       >

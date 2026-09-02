@@ -341,7 +341,111 @@ function ActividadDiariaPracticante({
   };
 
   return (
-    <div className="actividad-diaria-page">
+    <>
+
+      <style>{`
+        /*
+         * Historial de Actividad diaria - móvil.
+         * App.css define .actividad-tabla con min-width: 720px y el wrapper
+         * con overflow-x: auto. Estas reglas solo los anulan en móvil.
+         */
+        @media (max-width: 650px) {
+          .actividad-practicante-tabla-wrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+          }
+
+          .actividad-practicante-responsive-table {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            table-layout: auto !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+          }
+
+          .actividad-practicante-responsive-table thead {
+            display: none !important;
+          }
+
+          .actividad-practicante-responsive-table tbody {
+            display: grid !important;
+            width: 100% !important;
+            gap: 14px;
+          }
+
+          .actividad-practicante-responsive-table tr {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            overflow: hidden;
+            border: 1px solid #e1e6ee;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(16, 28, 54, 0.04);
+          }
+
+          .actividad-practicante-responsive-table td {
+            display: grid !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            grid-template-columns: 100px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+            box-sizing: border-box;
+            padding: 10px 12px !important;
+            border-bottom: 1px solid #edf0f5 !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+            overflow: visible !important;
+            text-align: left !important;
+          }
+
+          .actividad-practicante-responsive-table td::before {
+            content: attr(data-label);
+            display: block;
+            color: #66758c;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+          }
+
+          .actividad-practicante-responsive-table td:last-child {
+            border-bottom: none !important;
+          }
+
+          .actividad-practicante-responsive-table .actividad-descripcion-cell {
+            max-width: 100% !important;
+            line-height: 1.5;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+          }
+
+          .actividad-practicante-responsive-table .actividad-acciones {
+            display: flex !important;
+            gap: 8px !important;
+            flex-wrap: wrap !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .actividad-practicante-responsive-table td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+        }
+      `}</style>
+      <div className="actividad-diaria-page">
       <section className="panel actividad-diaria-form-panel">
         <div className="panel-header">
           <div>
@@ -467,8 +571,8 @@ function ActividadDiariaPracticante({
             </span>
           </div>
         ) : (
-          <div className="actividad-tabla-wrapper">
-            <table className="actividad-tabla">
+          <div className="actividad-tabla-wrapper actividad-practicante-tabla-wrapper">
+            <table className="actividad-tabla actividad-practicante-responsive-table">
               <thead>
                 <tr>
                   <th>Fecha</th>
@@ -481,7 +585,7 @@ function ActividadDiariaPracticante({
                 {actividades.map(
                   (actividad) => (
                     <tr key={actividad.id}>
-                      <td>
+                      <td data-label="Fecha">
                         <strong>
                           {formatearFecha(
                             actividad.fecha
@@ -489,11 +593,11 @@ function ActividadDiariaPracticante({
                         </strong>
                       </td>
 
-                      <td className="actividad-descripcion-cell">
+                      <td data-label="Actividad realizada" className="actividad-descripcion-cell">
                         {actividad.actividad}
                       </td>
 
-                      <td>
+                      <td data-label="Acciones">
                         <div className="actividad-acciones">
                           <button
                             type="button"
@@ -532,7 +636,8 @@ function ActividadDiariaPracticante({
           </div>
         )}
       </section>
-    </div>
+      </div>
+    </>
   );
 }
 

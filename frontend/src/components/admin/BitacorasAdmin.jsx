@@ -22,6 +22,115 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
 
   return (
           <>
+
+      <style>{`
+        /* Responsive exclusivo de Bitácoras Admin.
+           En escritorio se conserva la tabla actual. */
+        @media (max-width: 650px) {
+          .bitacoras-admin-tabla-wrapper {
+            overflow: visible !important;
+          }
+
+          .bitacoras-admin-tabla-wrapper.table-scroll-guide::before {
+            display: none !important;
+          }
+
+          .bitacoras-admin-table,
+          .bitacoras-admin-table tbody,
+          .bitacoras-admin-table tr,
+          .bitacoras-admin-table td {
+            display: block;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+          }
+
+          .bitacoras-admin-table {
+            min-width: 0 !important;
+            table-layout: auto !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+          }
+
+          .bitacoras-admin-table thead {
+            display: none;
+          }
+
+          .bitacoras-admin-table tbody {
+            display: grid;
+            gap: 14px;
+          }
+
+          .bitacoras-admin-table tr {
+            overflow: hidden;
+            border: 1px solid #e1e6ee;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(16, 28, 54, 0.04);
+          }
+
+          .bitacoras-admin-table td {
+            display: grid !important;
+            grid-template-columns: 105px minmax(0, 1fr);
+            gap: 12px;
+            align-items: start;
+            box-sizing: border-box;
+            padding: 10px 12px !important;
+            border-bottom: 1px solid #edf0f5 !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
+
+          .bitacoras-admin-table td::before {
+            content: attr(data-label);
+            color: #66758c;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+          }
+
+          .bitacoras-admin-table td:last-child {
+            border-bottom: none !important;
+          }
+
+          .bitacoras-admin-table td > div,
+          .bitacoras-admin-table td > span,
+          .bitacoras-admin-table td strong {
+            min-width: 0;
+            max-width: 100%;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
+
+          .bitacoras-admin-table td[data-label="Acciones"] > div {
+            display: flex !important;
+            gap: 8px !important;
+            flex-wrap: wrap !important;
+          }
+
+          .bitacoras-admin-table td[data-label="Acciones"] button {
+            min-height: 38px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .bitacoras-admin-table td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+
+          .bitacoras-admin-table td[data-label="Acciones"] > div {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .bitacoras-admin-table td[data-label="Acciones"] button {
+            width: 100%;
+          }
+        }
+      `}</style>
+
             <section className="panel">
               <div className="panel-header">
                 <div>
@@ -192,8 +301,9 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                   Todavía no hay actividades semanales registradas.
                 </p>
               ) : (
-                <div className="table-scroll-guide" style={{ overflowX: "auto" }}>
+                <div className="table-scroll-guide bitacoras-admin-tabla-wrapper bitacoras-actividades-wrapper" style={{ overflowX: "auto" }}>
                   <table
+                    className="bitacoras-admin-table bitacoras-actividades-table"
                     style={{
                       width: "100%",
                       borderCollapse: "collapse",
@@ -236,7 +346,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Semana">
                             {actividad.numero_semana}
                           </td>
 
@@ -246,7 +356,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Título">
                             <strong>{actividad.titulo}</strong>
                           </td>
 
@@ -258,7 +368,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                               maxWidth: "320px",
                               whiteSpace: "normal",
                             }}
-                          >
+                           data-label="Descripción">
                             {actividad.descripcion}
                           </td>
 
@@ -268,7 +378,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Inicio">
                             {formatearFecha(
                               actividad.fecha_inicio
                             )}
@@ -280,7 +390,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Fin">
                             {formatearFecha(
                               actividad.fecha_fin
                             )}
@@ -292,7 +402,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Fecha límite">
                             {formatearFechaHora(
                               actividad.fecha_limite
                             )}
@@ -304,7 +414,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Estado">
                             {Number(actividad.activa) === 1
                               ? "Activa"
                               : "Inactiva"}
@@ -316,7 +426,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Acciones">
                             <div
                               style={{
                                 display: "flex",
@@ -455,12 +565,13 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                 </p>
               ) : (
                 <div
-                  className="table-scroll-guide"
+                  className="table-scroll-guide bitacoras-admin-tabla-wrapper bitacoras-entregas-wrapper"
                   style={{
                     overflowX: "auto",
                   }}
                 >
                   <table
+                    className="bitacoras-admin-table bitacoras-entregas-table"
                     style={{
                       width: "100%",
                       borderCollapse: "collapse",
@@ -508,7 +619,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                 borderBottom:
                                   "1px solid #edf0f5",
                               }}
-                            >
+                             data-label="Practicante">
                               <strong>
                                 {
                                   entrega.nombre_practicante
@@ -527,7 +638,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                 borderBottom:
                                   "1px solid #edf0f5",
                               }}
-                            >
+                             data-label="Matrícula">
                               {entrega.matricula_practicante ||
                                 "—"}
                             </td>
@@ -538,7 +649,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                 borderBottom:
                                   "1px solid #edf0f5",
                               }}
-                            >
+                             data-label="Semana">
                               {
                                 entrega.numero_semana
                               }
@@ -550,7 +661,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                 borderBottom:
                                   "1px solid #edf0f5",
                               }}
-                            >
+                             data-label="Archivo">
                               {entrega.nombre_archivo ||
                                 "PDF"}
                             </td>
@@ -561,7 +672,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                 borderBottom:
                                   "1px solid #edf0f5",
                               }}
-                            >
+                             data-label="Estado">
                               <span
                                 className={[
                                   "bitacora-status",
@@ -581,7 +692,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                 borderBottom:
                                   "1px solid #edf0f5",
                               }}
-                            >
+                             data-label="Fecha de envío">
                               {formatearFechaHora(
                                 entrega.fecha_envio
                               )}
@@ -595,7 +706,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                 maxWidth: "260px",
                                 whiteSpace: "normal",
                               }}
-                            >
+                             data-label="Observaciones">
                               {entrega.observaciones ||
                                 "—"}
                             </td>
@@ -606,7 +717,7 @@ function BitacorasAdmin({abrirArchivoBitacoraAdmin, abrirEdicionActividad, abrir
                                 borderBottom:
                                   "1px solid #edf0f5",
                               }}
-                            >
+                             data-label="Acciones">
                               <div
                                 style={{
                                   display: "flex",

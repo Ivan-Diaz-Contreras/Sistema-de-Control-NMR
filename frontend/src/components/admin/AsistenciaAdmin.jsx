@@ -31,6 +31,156 @@ function AsistenciaAdmin({
 }) {
   return (
           <>
+
+      <style>{`
+        /* Responsive exclusivo de Control de Asistencia.
+           La tabla de escritorio y toda su lógica permanecen sin cambios. */
+        @media (max-width: 650px) {
+          .asistencia-admin-header-actions {
+            width: 100%;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px !important;
+          }
+
+          .asistencia-admin-header-actions button {
+            width: 100%;
+            min-width: 0;
+            min-height: 40px;
+          }
+
+          .asistencia-toolbar {
+            grid-template-columns: minmax(0, 1fr) !important;
+            width: 100%;
+          }
+
+          .asistencia-toolbar > *,
+          .asistencia-search,
+          .asistencia-filter {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .asistencia-admin-table-wrapper {
+            overflow: visible !important;
+          }
+
+          .asistencia-admin-table-wrapper.table-scroll-guide::before {
+            display: none !important;
+          }
+
+          .asistencia-admin-responsive-table,
+          .asistencia-admin-responsive-table tbody,
+          .asistencia-admin-responsive-table tr,
+          .asistencia-admin-responsive-table td {
+            display: block;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+          }
+
+          .asistencia-admin-responsive-table {
+            min-width: 0 !important;
+            table-layout: auto !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+          }
+
+          .asistencia-admin-responsive-table thead {
+            display: none;
+          }
+
+          .asistencia-admin-responsive-table tbody {
+            display: grid;
+            gap: 14px;
+          }
+
+          .asistencia-admin-responsive-table tr {
+            overflow: hidden;
+            border: 1px solid #e1e6ee;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(16, 28, 54, 0.04);
+          }
+
+          .asistencia-admin-responsive-table td {
+            display: grid !important;
+            grid-template-columns: 125px minmax(0, 1fr);
+            gap: 12px;
+            align-items: start;
+            box-sizing: border-box;
+            padding: 10px 12px !important;
+            border-bottom: 1px solid #edf0f5 !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+            text-align: left !important;
+          }
+
+          .asistencia-admin-responsive-table td::before {
+            content: attr(data-label);
+            color: #66758c;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+          }
+
+          .asistencia-admin-responsive-table td:last-child {
+            border-bottom: none !important;
+          }
+
+          .asistencia-admin-responsive-table td > div,
+          .asistencia-admin-responsive-table td > span,
+          .asistencia-admin-responsive-table td strong {
+            min-width: 0;
+            max-width: 100%;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
+
+          .asistencia-admin-responsive-table td[data-label="Acciones"] .admin-actions {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+
+          .asistencia-admin-responsive-table td[data-label="Acciones"] button {
+            min-height: 38px;
+          }
+
+          .asistencia-edit-form .admin-form-grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+
+          .asistencia-edit-form .admin-form-full {
+            grid-column: auto !important;
+          }
+
+          .asistencia-form-footer {
+            align-items: stretch;
+          }
+
+          .asistencia-form-footer button {
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .asistencia-admin-header-actions {
+            grid-template-columns: 1fr;
+          }
+
+          .asistencia-admin-responsive-table td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+
+          .asistencia-admin-responsive-table td[data-label="Acciones"] button {
+            width: 100%;
+          }
+        }
+      `}</style>
+
             <section className="panel">
               <div className="panel-header">
                 <div>
@@ -41,6 +191,7 @@ function AsistenciaAdmin({
                 </div>
 
                 <div
+                  className="asistencia-admin-header-actions"
                   style={{
                     display: "flex",
                     gap: "10px",
@@ -441,8 +592,8 @@ function AsistenciaAdmin({
                   No se encontraron registros de asistencia.
                 </p>
               ) : (
-                <div className="admin-table-wrapper table-scroll-guide">
-                  <table className="admin-table asistencia-table">
+                <div className="admin-table-wrapper table-scroll-guide asistencia-admin-table-wrapper">
+                  <table className="admin-table asistencia-table asistencia-admin-responsive-table">
                     <thead>
                       <tr>
                         {[
@@ -476,7 +627,7 @@ function AsistenciaAdmin({
                           >
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Practicante">
                               <strong>
                                 {asistencia.nombre_practicante ||
                                   "—"}
@@ -492,13 +643,13 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Matrícula">
                               {asistencia.matricula || "—"}
                             </td>
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Fecha">
                               {formatearFecha(
                                 asistencia.fecha
                               )}
@@ -506,7 +657,7 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Entrada esperada">
                               {formatearHora(
                                 asistencia.hora_entrada_esperada
                               )}
@@ -514,7 +665,7 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Entrada real">
                               {formatearHora(
                                 asistencia.hora_entrada_real
                               )}
@@ -522,7 +673,7 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Salida esperada">
                               {formatearHora(
                                 asistencia.hora_salida_esperada
                               )}
@@ -530,7 +681,7 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Salida real">
                               {formatearHora(
                                 asistencia.hora_salida_real
                               )}
@@ -538,7 +689,7 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Tiempo real">
                               {calcularTiempoReal(
                                 asistencia.hora_entrada_real,
                                 asistencia.hora_salida_real
@@ -547,7 +698,7 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Horas contabilizadas">
                               {asistencia.horas_contabilizadas !==
                               null &&
                               asistencia.horas_contabilizadas !==
@@ -560,7 +711,7 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Estado">
                               <span
                                 className={`attendance-status ${
                                   asistencia.estado === "A tiempo"
@@ -578,7 +729,7 @@ function AsistenciaAdmin({
 
                             <td
                               className="admin-table-cell"
-                            >
+                             data-label="Acciones">
                               <div className="admin-actions">
                                 <button
                                   type="button"

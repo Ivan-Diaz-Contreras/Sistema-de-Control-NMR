@@ -1,6 +1,102 @@
 function CarrerasAdmin({abrirEdicionCarrera, abrirNuevaCarrera, cambiarEstadoCarrera, cancelarEdicionCarrera, cargandoCarreras, carreras, editandoCarrera, guardandoCarrera, guardarCarrera, mostrandoFormularioCarrera, nombreCarrera, practicantes, setNombreCarrera}) {
   return (
           <>
+            <style>{`
+              /* Responsive exclusivo de Carreras Admin.
+                 La vista de escritorio conserva la tabla actual. */
+              @media (max-width: 650px) {
+                .carreras-admin-table-wrapper {
+                  overflow: visible !important;
+                }
+
+                .carreras-admin-responsive-table,
+                .carreras-admin-responsive-table tbody,
+                .carreras-admin-responsive-table tr,
+                .carreras-admin-responsive-table td {
+                  display: block;
+                  width: 100% !important;
+                  min-width: 0 !important;
+                  max-width: 100% !important;
+                }
+
+                .carreras-admin-responsive-table {
+                  min-width: 0 !important;
+                  table-layout: auto !important;
+                  border-collapse: separate !important;
+                  border-spacing: 0 !important;
+                }
+
+                .carreras-admin-responsive-table thead {
+                  display: none;
+                }
+
+                .carreras-admin-responsive-table tbody {
+                  display: grid;
+                  gap: 14px;
+                }
+
+                .carreras-admin-responsive-table tr {
+                  overflow: hidden;
+                  border: 1px solid #e1e6ee;
+                  border-radius: 12px;
+                  background: #ffffff;
+                  box-shadow: 0 2px 8px rgba(16, 28, 54, 0.04);
+                }
+
+                .carreras-admin-responsive-table td {
+                  display: grid !important;
+                  grid-template-columns: 80px minmax(0, 1fr);
+                  gap: 12px;
+                  align-items: start;
+                  box-sizing: border-box;
+                  padding: 10px 12px !important;
+                  border-bottom: 1px solid #edf0f5 !important;
+                  white-space: normal !important;
+                  word-break: normal !important;
+                  overflow-wrap: break-word !important;
+                  text-align: left !important;
+                }
+
+                .carreras-admin-responsive-table td::before {
+                  content: attr(data-label);
+                  color: #66758c;
+                  font-size: 11px;
+                  font-weight: 700;
+                  line-height: 1.35;
+                }
+
+                .carreras-admin-responsive-table td:last-child {
+                  border-bottom: none !important;
+                }
+
+                .carreras-admin-responsive-table td[data-label="Acciones"] > div {
+                  display: flex !important;
+                  gap: 8px !important;
+                  flex-wrap: wrap !important;
+                }
+
+                .carreras-admin-responsive-table td[data-label="Acciones"] button {
+                  min-height: 38px;
+                }
+              }
+
+              @media (max-width: 380px) {
+                .carreras-admin-responsive-table td {
+                  grid-template-columns: 1fr;
+                  gap: 4px;
+                }
+
+                .carreras-admin-responsive-table td[data-label="Acciones"] > div {
+                  display: grid !important;
+                  grid-template-columns: 1fr !important;
+                }
+
+                .carreras-admin-responsive-table td[data-label="Acciones"] button {
+                  width: 100%;
+                }
+              }
+            `}</style>
+
             <section className="panel">
               <div className="panel-header">
                 <div>
@@ -96,8 +192,12 @@ function CarrerasAdmin({abrirEdicionCarrera, abrirNuevaCarrera, cambiarEstadoCar
                   Todavía no hay carreras registradas.
                 </p>
               ) : (
-                <div style={{ overflowX: "auto" }}>
+                <div
+                  className="carreras-admin-table-wrapper"
+                  style={{ overflowX: "auto" }}
+                >
                   <table
+                    className="carreras-admin-responsive-table"
                     style={{
                       width: "100%",
                       borderCollapse: "collapse",
@@ -138,6 +238,7 @@ function CarrerasAdmin({abrirEdicionCarrera, abrirNuevaCarrera, cambiarEstadoCar
                         return (
                           <tr key={carrera.id_carrera}>
                             <td
+                              data-label="ID"
                               style={{
                                 padding: "12px",
                                 borderBottom:
@@ -148,6 +249,7 @@ function CarrerasAdmin({abrirEdicionCarrera, abrirNuevaCarrera, cambiarEstadoCar
                             </td>
 
                             <td
+                              data-label="Carrera"
                               style={{
                                 padding: "12px",
                                 borderBottom:
@@ -160,6 +262,7 @@ function CarrerasAdmin({abrirEdicionCarrera, abrirNuevaCarrera, cambiarEstadoCar
                             </td>
 
                             <td
+                              data-label="Estado"
                               style={{
                                 padding: "12px",
                                 borderBottom:
@@ -172,6 +275,7 @@ function CarrerasAdmin({abrirEdicionCarrera, abrirNuevaCarrera, cambiarEstadoCar
                             </td>
 
                             <td
+                              data-label="Acciones"
                               style={{
                                 padding: "12px",
                                 borderBottom:

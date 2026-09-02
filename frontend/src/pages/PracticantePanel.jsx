@@ -1537,6 +1537,124 @@ const formatearFechaHoraBitacora = (fecha) => {
   return (
     <div className="app">
 
+      <style>{`
+        /*
+         * Historial "Mis entregas" de Bitácoras - móvil.
+         * En escritorio se conserva la tabla de 850px y su funcionamiento.
+         */
+        @media (max-width: 650px) {
+          .bitacoras-practicante-historial-wrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+          }
+
+          .bitacoras-practicante-historial-table {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            table-layout: auto !important;
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+          }
+
+          .bitacoras-practicante-historial-table thead {
+            display: none !important;
+          }
+
+          .bitacoras-practicante-historial-table tbody {
+            display: grid !important;
+            width: 100% !important;
+            gap: 14px;
+          }
+
+          .bitacoras-practicante-historial-table tr {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            overflow: hidden;
+            border: 1px solid #e1e6ee;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(16, 28, 54, 0.04);
+          }
+
+          .bitacoras-practicante-historial-table td {
+            display: grid !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            grid-template-columns: 110px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+            box-sizing: border-box;
+            padding: 10px 12px !important;
+            border-bottom: 1px solid #edf0f5 !important;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+            overflow: visible !important;
+            text-align: left !important;
+          }
+
+          .bitacoras-practicante-historial-table td::before {
+            content: attr(data-label);
+            display: block;
+            color: #66758c;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+          }
+
+          .bitacoras-practicante-historial-table td:last-child {
+            border-bottom: none !important;
+          }
+
+          .bitacoras-practicante-historial-table td > div,
+          .bitacoras-practicante-historial-table td > span,
+          .bitacoras-practicante-historial-table td strong {
+            min-width: 0;
+            max-width: 100%;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
+
+          .bitacoras-practicante-historial-table td[data-label="Archivo"] {
+            overflow-wrap: anywhere !important;
+          }
+
+          .bitacoras-practicante-historial-table td[data-label="Acciones"] > div {
+            display: flex !important;
+            gap: 8px !important;
+            flex-wrap: wrap !important;
+          }
+
+          .bitacoras-practicante-historial-table td[data-label="Acciones"] button {
+            min-height: 38px;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .bitacoras-practicante-historial-table td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+
+          .bitacoras-practicante-historial-table td[data-label="Acciones"] > div {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+
+          .bitacoras-practicante-historial-table td[data-label="Acciones"] button {
+            width: 100%;
+          }
+        }
+      `}</style>
+
       <PracticanteSidebar
         seccion={seccion}
         cambiarSeccion={cambiarSeccion}
@@ -2883,11 +3001,13 @@ const formatearFechaHoraBitacora = (fecha) => {
                 </p>
               ) : (
                 <div
+                  className="bitacoras-practicante-historial-wrapper"
                   style={{
                     overflowX: "auto",
                   }}
                 >
                   <table
+                    className="bitacoras-practicante-historial-table"
                     style={{
                       width: "100%",
                       borderCollapse: "collapse",
@@ -2933,7 +3053,7 @@ const formatearFechaHoraBitacora = (fecha) => {
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Semana">
                             {
                               bitacora.numero_semana
                             }
@@ -2945,7 +3065,7 @@ const formatearFechaHoraBitacora = (fecha) => {
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Actividad">
                             {bitacora.titulo_actividad ||
                               "Bitácora semanal"}
                           </td>
@@ -2956,7 +3076,7 @@ const formatearFechaHoraBitacora = (fecha) => {
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Archivo">
                             {
                               bitacora.nombre_archivo
                             }
@@ -2968,7 +3088,7 @@ const formatearFechaHoraBitacora = (fecha) => {
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Estado">
                             <span
                               className={[
                                 "bitacora-status",
@@ -2989,7 +3109,7 @@ const formatearFechaHoraBitacora = (fecha) => {
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Observaciones">
                             {bitacora.observaciones ||
                               "—"}
                           </td>
@@ -3000,7 +3120,7 @@ const formatearFechaHoraBitacora = (fecha) => {
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Fecha de envío">
                             {formatearFechaHoraBitacora(
                               bitacora.fecha_envio
                             )}
@@ -3012,7 +3132,7 @@ const formatearFechaHoraBitacora = (fecha) => {
                               borderBottom:
                                 "1px solid #edf0f5",
                             }}
-                          >
+                           data-label="Acciones">
                             <button
                               type="button"
                               onClick={() =>
