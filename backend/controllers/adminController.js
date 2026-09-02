@@ -1262,10 +1262,10 @@ const crearAsistenciaHistorica = (req, res) => {
         "Domingo",
         "Lunes",
         "Martes",
-        "Mi\u00e9rcoles",
+        "Miércoles",
         "Jueves",
         "Viernes",
-        "S\u00e1bado"
+        "Sábado"
     ];
 
     const diaSemana =
@@ -1275,6 +1275,7 @@ const crearAsistenciaHistorica = (req, res) => {
 
     db.getConnection(
         (errorConexion, connection) => {
+
             if (errorConexion) {
                 console.error(
                     "Error obteniendo conexion:",
@@ -1301,6 +1302,7 @@ const crearAsistenciaHistorica = (req, res) => {
                 mensaje,
                 error = null
             ) => {
+
                 if (error) {
                     console.error(
                         mensaje,
@@ -1319,6 +1321,7 @@ const crearAsistenciaHistorica = (req, res) => {
 
             connection.beginTransaction(
                 (errorTransaccion) => {
+
                     if (errorTransaccion) {
                         liberar();
 
@@ -1369,6 +1372,7 @@ const crearAsistenciaHistorica = (req, res) => {
                             errorHorario,
                             resultadosHorario
                         ) => {
+
                             if (errorHorario) {
                                 return rollback(
                                     500,
@@ -1438,6 +1442,7 @@ const crearAsistenciaHistorica = (req, res) => {
                                     errorDuplicado,
                                     duplicados
                                 ) => {
+
                                     if (
                                         errorDuplicado
                                     ) {
@@ -1458,19 +1463,9 @@ const crearAsistenciaHistorica = (req, res) => {
                                         );
                                     }
 
-                                    const entradaEsperada =
-                                        convertirSegundos(
-                                            String(
-                                                datosHorario
-                                                    .hora_entrada
-                                            )
-                                        );
-
-                                    const estado =
-                                        segundosEntrada <=
-                                        entradaEsperada
-                                            ? "A tiempo"
-                                            : "Retardo";
+                                    // ==========================================
+                                    // CALCULAR HORAS Y ESTADO
+                                    // ==========================================
 
                                     const horasReales =
                                         (
@@ -1482,6 +1477,15 @@ const crearAsistenciaHistorica = (req, res) => {
                                         Number(
                                             horasReales.toFixed(2)
                                         );
+
+                                    const estado =
+                                        horasReales >= 3
+                                            ? "Jornada completada"
+                                            : "Jornada incompleta";
+
+                                    // ==========================================
+                                    // INSERTAR ASISTENCIA
+                                    // ==========================================
 
                                     const sqlAsistencia = `
                                         INSERT INTO asistencias (
@@ -1512,6 +1516,7 @@ const crearAsistenciaHistorica = (req, res) => {
                                             errorAsistencia,
                                             resultadoAsistencia
                                         ) => {
+
                                             if (
                                                 errorAsistencia
                                             ) {
@@ -1554,6 +1559,7 @@ const crearAsistenciaHistorica = (req, res) => {
                                                 (
                                                     errorHoras
                                                 ) => {
+
                                                     if (
                                                         errorHoras
                                                     ) {
@@ -1568,6 +1574,7 @@ const crearAsistenciaHistorica = (req, res) => {
                                                         (
                                                             errorCommit
                                                         ) => {
+
                                                             if (
                                                                 errorCommit
                                                             ) {
@@ -1657,6 +1664,7 @@ const actualizarAsistencia = (req, res) => {
         sqlBuscar,
         [id],
         (errorBuscar, resultados) => {
+
             if (errorBuscar) {
                 console.error(
                     "Error consultando asistencia:",
@@ -1688,7 +1696,7 @@ const actualizarAsistencia = (req, res) => {
                 asistenciaActual.hora_salida_real;
 
             // ==========================================
-            // FUNCIÓN PARA CONVERTIR HORA A SEGUNDOS
+            // CONVERTIR HORA A SEGUNDOS
             // ==========================================
 
             const convertirSegundos = (hora) => {
@@ -1743,59 +1751,53 @@ const actualizarAsistencia = (req, res) => {
             // CALCULAR ESTADO AUTOMÁTICAMENTE
             // ==========================================
 
-            let nuevoEstado =
-                "Pendiente";
+            let nuevoEstado = "Pendiente";
 
+            // Tiene entrada pero todavía no ha salido
             if (
                 nuevaEntrada &&
                 !nuevaSalida
             ) {
-                const entradaReal =
-                    convertirSegundos(
-                        nuevaEntrada
-                    );
-
-                const entradaEsperada =
-                    convertirSegundos(
-                        asistenciaActual
-                            .hora_entrada_esperada
-                    );
-
                 nuevoEstado =
-                    entradaReal <=
-                    entradaEsperada
-                        ? "A tiempo"
-                        : "Retardo";
+                    "En jornada";
             }
 
+            // Tiene entrada y salida
             if (
                 nuevaEntrada &&
                 nuevaSalida
             ) {
-                const entradaReal =
+                const segundosEntrada =
                     convertirSegundos(
                         nuevaEntrada
                     );
 
-                const entradaEsperada =
+                const segundosSalida =
                     convertirSegundos(
-                        asistenciaActual
-                            .hora_entrada_esperada
+                        nuevaSalida
                     );
 
+                const segundosTrabajados =
+                    segundosSalida -
+                    segundosEntrada;
+
+                const horasReales =
+                    segundosTrabajados /
+                    3600;
+
                 nuevoEstado =
-                    entradaReal <=
-                    entradaEsperada
-                        ? "A tiempo"
-                        : "Retardo";
+                    horasReales >= 3
+                        ? "Jornada completada"
+                        : "Jornada incompleta";
             }
 
+            // Caso inconsistente
             if (
                 !nuevaEntrada &&
                 nuevaSalida
             ) {
                 nuevoEstado =
-                    "Incompleta";
+                    "Jornada incompleta";
             }
 
             // ==========================================
@@ -1845,6 +1847,7 @@ const actualizarAsistencia = (req, res) => {
                     id
                 ],
                 (errorActualizar) => {
+
                     if (
                         errorActualizar
                     ) {
@@ -1933,6 +1936,7 @@ const actualizarAsistencia = (req, res) => {
                             (
                                 errorHoras
                             ) => {
+
                                 if (
                                     errorHoras
                                 ) {

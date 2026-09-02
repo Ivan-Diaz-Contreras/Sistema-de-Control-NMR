@@ -162,13 +162,7 @@ const registrarEntrada = (req, res) => {
                             // DETERMINAR ESTADO DE ENTRADA
                             // ==========================================
 
-                            // Esta lógica se conservará por ahora.
-                            // Se modificará posteriormente en el punto 4.
-
-                            const estado =
-                                horaActual <= horario.hora_entrada
-                                    ? "A tiempo"
-                                    : "Retardo";
+                            const estado = "En jornada";
 
 
                             // ==========================================
@@ -541,12 +535,20 @@ const registrarSalida = (req, res) => {
 
                             const horasRedondeadas =
                                 Number(
-                                    horasReales.toFixed(
-                                        2
-                                    )
+                                    horasReales.toFixed(2)
                                 );
 
 
+                            // ==========================================
+                            // DETERMINAR ESTADO DE LA JORNADA
+                            // ==========================================
+
+                            const HORAS_MINIMAS_JORNADA = 3;
+
+                            const estadoJornada =
+                                horasReales >= HORAS_MINIMAS_JORNADA
+                                    ? "Jornada completada"
+                                    : "Jornada incompleta";
 
                             // ==========================================
                             // ACTUALIZAR ASISTENCIA
@@ -556,11 +558,7 @@ const registrarSalida = (req, res) => {
                                 UPDATE asistencias
                                 SET
                                     hora_salida_real = ?,
-                                    estado = CASE
-                                        WHEN estado = 'Pendiente'
-                                            THEN 'Incompleta'
-                                        ELSE estado
-                                    END
+                                    estado = ?
                                 WHERE id_asistencia = ?
                             `;
 
@@ -569,8 +567,8 @@ const registrarSalida = (req, res) => {
                                 sqlUpdate,
                                 [
                                     horaActual,
-                                    asistencia
-                                        .id_asistencia
+                                    estadoJornada,
+                                    asistencia.id_asistencia
                                 ],
                                 (errorUpdate) => {
 
@@ -703,7 +701,10 @@ const registrarSalida = (req, res) => {
                                                         ),
 
                                                     horas_contabilizadas:
-                                                        horasRedondeadas
+                                                        horasRedondeadas,
+                                                    
+                                                    estado: 
+                                                        estadoJornada,
                                                 });
                                         }
                                     );

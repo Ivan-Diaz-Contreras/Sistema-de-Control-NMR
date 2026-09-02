@@ -370,8 +370,8 @@ function AsistenciaAdmin({
                       <small>
                         Captura una entrada y salida de
                         una fecha pasada. El horario se
-                        seleccionar? autom?ticamente
-                        seg?n el d?a.
+                        seleccionará automáticamente
+                        según el día.
                       </small>
                     </div>
 
