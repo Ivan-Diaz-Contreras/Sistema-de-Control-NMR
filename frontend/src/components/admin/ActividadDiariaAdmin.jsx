@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import axios from "axios";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -578,45 +578,344 @@ function ActividadDiariaAdmin({
 
     setError("");
 
-    const datosExcel = actividadesFiltradas.map(
-      (actividad) => ({
-        Empresa:
-          actividad.empresa ||
-          "NMR CONSULTORES",
-        Nombre:
-          actividad.nombre ||
-          "Sin nombre",
-        Carrera:
-          actividad.carrera ||
-          "No registrada",
-        Horario:
-          actividad.horario ||
-          "No registrado",
-        Fecha:
-          formatearFecha(
-            actividad.fecha
-          ),
-        "Actividad realizada":
-          actividad.actividad || "",
-      })
-    );
+    const obtenerDiaSemana = (fecha) => {
+      const valor = String(fecha || "").slice(0, 10);
+      const partes = valor.split("-");
 
-    const hoja =
-      XLSX.utils.json_to_sheet(
-        datosExcel
+      if (partes.length !== 3) {
+        return "";
+      }
+
+      const fechaLocal = new Date(
+        Number(partes[0]),
+        Number(partes[1]) - 1,
+        Number(partes[2])
       );
 
-    hoja["!cols"] = [
-      { wch: 22 },
-      { wch: 32 },
-      { wch: 32 },
-      { wch: 20 },
-      { wch: 14 },
-      { wch: 65 },
+      return new Intl.DateTimeFormat(
+        "es-MX",
+        { weekday: "long" }
+      ).format(fechaLocal);
+    };
+
+    const convertirFechaExcel = (fecha) => {
+      const valor = String(fecha || "").slice(0, 10);
+      const partes = valor.split("-");
+
+      if (partes.length !== 3) {
+        return "";
+      }
+
+      return new Date(
+        Number(partes[0]),
+        Number(partes[1]) - 1,
+        Number(partes[2])
+      );
+    };
+
+    const ajustarTextoExcel = (
+      texto,
+      maxCaracteres = 55
+    ) => {
+      const palabras = String(texto || "")
+        .trim()
+        .split(/\s+/);
+
+      const lineas = [];
+      let lineaActual = "";
+
+      palabras.forEach((palabra) => {
+        const posibleLinea = lineaActual
+          ? `${lineaActual} ${palabra}`
+          : palabra;
+
+        if (
+          posibleLinea.length <= maxCaracteres
+        ) {
+          lineaActual = posibleLinea;
+        } else {
+          if (lineaActual) {
+            lineas.push(lineaActual);
+          }
+
+          lineaActual = palabra;
+        }
+      });
+
+      if (lineaActual) {
+        lineas.push(lineaActual);
+      }
+
+      return lineas.join("\n");
+    };
+
+    const actividadesOrdenadas = [
+      ...actividadesFiltradas,
+    ].sort((a, b) => {
+      const fechaA = String(a.fecha || "");
+      const fechaB = String(b.fecha || "");
+
+      const comparacionFecha =
+        fechaB.localeCompare(fechaA);
+
+      if (comparacionFecha !== 0) {
+        return comparacionFecha;
+      }
+
+      return String(a.nombre || "").localeCompare(
+        String(b.nombre || ""),
+        "es"
+      );
+    });
+
+    const encabezados = [
+      "Empresa",
+      "Nombre",
+      "Carrera",
+      "Horario",
+      "Día",
+      "Fecha",
+      "Actividad realizada",
     ];
 
-    const libro =
-      XLSX.utils.book_new();
+    const filas = actividadesOrdenadas.map(
+      (actividad) => [
+        actividad.empresa || "NMR CONSULTORES",
+        actividad.nombre || "Sin nombre",
+        actividad.carrera || "No registrada",
+        actividad.horario || "No registrado",
+        obtenerDiaSemana(actividad.fecha),
+        convertirFechaExcel(actividad.fecha),
+        ajustarTextoExcel(
+          actividad.actividad || ""
+        ),
+      ]
+    );
+
+    const fechaGeneracion =
+      new Intl.DateTimeFormat(
+        "es-MX",
+        {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }
+      ).format(new Date());
+
+    const rangoSeleccionado =
+      fechaDesde || fechaHasta
+        ? `Periodo: ${
+            fechaDesde
+              ? formatearFecha(fechaDesde)
+              : "Inicio"
+          } - ${
+            fechaHasta
+              ? formatearFecha(fechaHasta)
+              : "Actualidad"
+          }`
+        : "Periodo: todos los registros";
+
+    const datosHoja = [
+      ["REPORTE DE ACTIVIDADES DIARIAS"],
+      [
+        `${rangoSeleccionado} | ${actividadesOrdenadas.length} registros | Generado: ${fechaGeneracion}`,
+      ],
+      [],
+      encabezados,
+      ...filas,
+    ];
+
+    const hoja = XLSX.utils.aoa_to_sheet(
+      datosHoja,
+      {
+        cellDates: true,
+        dateNF: "dd/mm/yyyy",
+      }
+    );
+
+    // Estilos para que Excel muestre el texto ajustado
+    // desde que se abre el archivo, sin tener que entrar
+    // manualmente a cada celda.
+    const rangoHoja = XLSX.utils.decode_range(
+      hoja["!ref"]
+    );
+
+    for (
+      let fila = rangoHoja.s.r;
+      fila <= rangoHoja.e.r;
+      fila += 1
+    ) {
+      for (
+        let columna = rangoHoja.s.c;
+        columna <= rangoHoja.e.c;
+        columna += 1
+      ) {
+        const direccion =
+          XLSX.utils.encode_cell({
+            r: fila,
+            c: columna,
+          });
+
+        const celda = hoja[direccion];
+
+        if (!celda) {
+          continue;
+        }
+
+        celda.s = {
+          alignment: {
+            vertical: "top",
+            wrapText: true,
+          },
+        };
+      }
+    }
+
+    // Título principal
+    if (hoja["A1"]) {
+      hoja["A1"].s = {
+        font: {
+          bold: true,
+          sz: 16,
+        },
+        alignment: {
+          vertical: "center",
+          horizontal: "left",
+          wrapText: true,
+        },
+      };
+    }
+
+    // Subtítulo
+    if (hoja["A2"]) {
+      hoja["A2"].s = {
+        font: {
+          italic: true,
+          color: {
+            rgb: "666666",
+          },
+        },
+        alignment: {
+          vertical: "center",
+          horizontal: "left",
+          wrapText: true,
+        },
+      };
+    }
+
+    // Encabezados
+    for (
+      let columna = 0;
+      columna < encabezados.length;
+      columna += 1
+    ) {
+      const direccion =
+        XLSX.utils.encode_cell({
+          r: 3,
+          c: columna,
+        });
+
+      if (hoja[direccion]) {
+        hoja[direccion].s = {
+          font: {
+            bold: true,
+            color: {
+              rgb: "FFFFFF",
+            },
+          },
+          fill: {
+            fgColor: {
+              rgb: "172746",
+            },
+          },
+          alignment: {
+            vertical: "center",
+            horizontal: "center",
+            wrapText: true,
+          },
+        };
+      }
+    }
+
+    // Asegurar específicamente el ajuste de texto
+    // en "Actividad realizada".
+    for (
+      let fila = 4;
+      fila <= rangoHoja.e.r;
+      fila += 1
+    ) {
+      const direccion =
+        XLSX.utils.encode_cell({
+          r: fila,
+          c: 6,
+        });
+
+      if (hoja[direccion]) {
+        hoja[direccion].s = {
+          alignment: {
+            vertical: "top",
+            wrapText: true,
+          },
+        };
+      }
+    }
+
+    // Título y subtítulo ocupan todo el ancho.
+    hoja["!merges"] = [
+      XLSX.utils.decode_range("A1:G1"),
+      XLSX.utils.decode_range("A2:G2"),
+    ];
+
+    // Anchos de columnas más legibles.
+    hoja["!cols"] = [
+      { wch: 22 }, // Empresa
+      { wch: 32 }, // Nombre
+      { wch: 34 }, // Carrera
+      { wch: 18 }, // Horario
+      { wch: 14 }, // Día
+      { wch: 14 }, // Fecha
+      { wch: 48 }, // Actividad
+    ];
+
+    // Altura de filas para dar más aire al reporte.
+    hoja["!rows"] = [
+      { hpt: 24 },
+      { hpt: 20 },
+      { hpt: 8 },
+      { hpt: 24 },
+      ...filas.map((fila) => {
+        const lineasActividad =
+          String(fila[6] || "").split("\n").length;
+
+        return {
+          hpt: Math.max(
+            32,
+            lineasActividad * 18
+          ),
+        };
+      }),
+    ];
+
+    // Filtros nativos de Excel en todos los encabezados.
+    const ultimaFila = filas.length + 4;
+
+    hoja["!autofilter"] = {
+      ref: `A4:G${ultimaFila}`,
+    };
+
+    // Mantener la fecha como fecha real de Excel.
+    for (
+      let fila = 5;
+      fila <= ultimaFila;
+      fila += 1
+    ) {
+      const celdaFecha = hoja[`F${fila}`];
+
+      if (celdaFecha) {
+        celdaFecha.z = "dd/mm/yyyy";
+      }
+    }
+
+    const libro = XLSX.utils.book_new();
 
     XLSX.utils.book_append_sheet(
       libro,
@@ -630,7 +929,10 @@ function ActividadDiariaAdmin({
         "xlsx",
         fechaDesde,
         fechaHasta
-      )
+      ),
+      {
+        cellDates: true,
+      }
     );
   };
 

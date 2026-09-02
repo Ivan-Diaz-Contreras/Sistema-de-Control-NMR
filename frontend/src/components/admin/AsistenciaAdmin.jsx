@@ -33,6 +33,30 @@ function AsistenciaAdmin({
           <>
 
       <style>{`
+        /*
+         * Ajuste de escritorio:
+         * compacta la tabla para que la columna Acciones pueda verse
+         * sin tener que desplazarse horizontalmente en pantallas amplias.
+         */
+        .asistencia-admin-responsive-table {
+          min-width: 1100px !important;
+        }
+
+        .asistencia-admin-responsive-table th {
+          white-space: normal !important;
+          line-height: 1.2;
+        }
+
+        .asistencia-admin-responsive-table th:nth-child(9) {
+          width: 105px;
+          min-width: 105px;
+          text-align: center;
+        }
+
+        .asistencia-admin-responsive-table td:nth-child(9) {
+          min-width: 85px;
+        }
+
         /* Responsive exclusivo de Control de Asistencia.
            La tabla de escritorio y toda su lógica permanecen sin cambios. */
         @media (max-width: 650px) {
@@ -613,7 +637,15 @@ function AsistenciaAdmin({
                             key={titulo}
                             className="admin-table-heading"
                           >
-                            {titulo}
+                            {titulo === "Horas contabilizadas" ? (
+                              <>
+                                Horas
+                                <br />
+                                contabilizadas
+                              </>
+                            ) : (
+                              titulo
+                            )}
                           </th>
                         ))}
                       </tr>
