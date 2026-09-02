@@ -294,11 +294,11 @@ const crearMiActividad = (req, res) => {
 
     if (
         actividad.length < 10 ||
-        actividad.length > 300
+        actividad.length > 1000
     ) {
         return res.status(400).json({
             mensaje:
-                "La actividad debe tener entre 10 y 300 caracteres"
+                "La actividad debe tener entre 10 y 1000 caracteres"
         });
     }
 
@@ -436,11 +436,11 @@ const actualizarMiActividad = (req, res) => {
 
     if (
         actividad.length < 10 ||
-        actividad.length > 300
+        actividad.length > 1000
     ) {
         return res.status(400).json({
             mensaje:
-                "La actividad debe tener entre 10 y 300 caracteres"
+                "La actividad debe tener entre 10 y 1000 caracteres"
         });
     }
 
@@ -806,11 +806,11 @@ const crearActividadAdmin = (req, res) => {
 
     if (
         actividad.length < 10 ||
-        actividad.length > 300
+        actividad.length > 1000
     ) {
         return res.status(400).json({
             mensaje:
-                "La actividad debe tener entre 10 y 300 caracteres"
+                "La actividad debe tener entre 10 y 1000 caracteres"
         });
     }
 
@@ -933,11 +933,11 @@ const actualizarActividadAdmin = (
 
     if (
         actividad.length < 10 ||
-        actividad.length > 300
+        actividad.length > 1000
     ) {
         return res.status(400).json({
             mensaje:
-                "La actividad debe tener entre 10 y 300 caracteres"
+                "La actividad debe tener entre 10 y 1000 caracteres"
         });
     }
 
