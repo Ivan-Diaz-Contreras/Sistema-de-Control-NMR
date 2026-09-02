@@ -951,17 +951,22 @@ function ActividadDiariaAdmin({
 
         .actividad-admin-table th:nth-child(1),
         .actividad-admin-table td:nth-child(1) {
-          width: 13%;
+          width: 15%;
+        }
+
+        .actividad-admin-table td:nth-child(1) {
+          word-break: normal !important;
+          overflow-wrap: normal !important;
         }
 
         .actividad-admin-table th:nth-child(2),
         .actividad-admin-table td:nth-child(2) {
-          width: 15%;
+          width: 14%;
         }
 
         .actividad-admin-table th:nth-child(3),
         .actividad-admin-table td:nth-child(3) {
-          width: 18%;
+          width: 17%;
         }
 
         .actividad-admin-table th:nth-child(4),

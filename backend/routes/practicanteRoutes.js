@@ -1,4 +1,5 @@
 const express = require("express");
+
 const router = express.Router();
 
 const verificarToken = require(
@@ -12,14 +13,12 @@ const verificarPracticante = require(
 const {
     obtenerPerfil,
     cambiarPassword,
-    registrarHoras,
     obtenerAvance,
     obtenerHoras,
     actualizarPerfil
 } = require(
     "../controllers/practicanteController"
 );
-
 
 // Obtener perfil
 router.get(
@@ -29,7 +28,6 @@ router.get(
     obtenerPerfil
 );
 
-
 // Actualizar perfil
 router.put(
     "/perfil",
@@ -37,7 +35,6 @@ router.put(
     verificarPracticante,
     actualizarPerfil
 );
-
 
 // Cambiar contraseña
 router.put(
@@ -47,16 +44,6 @@ router.put(
     cambiarPassword
 );
 
-
-// Registrar horas
-router.post(
-    "/horas",
-    verificarToken,
-    verificarPracticante,
-    registrarHoras
-);
-
-
 // Consultar registros de horas
 router.get(
     "/horas",
@@ -65,7 +52,6 @@ router.get(
     obtenerHoras
 );
 
-
 // Consultar avance
 router.get(
     "/avance",
@@ -73,6 +59,5 @@ router.get(
     verificarPracticante,
     obtenerAvance
 );
-
 
 module.exports = router;

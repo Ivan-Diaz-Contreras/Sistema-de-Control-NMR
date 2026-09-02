@@ -8,17 +8,21 @@ const obtenerResumenNotificaciones = (req, res) => {
     const idUsuario = req.usuario.id_usuario;
 
     /*
-     * IMPORTANTE:
+     * LÓGICA DEL BADGE:
      *
-     * - Las secciones normales siguen usando notificaciones no leídas.
-     * - "bitacoras" NO usa el historial de notificaciones para el badge.
-     *   El badge representa las bitácoras que realmente están Pendientes.
+     * ADMINISTRADOR
+     * - Las secciones normales usan notificaciones no leídas.
+     * - "bitacoras" representa la cantidad REAL de bitácoras
+     *   que siguen en estado "Pendiente" y necesitan revisión.
      *
-     * De esta manera:
-     * entregar  -> +1
-     * cancelar  -> -1
-     * reenviar  -> +1
-     * aprobar/rechazar -> -1
+     * PRACTICANTE
+     * - Todas las secciones, incluida "bitacoras", usan únicamente
+     *   las notificaciones NO LEÍDAS que pertenecen a ese usuario.
+     * - De esta forma un practicante nunca ve pendientes de otros
+     *   practicantes y el badge desaparece al leer la notificación.
+     *
+     * Esto evita que el contador global de bitácoras pendientes
+     * aparezca también en las cuentas de los practicantes.
      */
     const sql = `
         SELECT
@@ -27,7 +31,17 @@ const obtenerResumenNotificaciones = (req, res) => {
         FROM notificaciones n
         WHERE n.id_usuario = ?
           AND n.leida = 0
-          AND n.seccion <> 'bitacoras'
+          AND (
+                n.seccion <> 'bitacoras'
+                OR NOT EXISTS (
+                    SELECT 1
+                    FROM usuarios u
+                    INNER JOIN roles r
+                        ON u.id_rol = r.id_rol
+                    WHERE u.id_usuario = ?
+                      AND LOWER(TRIM(r.nombre)) = 'administrador'
+                )
+          )
         GROUP BY n.seccion
 
         UNION ALL
@@ -37,11 +51,23 @@ const obtenerResumenNotificaciones = (req, res) => {
             COUNT(*) AS cantidad
         FROM bitacoras b
         WHERE b.estado = 'Pendiente'
+          AND EXISTS (
+                SELECT 1
+                FROM usuarios u
+                INNER JOIN roles r
+                    ON u.id_rol = r.id_rol
+                WHERE u.id_usuario = ?
+                  AND LOWER(TRIM(r.nombre)) = 'administrador'
+          )
     `;
 
     db.query(
         sql,
-        [idUsuario],
+        [
+            idUsuario,
+            idUsuario,
+            idUsuario
+        ],
         (error, resultados) => {
             if (error) {
                 console.error(

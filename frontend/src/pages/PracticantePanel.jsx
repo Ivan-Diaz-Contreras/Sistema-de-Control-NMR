@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import axios from "axios";
@@ -57,6 +58,7 @@ function PracticantePanel({
   });
   const [horario, setHorario] = useState(null);
   const [asistenciaHoy, setAsistenciaHoy] = useState(null);
+  const [cargandoAsistenciaHoy, setCargandoAsistenciaHoy] = useState(false);
   const [registrosHoras, setRegistrosHoras] = useState([]);
   const [filtroPeriodoHoras, setFiltroPeriodoHoras] = useState("todos");
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] =
@@ -122,6 +124,8 @@ function PracticantePanel({
   const [cargandoBitacoras, setCargandoBitacoras] = useState(false);
   const [subiendoBitacora, setSubiendoBitacora] = useState(null);
   const [archivoBitacora, setArchivoBitacora] = useState(null);
+  const [guardandoBitacora, setGuardandoBitacora] = useState(null);
+  const [cancelandoBitacora, setCancelandoBitacora] = useState(null);
 
   // ==========================================
   // NOTIFICACIONES DEL PRACTICANTE
@@ -129,6 +133,10 @@ function PracticantePanel({
 
   const [notificaciones, setNotificaciones] = useState({});
   const [notificacionAprobada, setNotificacionAprobada] = useState(null);
+
+  // Evita que una actualización automática comience
+  // mientras la anterior todavía sigue en proceso.
+  const actualizacionAutomaticaEnCurso = useRef(false);
 
   const cargarNotificaciones = useCallback(async () => {
     if (!token || usuario?.rol !== "Practicante") {
@@ -328,6 +336,40 @@ useEffect(() => {
   cargarDatos();
 }, [token, usuario?.rol]);
 
+const cargarHorasYAvance = useCallback(async () => {
+  if (!token || usuario?.rol !== "Practicante") {
+    return;
+  }
+
+  try {
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    const [avanceResponse, horasResponse] =
+      await Promise.all([
+        axios.get(
+          `${API}/practicantes/avance`,
+          { headers }
+        ),
+        axios.get(
+          `${API}/practicantes/horas`,
+          { headers }
+        ),
+      ]);
+
+    setAvance(avanceResponse.data);
+    setRegistrosHoras(
+      horasResponse.data.registros || []
+    );
+  } catch (error) {
+    console.error(
+      "Error actualizando horas y avance:",
+      error
+    );
+  }
+}, [token, usuario?.rol]);
+
 const registrarEntrada = async () => {
   try {
     setProcesandoAsistencia(true);
@@ -408,10 +450,13 @@ const cargarHorario = useCallback(async () => {
 const cargarAsistenciaHoy = useCallback(async () => {
   if (!token) {
     setAsistenciaHoy(null);
+    setCargandoAsistenciaHoy(false);
     return;
   }
 
   try {
+    setCargandoAsistenciaHoy(true);
+
     const response = await axios.get(
       `${API}/practicantes/asistencia/historial`,
       {
@@ -446,8 +491,25 @@ const cargarAsistenciaHoy = useCallback(async () => {
     );
 
     setAsistenciaHoy(null);
+  } finally {
+    setCargandoAsistenciaHoy(false);
   }
 }, [token]);
+
+useEffect(() => {
+  if (
+    token &&
+    usuario?.rol === "Practicante"
+  ) {
+    cargarHorario();
+    cargarAsistenciaHoy();
+  }
+}, [
+  token,
+  usuario?.rol,
+  cargarHorario,
+  cargarAsistenciaHoy,
+]);
 
 const registrarSalida = async () => {
   try {
@@ -469,7 +531,10 @@ const registrarSalida = async () => {
         "Salida registrada correctamente."
     );
 
-    await cargarAsistenciaHoy();
+    await Promise.all([
+      cargarAsistenciaHoy(),
+      cargarHorasYAvance(),
+    ]);
 
   } catch (error) {
     console.error(error);
@@ -589,7 +654,7 @@ useEffect(() => {
   cargarNotificaciones,
 ]);
 
-const cerrarNotificacionAprobada = () => {
+const cerrarNotificacionAprobada = async () => {
   if (notificacionAprobada?.id_notificacion) {
     sessionStorage.setItem(
       "bitacora_aprobada_vista",
@@ -598,14 +663,17 @@ const cerrarNotificacionAprobada = () => {
   }
 
   setNotificacionAprobada(null);
+
+  await marcarSeccionComoLeida("bitacoras");
+  await cargarNotificaciones();
 };
 
-const verBitacoraAprobada = () => {
-  cerrarNotificacionAprobada();
-  cambiarSeccion("bitacoras");
+const verBitacoraAprobada = async () => {
+  await cerrarNotificacionAprobada();
+  await cambiarSeccion("bitacoras");
 };
 
-const cerrarNotificacionBitacora = () => {
+const cerrarNotificacionBitacora = async () => {
   if (notificacionBitacora?.claveNotificacion) {
     sessionStorage.setItem(
       "bitacora_rechazada_vista",
@@ -614,11 +682,14 @@ const cerrarNotificacionBitacora = () => {
   }
 
   setNotificacionBitacora(null);
+
+  await marcarSeccionComoLeida("bitacoras");
+  await cargarNotificaciones();
 };
 
-const verBitacoraRechazada = () => {
-  cerrarNotificacionBitacora();
-  cambiarSeccion("bitacoras");
+const verBitacoraRechazada = async () => {
+  await cerrarNotificacionBitacora();
+  await cambiarSeccion("bitacoras");
 };
 
 
@@ -700,6 +771,10 @@ useEffect(() => {
       cargarAsistenciaHoy();
     }
 
+    if (nuevaSeccion === "horas") {
+      await cargarHorasYAvance();
+    }
+
     if (nuevaSeccion === "bitacoras") {
       await cargarBitacorasPracticante();
     }
@@ -721,6 +796,7 @@ useEffect(() => {
   usuario?.debe_cambiar_password,
   cargarHorario,
   cargarAsistenciaHoy,
+  cargarHorasYAvance,
   cargarBitacorasPracticante,
 ]);
 
@@ -772,6 +848,11 @@ const cambiarSeccion = async (nuevaSeccion) => {
   if (nuevaSeccion === "asistencia") {
     cargarHorario();
     cargarAsistenciaHoy();
+  }
+
+  // Actualizar horas y avance al entrar a Mis horas
+  if (nuevaSeccion === "horas") {
+    await cargarHorasYAvance();
   }
 
   // Actualizar las bitácoras al entrar
@@ -879,6 +960,10 @@ const seleccionarArchivoBitacora = (
 const subirPdfBitacora = async (
   idActividad
 ) => {
+  if (guardandoBitacora === idActividad) {
+    return;
+  }
+
   if (!archivoBitacora) {
     setMensaje(
       "Selecciona un archivo PDF antes de subir la bitácora."
@@ -887,6 +972,7 @@ const subirPdfBitacora = async (
   }
 
   try {
+    setGuardandoBitacora(idActividad);
     setMensaje("");
 
     const formData = new FormData();
@@ -919,7 +1005,10 @@ const subirPdfBitacora = async (
     setSubiendoBitacora(null);
     setArchivoBitacora(null);
 
-    await cargarBitacorasPracticante();
+    await Promise.all([
+      cargarBitacorasPracticante(),
+      cargarNotificaciones(),
+    ]);
   } catch (error) {
     console.error(
       "Error subiendo bitácora:",
@@ -930,12 +1019,18 @@ const subirPdfBitacora = async (
       error.response?.data?.mensaje ||
         "No se pudo subir la bitácora."
     );
+  } finally {
+    setGuardandoBitacora(null);
   }
 };
 
 const cancelarEntregaBitacora = async (
   idBitacora
 ) => {
+  if (cancelandoBitacora === idBitacora) {
+    return;
+  }
+
   const confirmar = window.confirm(
     "¿Deseas cancelar esta entrega? El archivo dejará de estar enviado y podrás subir uno nuevo."
   );
@@ -945,6 +1040,7 @@ const cancelarEntregaBitacora = async (
   }
 
   try {
+    setCancelandoBitacora(idBitacora);
     setMensaje("");
 
     const response = await axios.delete(
@@ -978,6 +1074,8 @@ const cancelarEntregaBitacora = async (
       error.response?.data?.mensaje ||
         "No se pudo cancelar la entrega."
     );
+  } finally {
+    setCancelandoBitacora(null);
   }
 };
 
@@ -1149,27 +1247,53 @@ const formatearFechaHoraBitacora = (fecha) => {
     }
 
     const actualizarSeccionVisible = async () => {
-      await cargarNotificaciones();
-
-      if (seccion === "asistencia") {
-        await Promise.all([
-          cargarHorario(),
-          cargarAsistenciaHoy(),
-        ]);
+      if (actualizacionAutomaticaEnCurso.current) {
+        return;
       }
 
-      if (seccion === "bitacoras") {
-        await cargarBitacorasPracticante();
-      }
+      actualizacionAutomaticaEnCurso.current = true;
 
-      if (seccion === "dashboard") {
-        await cargarAsistenciaHoy();
+      try {
+        await cargarNotificaciones();
+
+        if (seccion === "asistencia") {
+          await Promise.all([
+            cargarHorario(),
+            cargarAsistenciaHoy(),
+          ]);
+        }
+
+        if (seccion === "bitacoras") {
+          await cargarBitacorasPracticante();
+        }
+
+        if (seccion === "horas") {
+          await cargarHorasYAvance();
+        }
+
+        if (seccion === "dashboard") {
+          await Promise.all([
+            cargarAsistenciaHoy(),
+            cargarHorasYAvance(),
+          ]);
+        }
+      } catch (error) {
+        console.error(
+          "Error en la actualización automática:",
+          error
+        );
+      } finally {
+        actualizacionAutomaticaEnCurso.current = false;
       }
     };
 
     const intervalo = window.setInterval(() => {
-      // No hacemos peticiones mientras la pestaña no está visible.
-      if (document.visibilityState === "visible") {
+      // No hacemos peticiones mientras la pestaña no está visible
+      // ni iniciamos una actualización si la anterior sigue activa.
+      if (
+        document.visibilityState === "visible" &&
+        !actualizacionAutomaticaEnCurso.current
+      ) {
         actualizarSeccionVisible();
       }
     }, 15000);
@@ -1184,6 +1308,7 @@ const formatearFechaHoraBitacora = (fecha) => {
     cargarNotificaciones,
     cargarHorario,
     cargarAsistenciaHoy,
+    cargarHorasYAvance,
     cargarBitacorasPracticante,
   ]);
 
@@ -1283,6 +1408,68 @@ const formatearFechaHoraBitacora = (fecha) => {
         ) / registrosHoras.length
       : 0;
   
+  const calcularHorasDelDia = () => {
+    if (!asistenciaHoy?.hora_entrada_real) {
+      return "0.00";
+    }
+
+    const convertirSegundos = (hora) => {
+      const partes = String(hora || "")
+        .split(":")
+        .map(Number);
+
+      if (
+        partes.length < 2 ||
+        partes.some((valor) => Number.isNaN(valor))
+      ) {
+        return null;
+      }
+
+      const [horas = 0, minutos = 0, segundos = 0] =
+        partes;
+
+      return (
+        horas * 3600 +
+        minutos * 60 +
+        segundos
+      );
+    };
+
+    const segundosEntrada =
+      convertirSegundos(
+        asistenciaHoy.hora_entrada_real
+      );
+
+    let segundosSalida = null;
+
+    if (asistenciaHoy.hora_salida_real) {
+      segundosSalida =
+        convertirSegundos(
+          asistenciaHoy.hora_salida_real
+        );
+    } else {
+      const ahora = new Date();
+
+      segundosSalida =
+        ahora.getHours() * 3600 +
+        ahora.getMinutes() * 60 +
+        ahora.getSeconds();
+    }
+
+    if (
+      segundosEntrada === null ||
+      segundosSalida === null ||
+      segundosSalida <= segundosEntrada
+    ) {
+      return "0.00";
+    }
+
+    return (
+      (segundosSalida - segundosEntrada) /
+      3600
+    ).toFixed(2);
+  };
+
   const obtenerEstadoAsistencia = () => {
     if (!horario) {
       return {
@@ -1391,7 +1578,9 @@ const formatearFechaHoraBitacora = (fecha) => {
                 ? "Actividad diaria"
                 : seccion === "bitacoras"
                 ? "Bitácoras"
-                : "Evidencias"}
+                : seccion === "evidencias"
+                ? "Evidencias"
+                : "Sección"}
             </h2>
           </div>
 
@@ -1598,7 +1787,7 @@ const formatearFechaHoraBitacora = (fecha) => {
                 <p className="section-label">BIENVENIDO</p>
 
                 <h1>
-                  Hola, {perfil?.nombre || usuario?.nombre || "Samuel"}{" "}
+                  Hola, {perfil?.nombre || usuario?.nombre || "Practicante"}{" "}
                   <Hand
                     size={34}
                     strokeWidth={2}
@@ -1668,7 +1857,11 @@ const formatearFechaHoraBitacora = (fecha) => {
                     <h3>Control de asistencia</h3>
                   </div>
 
-                  <span className="status-dot">● Disponible</span>
+                  <span
+                    className={`status-dot ${estadoAsistencia.clase}`}
+                  >
+                    ● {estadoAsistencia.texto}
+                  </span>
                 </div>
 
                 <p className="panel-description">
@@ -1680,9 +1873,11 @@ const formatearFechaHoraBitacora = (fecha) => {
                   <button
                     className="attendance-button entry"
                     onClick={registrarEntrada}
-                    disabled={procesandoAsistencia ||
-                              Boolean(asistenciaHoy?.hora_entrada_real)
-                             }
+                    disabled={
+                      procesandoAsistencia ||
+                      cargandoAsistenciaHoy ||
+                      Boolean(asistenciaHoy?.hora_entrada_real)
+                    }
                   >
                     <span>→</span>
                     Registrar entrada
@@ -1691,10 +1886,12 @@ const formatearFechaHoraBitacora = (fecha) => {
                   <button
                     className="attendance-button exit"
                     onClick={registrarSalida}
-                    disabled={procesandoAsistencia ||
-                              !asistenciaHoy?.hora_entrada_real ||
-                              Boolean(asistenciaHoy?.hora_salida_real)
-                             }
+                    disabled={
+                      procesandoAsistencia ||
+                      cargandoAsistenciaHoy ||
+                      !asistenciaHoy?.hora_entrada_real ||
+                      Boolean(asistenciaHoy?.hora_salida_real)
+                    }
                   >
                     <span>←</span>
                     Registrar salida
@@ -2003,9 +2200,9 @@ const formatearFechaHoraBitacora = (fecha) => {
                 <div>
                   <p>Horas del día</p>
 
-                  <strong>0.00 h</strong>
+                  <strong>{calcularHorasDelDia()} h</strong>
 
-                  <span>Máximo 3 horas</span>
+                  <span>Tiempo real registrado</span>
                 </div>
               </div>
 
@@ -2052,7 +2249,11 @@ const formatearFechaHoraBitacora = (fecha) => {
                 <button
                   className="attendance-button entry"
                   onClick={registrarEntrada}
-                  disabled={procesandoAsistencia}
+                  disabled={
+                    procesandoAsistencia ||
+                    cargandoAsistenciaHoy ||
+                    Boolean(asistenciaHoy?.hora_entrada_real)
+                  }
                 >
                   <span>→</span>
 
@@ -2068,7 +2269,12 @@ const formatearFechaHoraBitacora = (fecha) => {
                 <button
                   className="attendance-button exit"
                   onClick={registrarSalida}
-                  disabled={procesandoAsistencia}
+                  disabled={
+                    procesandoAsistencia ||
+                    cargandoAsistenciaHoy ||
+                    !asistenciaHoy?.hora_entrada_real ||
+                    Boolean(asistenciaHoy?.hora_salida_real)
+                  }
                 >
                   <span>←</span>
 
@@ -2466,8 +2672,12 @@ const formatearFechaHoraBitacora = (fecha) => {
                           </div>
                         </div>
 
-                        {actividad.estado_entrega ===
-                          "Rechazada" && (
+                        {String(
+                          actividad.estado_entrega || ""
+                        )
+                          .trim()
+                          .toLowerCase() ===
+                          "rechazada" && (
                           <div
                             className="message"
                             style={{
@@ -2534,12 +2744,15 @@ const formatearFechaHoraBitacora = (fecha) => {
                                 )
                               }
                               disabled={
+                                guardandoBitacora === actividad.id_actividad ||
                                 subiendoBitacora !==
                                   actividad.id_actividad ||
                                 !archivoBitacora
                               }
                             >
-                              Subir PDF
+                              {guardandoBitacora === actividad.id_actividad
+                                ? "Subiendo..."
+                                : "Subir PDF"}
                             </button>
                           </div>
                         )}
@@ -2580,13 +2793,22 @@ const formatearFechaHoraBitacora = (fecha) => {
                                       actividad.id_bitacora
                                     )
                                   }
+                                  disabled={
+                                    cancelandoBitacora === actividad.id_bitacora
+                                  }
                                 >
-                                  Cancelar entrega
+                                  {cancelandoBitacora === actividad.id_bitacora
+                                    ? "Cancelando..."
+                                    : "Cancelar entrega"}
                                 </button>
                               )}
 
-                              {actividad.estado_entrega ===
-                                "Rechazada" && (
+                              {String(
+                                actividad.estado_entrega || ""
+                              )
+                                .trim()
+                                .toLowerCase() ===
+                                "rechazada" && (
                                 <>
                                   <input
                                     type="file"
@@ -2622,12 +2844,15 @@ const formatearFechaHoraBitacora = (fecha) => {
                                       )
                                     }
                                     disabled={
+                                      guardandoBitacora === actividad.id_actividad ||
                                       subiendoBitacora !==
                                         actividad.id_actividad ||
                                       !archivoBitacora
                                     }
                                   >
-                                    Volver a enviar
+                                    {guardandoBitacora === actividad.id_actividad
+                                      ? "Enviando..."
+                                      : "Volver a enviar"}
                                   </button>
                                 </>
                               )}
@@ -2816,8 +3041,13 @@ const formatearFechaHoraBitacora = (fecha) => {
                                     bitacora.id_bitacora
                                   )
                                 }
+                                disabled={
+                                  cancelandoBitacora === bitacora.id_bitacora
+                                }
                               >
-                                Cancelar
+                                {cancelandoBitacora === bitacora.id_bitacora
+                                  ? "Cancelando..."
+                                  : "Cancelar"}
                               </button>
                             )}
                           </td>
