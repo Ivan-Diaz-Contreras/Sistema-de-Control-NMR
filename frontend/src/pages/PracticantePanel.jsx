@@ -8,6 +8,7 @@ import axios from "axios";
 import "../App.css";
 import ActividadDiariaPracticante from "../components/practicante/ActividadDiariaPracticante";
 import PracticanteSidebar from "../components/practicante/PracticanteSidebar";
+import FloatingNotification from "../components/FloatingNotification";
 import {
   User,
   Hand,
@@ -694,6 +695,28 @@ const cerrarNotificacionBitacora = async () => {
 const verBitacoraRechazada = async () => {
   await cerrarNotificacionBitacora();
   await cambiarSeccion("bitacoras");
+};
+
+const ocultarNotificacionAprobadaTemporalmente = () => {
+  if (notificacionAprobada?.id_notificacion) {
+    sessionStorage.setItem(
+      "bitacora_aprobada_vista",
+      String(notificacionAprobada.id_notificacion)
+    );
+  }
+
+  setNotificacionAprobada(null);
+};
+
+const ocultarNotificacionRechazadaTemporalmente = () => {
+  if (notificacionBitacora?.claveNotificacion) {
+    sessionStorage.setItem(
+      "bitacora_rechazada_vista",
+      notificacionBitacora.claveNotificacion
+    );
+  }
+
+  setNotificacionBitacora(null);
 };
 
 
@@ -1866,121 +1889,81 @@ useEffect(() => {
           </div>
         </header>
 
-        {mensaje && <div className="message">{mensaje}</div>}
+        {mensaje && (
+          <FloatingNotification
+            title="Aviso del sistema"
+            message={mensaje}
+            duration={5000}
+            onClose={() => setMensaje("")}
+          />
+        )}
 
         {notificacionAprobada && (
-          <div
-            className="bitacora-alert-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="titulo-bitacora-aprobada"
-          >
-            <div className="bitacora-alert-modal bitacora-alert-modal-success">
-              <div className="bitacora-alert-icon bitacora-alert-icon-success">
-                <CheckCircle2 size={34} />
-              </div>
-
-              <div className="bitacora-alert-content">
-                <p className="section-label">
-                  REVISI&Oacute;N DE BIT&Aacute;CORA
-                </p>
-
-                <h2 id="titulo-bitacora-aprobada">
-                  Bit&aacute;cora aprobada
-                </h2>
-
-                <p>
-                  {notificacionAprobada.mensaje ||
-                    "Tu bit&aacute;cora fue aprobada correctamente."}
-                </p>
-
-                <div className="bitacora-alert-actions">
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={cerrarNotificacionAprobada}
-                  >
-                    Cerrar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={verBitacoraAprobada}
-                  >
-                    Ver bit&aacute;cora
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <FloatingNotification
+            title="Bitácora aprobada"
+            message={
+              notificacionAprobada.mensaje ||
+              "Tu bitácora fue aprobada correctamente."
+            }
+            type="success"
+            duration={5000}
+            onTimeout={
+              ocultarNotificacionAprobadaTemporalmente
+            }
+            onClose={cerrarNotificacionAprobada}
+            actions={[
+              {
+                label: "Ver bitácora",
+                onClick: verBitacoraAprobada,
+              },
+              {
+                label: "Cerrar",
+                onClick: cerrarNotificacionAprobada,
+                secondary: true,
+              },
+            ]}
+          />
         )}
 
         {notificacionBitacora && (
-          <div
-            className="bitacora-alert-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="titulo-bitacora-rechazada"
-          >
-            <div className="bitacora-alert-modal">
-              <div className="bitacora-alert-icon">
-                <AlertTriangle size={34} />
-              </div>
-
-              <div className="bitacora-alert-content">
-                <p className="section-label">
-                  REVISI&Oacute;N DE BIT&Aacute;CORA
-                </p>
-
-                <h2 id="titulo-bitacora-rechazada">
-                  Bit&aacute;cora rechazada
-                </h2>
-
-                <p>
-                  Tu entrega
-                  {notificacionBitacora.numero_semana
-                    ? ` de la semana ${notificacionBitacora.numero_semana}`
-                    : ""}{" "}
-                  necesita correcciones.
-                </p>
-
-                {notificacionBitacora.titulo && (
-                  <p>
-                    <strong>Actividad:</strong>{" "}
-                    {notificacionBitacora.titulo}
-                  </p>
+          <FloatingNotification
+            title="Bitácora rechazada"
+            message={
+              <>
+                Tu entrega
+                {notificacionBitacora.numero_semana
+                  ? ` de la semana ${notificacionBitacora.numero_semana}`
+                  : ""}{" "}
+                necesita correcciones.
+                {notificacionBitacora.observaciones && (
+                  <>
+                    {" "}
+                    Comentario del administrador:{" "}
+                    <strong>
+                      {notificacionBitacora.observaciones}
+                    </strong>
+                  </>
                 )}
-
-                <div className="bitacora-alert-observacion">
-                  <strong>
-                    Comentario del administrador
-                  </strong>
-
-                  <p>
-                    {notificacionBitacora.observaciones ||
-                      "El administrador no agrego comentarios."}
-                  </p>
-                </div>
-
-                <div className="bitacora-alert-actions">
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={cerrarNotificacionBitacora}
-                  >
-                    Cerrar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={verBitacoraRechazada}
-                  >
-                    Ver bit&aacute;cora
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+              </>
+            }
+            type="error"
+            duration={5000}
+            onTimeout={
+              ocultarNotificacionRechazadaTemporalmente
+            }
+            onClose={cerrarNotificacionBitacora}
+            actions={[
+              {
+                label: "Ver bitácora",
+                onClick: verBitacoraRechazada,
+              },
+              {
+                label: "Cerrar",
+                onClick: cerrarNotificacionBitacora,
+                secondary: true,
+              },
+            ]}
+          />
         )}
 
         {seccion === "dashboard" && (

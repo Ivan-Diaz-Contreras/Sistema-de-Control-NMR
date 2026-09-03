@@ -22,6 +22,7 @@ import CarrerasAdmin from "../components/admin/CarrerasAdmin";
 import EstadisticasAdmin from "../components/admin/EstadisticasAdmin";
 import HistorialAdmin from "../components/admin/HistorialAdmin";
 import SeguridadAdmin from "../components/admin/SeguridadAdmin";
+import FloatingNotification from "../components/FloatingNotification";
 
 
 function AdminPanel({ usuario, onLogout }) {
@@ -4026,9 +4027,12 @@ return (
         />
 
         {mensaje && (
-          <div className="message">
-            {mensaje}
-          </div>
+          <FloatingNotification
+            title="Aviso del sistema"
+            message={mensaje}
+            duration={5000}
+            onClose={() => setMensaje("")}
+          />
         )}
 
         {/* ==========================================
