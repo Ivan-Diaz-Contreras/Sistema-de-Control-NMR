@@ -58,6 +58,7 @@ function PracticantePanel({
   });
   const [horario, setHorario] = useState(null);
   const [asistenciaHoy, setAsistenciaHoy] = useState(null);
+  const [historialAsistencias, setHistorialAsistencias] = useState([]);
   const [cargandoAsistenciaHoy, setCargandoAsistenciaHoy] = useState(false);
   const [registrosHoras, setRegistrosHoras] = useState([]);
   const [filtroPeriodoHoras, setFiltroPeriodoHoras] = useState("todos");
@@ -469,6 +470,8 @@ const cargarAsistenciaHoy = useCallback(async () => {
     const asistencias =
       response.data.asistencias || [];
 
+    setHistorialAsistencias(asistencias);
+
     const ahora = new Date();
 
     const fechaHoy = [
@@ -491,6 +494,7 @@ const cargarAsistenciaHoy = useCallback(async () => {
     );
 
     setAsistenciaHoy(null);
+    setHistorialAsistencias([]);
   } finally {
     setCargandoAsistenciaHoy(false);
   }
@@ -1539,6 +1543,95 @@ const formatearFechaHoraBitacora = (fecha) => {
 
       <style>{`
         /*
+         * Historial de asistencias del practicante.
+         * En escritorio se muestra como tabla y en móvil como tarjetas,
+         * sin botones de edición ni desplazamiento horizontal.
+         */
+        .practicante-asistencias-wrapper {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        .practicante-asistencias-table {
+          width: 100%;
+          min-width: 850px;
+          border-collapse: collapse;
+        }
+
+        .practicante-asistencias-table th,
+        .practicante-asistencias-table td {
+          padding: 12px;
+          text-align: left;
+          border-bottom: 1px solid #edf0f5;
+          vertical-align: top;
+        }
+
+        .practicante-asistencias-table th {
+          border-bottom-color: #d8dee9;
+        }
+
+        @media (max-width: 650px) {
+          .practicante-asistencias-wrapper {
+            overflow-x: visible !important;
+          }
+
+          .practicante-asistencias-table {
+            display: block !important;
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .practicante-asistencias-table thead {
+            display: none !important;
+          }
+
+          .practicante-asistencias-table tbody {
+            display: grid !important;
+            gap: 14px;
+          }
+
+          .practicante-asistencias-table tr {
+            display: block !important;
+            width: 100% !important;
+            overflow: hidden;
+            border: 1px solid #e1e6ee;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(16, 28, 54, 0.04);
+          }
+
+          .practicante-asistencias-table td {
+            display: grid !important;
+            grid-template-columns: 125px minmax(0, 1fr);
+            gap: 10px;
+            width: 100% !important;
+            box-sizing: border-box;
+            padding: 10px 12px !important;
+            white-space: normal !important;
+            overflow-wrap: break-word !important;
+          }
+
+          .practicante-asistencias-table td::before {
+            content: attr(data-label);
+            color: #66758c;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+          }
+
+          .practicante-asistencias-table td:last-child {
+            border-bottom: none !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .practicante-asistencias-table td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+          }
+        }
+
+        /*
          * Historial "Mis entregas" de Bitácoras - móvil.
          * En escritorio se conserva la tabla de 850px y su funcionamiento.
          */
@@ -2407,6 +2500,123 @@ const formatearFechaHoraBitacora = (fecha) => {
 
               </div>
 
+            </section>
+
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="section-label">
+                    MIS ASISTENCIAS
+                  </p>
+
+                  <h3>Historial de asistencias</h3>
+                </div>
+              </div>
+
+              <p className="panel-description">
+                Consulta tus registros de entrada y salida.
+              </p>
+
+              {cargandoAsistenciaHoy ? (
+                <p>Cargando asistencias...</p>
+              ) : historialAsistencias.length === 0 ? (
+                <p>
+                  Todavía no tienes asistencias registradas.
+                </p>
+              ) : (
+                <div className="practicante-asistencias-wrapper">
+                  <table className="practicante-asistencias-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Entrada esperada</th>
+                        <th>Salida esperada</th>
+                        <th>Entrada real</th>
+                        <th>Salida real</th>
+                        <th>Estado</th>
+                        <th>Observaciones</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {historialAsistencias.map(
+                        (asistencia, indice) => {
+                          const fecha =
+                            String(
+                              asistencia.fecha || ""
+                            ).slice(0, 10);
+
+                          const [
+                            anio,
+                            mes,
+                            dia,
+                          ] = fecha.split("-");
+
+                          const fechaFormateada =
+                            anio && mes && dia
+                              ? `${dia}/${mes}/${anio}`
+                              : fecha || "—";
+
+                          const mostrarHora = (hora) =>
+                            hora
+                              ? String(hora).slice(0, 5)
+                              : "—";
+
+                          return (
+                            <tr
+                              key={
+                                asistencia.id_asistencia ||
+                                `${fecha}-${indice}`
+                              }
+                            >
+                              <td data-label="Fecha">
+                                <strong>
+                                  {fechaFormateada}
+                                </strong>
+                              </td>
+
+                              <td data-label="Entrada esperada">
+                                {mostrarHora(
+                                  asistencia.hora_entrada
+                                )}
+                              </td>
+
+                              <td data-label="Salida esperada">
+                                {mostrarHora(
+                                  asistencia.hora_salida
+                                )}
+                              </td>
+
+                              <td data-label="Entrada real">
+                                {mostrarHora(
+                                  asistencia.hora_entrada_real
+                                )}
+                              </td>
+
+                              <td data-label="Salida real">
+                                {mostrarHora(
+                                  asistencia.hora_salida_real
+                                )}
+                              </td>
+
+                              <td data-label="Estado">
+                                <strong>
+                                  {asistencia.estado || "—"}
+                                </strong>
+                              </td>
+
+                              <td data-label="Observaciones">
+                                {asistencia.observaciones ||
+                                  "Sin observaciones"}
+                              </td>
+                            </tr>
+                          );
+                        }
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
 
           </div>
