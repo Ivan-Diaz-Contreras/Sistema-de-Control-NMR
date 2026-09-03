@@ -2577,13 +2577,13 @@ const formatearFechaHoraBitacora = (fecha) => {
 
                               <td data-label="Entrada esperada">
                                 {mostrarHora(
-                                  asistencia.hora_entrada
+                                  asistencia.hora_entrada_esperada
                                 )}
                               </td>
 
                               <td data-label="Salida esperada">
                                 {mostrarHora(
-                                  asistencia.hora_salida
+                                  asistencia.hora_salida_esperada
                                 )}
                               </td>
 
