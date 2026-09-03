@@ -16,49 +16,118 @@ const obtenerResumenNotificaciones = (req, res) => {
      *   que siguen en estado "Pendiente" y necesitan revisión.
      *
      * PRACTICANTE
-     * - Todas las secciones, incluida "bitacoras", usan únicamente
-     *   las notificaciones NO LEÍDAS que pertenecen a ese usuario.
-     * - De esta forma un practicante nunca ve pendientes de otros
-     *   practicantes y el badge desaparece al leer la notificación.
-     *
-     * Esto evita que el contador global de bitácoras pendientes
-     * aparezca también en las cuentas de los practicantes.
+     * - Las secciones normales cuentan notificaciones no leídas.
+     * - En "bitacoras", una misma bitácora solo cuenta UNA vez,
+     *   aunque haya cambiado varias veces entre Aprobada/Rechazada.
      */
+
     const sql = `
+
+        /* ==========================================
+           NOTIFICACIONES NORMALES DEL USUARIO
+           EXCEPTO BITÁCORAS
+        ========================================== */
+
         SELECT
             n.seccion,
             COUNT(*) AS cantidad
+
         FROM notificaciones n
+
         WHERE n.id_usuario = ?
           AND n.leida = 0
-          AND (
-                n.seccion <> 'bitacoras'
-                OR NOT EXISTS (
-                    SELECT 1
-                    FROM usuarios u
-                    INNER JOIN roles r
-                        ON u.id_rol = r.id_rol
-                    WHERE u.id_usuario = ?
-                      AND LOWER(TRIM(r.nombre)) = 'administrador'
-                )
-          )
+          AND n.seccion <> 'bitacoras'
+
         GROUP BY n.seccion
 
+
         UNION ALL
+
+
+        /* ==========================================
+           BITÁCORAS DEL PRACTICANTE
+
+           Contamos una sola vez cada bitácora
+           mediante id_referencia.
+        ========================================== */
+
+        SELECT
+            'bitacoras' AS seccion,
+
+            COUNT(
+                DISTINCT
+                CASE
+
+                    /* Notificaciones nuevas */
+                    WHEN n.id_referencia IS NOT NULL
+                    THEN CONCAT(
+                        'BITACORA-',
+                        n.id_referencia
+                    )
+
+                    /*
+                     * Compatibilidad con notificaciones
+                     * antiguas que todavía no tengan
+                     * id_referencia.
+                     */
+                    ELSE CONCAT(
+                        'NOTIFICACION-',
+                        n.id_notificacion
+                    )
+
+                END
+            ) AS cantidad
+
+        FROM notificaciones n
+
+        WHERE n.id_usuario = ?
+          AND n.leida = 0
+          AND n.seccion = 'bitacoras'
+
+          AND NOT EXISTS (
+                SELECT 1
+
+                FROM usuarios u
+
+                INNER JOIN roles r
+                    ON u.id_rol = r.id_rol
+
+                WHERE u.id_usuario = ?
+                  AND LOWER(
+                        TRIM(r.nombre)
+                      ) = 'administrador'
+          )
+
+
+        UNION ALL
+
+
+        /* ==========================================
+           BITÁCORAS PENDIENTES DEL ADMINISTRADOR
+        ========================================== */
 
         SELECT
             'bitacoras' AS seccion,
             COUNT(*) AS cantidad
+
         FROM bitacoras b
+
         WHERE b.estado = 'Pendiente'
+
           AND EXISTS (
                 SELECT 1
+
                 FROM usuarios u
+
                 INNER JOIN roles r
                     ON u.id_rol = r.id_rol
+
                 WHERE u.id_usuario = ?
-                  AND LOWER(TRIM(r.nombre)) = 'administrador'
+                  AND LOWER(
+                        TRIM(r.nombre)
+                      ) = 'administrador'
           )
+
     `;
 
     db.query(
@@ -66,10 +135,13 @@ const obtenerResumenNotificaciones = (req, res) => {
         [
             idUsuario,
             idUsuario,
+            idUsuario,
             idUsuario
         ],
         (error, resultados) => {
+
             if (error) {
+
                 console.error(
                     "Error obteniendo resumen de notificaciones:",
                     error
@@ -85,9 +157,9 @@ const obtenerResumenNotificaciones = (req, res) => {
             let total = 0;
 
             resultados.forEach((fila) => {
-                const cantidad = Number(
-                    fila.cantidad || 0
-                );
+
+                const cantidad =
+                    Number(fila.cantidad || 0);
 
                 if (cantidad <= 0) {
                     return;
@@ -108,12 +180,15 @@ const obtenerResumenNotificaciones = (req, res) => {
     );
 };
 
+
 // ==========================================
 // OBTENER NOTIFICACIONES DEL USUARIO
 // ==========================================
 
 const obtenerNotificaciones = (req, res) => {
-    const idUsuario = req.usuario.id_usuario;
+
+    const idUsuario =
+        req.usuario.id_usuario;
 
     const sql = `
         SELECT
@@ -127,11 +202,15 @@ const obtenerNotificaciones = (req, res) => {
             fecha_lectura,
             referencia_tipo,
             id_referencia
+
         FROM notificaciones
+
         WHERE id_usuario = ?
+
         ORDER BY
             fecha_creacion DESC,
             id_notificacion DESC
+
         LIMIT 100
     `;
 
@@ -139,7 +218,9 @@ const obtenerNotificaciones = (req, res) => {
         sql,
         [idUsuario],
         (error, resultados) => {
+
             if (error) {
+
                 console.error(
                     "Error obteniendo notificaciones:",
                     error
@@ -159,15 +240,26 @@ const obtenerNotificaciones = (req, res) => {
     );
 };
 
+
 // ==========================================
 // MARCAR UNA SECCIÓN COMO LEÍDA
 // ==========================================
 
-const marcarSeccionComoLeida = (req, res) => {
-    const idUsuario = req.usuario.id_usuario;
-    const { seccion } = req.params;
+const marcarSeccionComoLeida = (
+    req,
+    res
+) => {
 
-    if (!seccion || !String(seccion).trim()) {
+    const idUsuario =
+        req.usuario.id_usuario;
+
+    const { seccion } =
+        req.params;
+
+    if (
+        !seccion ||
+        !String(seccion).trim()
+    ) {
         return res.status(400).json({
             mensaje:
                 "La sección es obligatoria"
@@ -179,9 +271,11 @@ const marcarSeccionComoLeida = (req, res) => {
 
     const sql = `
         UPDATE notificaciones
+
         SET
             leida = 1,
             fecha_lectura = NOW()
+
         WHERE id_usuario = ?
           AND seccion = ?
           AND leida = 0
@@ -194,7 +288,9 @@ const marcarSeccionComoLeida = (req, res) => {
             seccionNormalizada
         ],
         (error, resultado) => {
+
             if (error) {
+
                 console.error(
                     "Error marcando notificaciones como leídas:",
                     error
@@ -209,12 +305,14 @@ const marcarSeccionComoLeida = (req, res) => {
             return res.status(200).json({
                 mensaje:
                     "Notificaciones marcadas como leídas",
+
                 actualizadas:
                     resultado.affectedRows
             });
         }
     );
 };
+
 
 module.exports = {
     obtenerResumenNotificaciones,

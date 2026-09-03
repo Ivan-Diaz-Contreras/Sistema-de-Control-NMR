@@ -2643,45 +2643,117 @@ const revisarBitacora = (req, res) => {
                             ` Motivo: ${observaciones.trim()}`;
                     }
 
-                    const sqlNotificacion = `
-                        INSERT INTO notificaciones (
-                            id_usuario,
-                            seccion,
-                            tipo,
-                            titulo,
-                            mensaje
-                        )
-                        VALUES (?, 'bitacoras', ?, ?, ?)
+                    /*
+                     * Una misma bitácora solo debe tener UNA notificación
+                     * pendiente para el practicante.
+                     *
+                     * Aprobada -> Rechazada -> Aprobada
+                     * debe seguir contando como 1 notificación pendiente.
+                     */
+                    const sqlCerrarNotificacionesAnteriores = `
+                        UPDATE notificaciones
+                        SET
+                            leida = 1,
+                            fecha_lectura = NOW()
+                        WHERE id_usuario = ?
+                          AND seccion = 'bitacoras'
+                          AND leida = 0
+                          AND tipo IN (
+                              'BITACORA_APROBADA',
+                              'BITACORA_RECHAZADA'
+                          )
+                          AND (
+                              (
+                                  referencia_tipo = 'bitacora'
+                                  AND id_referencia = ?
+                              )
+                              OR (
+                                  id_referencia IS NULL
+                                  AND mensaje LIKE ?
+                              )
+                          )
                     `;
 
+                    const patronMensajeAnterior =
+                        `Tu bitácora de la semana ${bitacora.numero_semana} fue %`;
+
                     db.query(
-                        sqlNotificacion,
+                        sqlCerrarNotificacionesAnteriores,
                         [
                             bitacora.id_usuario,
-                            tipoNotificacion,
-                            tituloNotificacion,
-                            mensajeNotificacion
+                            id,
+                            patronMensajeAnterior
                         ],
-                        (
-                            errorNotificacion,
-                            resultadoNotificacion
-                        ) => {
-                            if (errorNotificacion) {
+                        (errorCerrarNotificaciones) => {
+                            if (errorCerrarNotificaciones) {
                                 console.error(
-                                    "Error creando notificación para el practicante:",
-                                    errorNotificacion
+                                    "Error cerrando notificaciones anteriores de la bitácora:",
+                                    errorCerrarNotificaciones
                                 );
-                            } else {
-                                console.log(
-                                    `Notificación ${tipoNotificacion} creada para usuario ${bitacora.id_usuario}. Filas:`,
-                                    resultadoNotificacion.affectedRows
-                                );
+
+                                return res.status(500).json({
+                                    mensaje:
+                                        "La bitácora fue revisada, pero ocurrió un error al actualizar sus notificaciones"
+                                });
                             }
 
-                            return res.status(200).json({
-                                mensaje:
-                                    `Bitácora ${estado.toLowerCase()} correctamente`
-                            });
+                            const sqlNotificacion = `
+                                INSERT INTO notificaciones (
+                                    id_usuario,
+                                    seccion,
+                                    tipo,
+                                    titulo,
+                                    mensaje,
+                                    referencia_tipo,
+                                    id_referencia
+                                )
+                                VALUES (
+                                    ?,
+                                    'bitacoras',
+                                    ?,
+                                    ?,
+                                    ?,
+                                    'bitacora',
+                                    ?
+                                )
+                            `;
+
+                            db.query(
+                                sqlNotificacion,
+                                [
+                                    bitacora.id_usuario,
+                                    tipoNotificacion,
+                                    tituloNotificacion,
+                                    mensajeNotificacion,
+                                    id
+                                ],
+                                (
+                                    errorNotificacion,
+                                    resultadoNotificacion
+                                ) => {
+                                    if (errorNotificacion) {
+                                        console.error(
+                                            "Error creando notificación para el practicante:",
+                                            errorNotificacion
+                                        );
+
+                                        return res.status(500).json({
+                                            mensaje:
+                                                "La bitácora fue revisada, pero no se pudo crear la notificación"
+                                        });
+                                    }
+
+                                    console.log(
+                                        `Notificación ${tipoNotificacion} creada para usuario ${bitacora.id_usuario}. Filas:`,
+                                        resultadoNotificacion.affectedRows
+                                    );
+
+                                    return res.status(200).json({
+                                        mensaje:
+                                            `Bitácora ${estado.toLowerCase()} correctamente`
+                                    });
+                                }
+                            );
                         }
                     );
                 }
