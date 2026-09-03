@@ -24,7 +24,7 @@ const validarCorreo = (valor) => {
         correo.length <= 120 &&
         !correo.includes(" ") &&
         !correo.includes("..") &&
-        /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(
+        /^[a-z0-9._%+-]+@(gmail\.com|hotmail\.com|outlook\.com|nmrconsultores\.com|my\.uvm\.edu\.mx)$/i.test(
             correo
         )
     );

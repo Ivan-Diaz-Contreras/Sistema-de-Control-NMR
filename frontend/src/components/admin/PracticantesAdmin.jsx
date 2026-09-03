@@ -102,7 +102,7 @@ function PracticantesAdmin({
       case "correo":
         return validarCorreo(valor)
           ? ""
-          : "Escribe un correo valido, por ejemplo usuario@correo.com.";
+          : "Usa un correo Gmail, Hotmail, Outlook, NMR Consultores o UVM.";
 
       case "password":
         return validarPassword(valor)
