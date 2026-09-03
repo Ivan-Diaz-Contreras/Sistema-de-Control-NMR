@@ -162,7 +162,13 @@ const registrarEntrada = (req, res) => {
                             // DETERMINAR ESTADO DE ENTRADA
                             // ==========================================
 
-                            const estado = "En jornada";
+                            const llegoTarde =
+                                String(horaActual).slice(0, 8) >
+                                String(horario.hora_entrada).slice(0, 8);
+
+                            const estado = llegoTarde
+                                ? "Retardo - En jornada"
+                                : "A tiempo - En jornada";
 
 
                             // ==========================================
@@ -377,12 +383,16 @@ const registrarSalida = (req, res) => {
 
                     const sqlAsistencia = `
                         SELECT
-                            id_asistencia,
-                            hora_entrada_real,
-                            hora_salida_real
-                        FROM asistencias
-                        WHERE id_practicante = ?
-                          AND fecha = ?
+                            a.id_asistencia,
+                            a.hora_entrada_real,
+                            a.hora_salida_real,
+                            h.hora_entrada AS hora_entrada_esperada,
+                            h.hora_salida AS hora_salida_esperada
+                        FROM asistencias a
+                        INNER JOIN horarios h
+                            ON a.id_horario = h.id_horario
+                        WHERE a.id_practicante = ?
+                          AND a.fecha = ?
                     `;
 
 
@@ -543,12 +553,36 @@ const registrarSalida = (req, res) => {
                             // DETERMINAR ESTADO DE LA JORNADA
                             // ==========================================
 
-                            const HORAS_MINIMAS_JORNADA = 3;
+                            const segundosEntradaEsperada =
+                                convertirSegundos(
+                                    asistencia.hora_entrada_esperada
+                                );
+
+                            const segundosSalidaEsperada =
+                                convertirSegundos(
+                                    asistencia.hora_salida_esperada
+                                );
+
+                            const segundosJornadaEsperada =
+                                segundosSalidaEsperada -
+                                segundosEntradaEsperada;
+
+                            const llegoTarde =
+                                segundosEntrada >
+                                segundosEntradaEsperada;
+
+                            const jornadaCompleta =
+                                segundosTrabajados >=
+                                segundosJornadaEsperada;
 
                             const estadoJornada =
-                                horasReales >= HORAS_MINIMAS_JORNADA
-                                    ? "Jornada completada"
-                                    : "Jornada incompleta";
+                                jornadaCompleta
+                                    ? llegoTarde
+                                        ? "Jornada completada - Retardo"
+                                        : "Jornada completada"
+                                    : llegoTarde
+                                        ? "Jornada incompleta - Retardo"
+                                        : "Jornada incompleta";
 
                             // ==========================================
                             // ACTUALIZAR ASISTENCIA

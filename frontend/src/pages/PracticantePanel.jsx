@@ -1497,11 +1497,84 @@ useEffect(() => {
       };
     }
 
+    const estadoGuardado = String(
+      asistenciaHoy?.estado || ""
+    )
+      .trim()
+      .toLowerCase();
+
+    const convertirHoraASegundosEstado = (hora) => {
+      const partes = String(hora || "")
+        .split(":")
+        .map(Number);
+
+      if (
+        partes.length < 2 ||
+        partes.some((valor) => Number.isNaN(valor))
+      ) {
+        return null;
+      }
+
+      const [h = 0, m = 0, s = 0] = partes;
+
+      return h * 3600 + m * 60 + s;
+    };
+
+    const entradaRealSegundos =
+      convertirHoraASegundosEstado(
+        asistenciaHoy?.hora_entrada_real
+      );
+
+    const entradaEsperadaSegundos =
+      convertirHoraASegundosEstado(
+        asistenciaHoy?.hora_entrada_esperada ||
+          horario?.hora_entrada
+      );
+
+    const llegoTardeReal =
+      entradaRealSegundos !== null &&
+      entradaEsperadaSegundos !== null &&
+      entradaRealSegundos >
+        entradaEsperadaSegundos;
+
     // Ya registró entrada y salida
     if (
       asistenciaHoy?.hora_entrada_real &&
       asistenciaHoy?.hora_salida_real
     ) {
+      if (
+        estadoGuardado.includes("incompleta") &&
+        (
+          estadoGuardado.includes("retardo") ||
+          llegoTardeReal
+        )
+      ) {
+        return {
+          texto: "Jornada incompleta - Retardo",
+          clase: "retardo",
+        };
+      }
+
+      if (estadoGuardado.includes("incompleta")) {
+        return {
+          texto: "Jornada incompleta",
+          clase: "retardo",
+        };
+      }
+
+      if (
+        estadoGuardado.includes("completada") &&
+        (
+          estadoGuardado.includes("retardo") ||
+          llegoTardeReal
+        )
+      ) {
+        return {
+          texto: "Jornada completada - Retardo",
+          clase: "completada",
+        };
+      }
+
       return {
         texto: "Jornada completada",
         clase: "completada",
@@ -1513,8 +1586,18 @@ useEffect(() => {
       asistenciaHoy?.hora_entrada_real &&
       !asistenciaHoy?.hora_salida_real
     ) {
+      if (
+        estadoGuardado.includes("retardo") ||
+        llegoTardeReal
+      ) {
+        return {
+          texto: "Retardo - En jornada",
+          clase: "retardo",
+        };
+      }
+
       return {
-        texto: "En jornada",
+        texto: "A tiempo - En jornada",
         clase: "en-jornada",
       };
     }
