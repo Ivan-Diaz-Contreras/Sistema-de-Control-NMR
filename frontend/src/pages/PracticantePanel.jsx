@@ -1240,74 +1240,66 @@ const formatearFechaHoraBitacora = (fecha) => {
 
 
 
-  // ==========================================
-  // ACTUALIZACIÓN AUTOMÁTICA
-  // ==========================================
-  // Mantiene notificaciones y la sección visible actualizadas
-  // sin necesidad de recargar manualmente la página.
-  useEffect(() => {
-    if (!token || usuario?.rol !== "Practicante") {
-      return undefined;
+// ==========================================
+// ACTUALIZACIÓN AUTOMÁTICA
+// ==========================================
+
+// Mantiene actualizadas únicamente las notificaciones
+// sin volver a cargar el contenido visible del panel.
+
+useEffect(() => {
+
+  if (!token || usuario?.rol !== "Practicante") {
+    return undefined;
+  }
+
+  const actualizarNotificaciones = async () => {
+
+    if (actualizacionAutomaticaEnCurso.current) {
+      return;
     }
 
-    const actualizarSeccionVisible = async () => {
-      if (actualizacionAutomaticaEnCurso.current) {
-        return;
-      }
+    actualizacionAutomaticaEnCurso.current = true;
 
-      actualizacionAutomaticaEnCurso.current = true;
+    try {
 
-      try {
-        await cargarNotificaciones();
+      await cargarNotificaciones();
 
-        if (seccion === "asistencia") {
-          await Promise.all([
-            cargarHorario(),
-            cargarAsistenciaHoy(),
-          ]);
-        }
+    } catch (error) {
 
-        if (seccion === "bitacoras") {
-          await cargarBitacorasPracticante();
-        }
+      console.error(
+        "Error actualizando notificaciones:",
+        error
+      );
 
-        if (seccion === "horas") {
-          await cargarHorasYAvance();
-        }
+    } finally {
 
-        if (seccion === "dashboard") {
-          await Promise.all([
-            cargarAsistenciaHoy(),
-            cargarHorasYAvance(),
-          ]);
-        }
-      } catch (error) {
-        console.error(
-          "Error en la actualización automática:",
-          error
-        );
-      } finally {
-        actualizacionAutomaticaEnCurso.current = false;
-      }
-    };
+      actualizacionAutomaticaEnCurso.current = false;
 
-    const intervalo = window.setInterval(() => {
-      // No hacemos peticiones mientras la pestaña no está visible
-      // ni iniciamos una actualización si la anterior sigue activa.
-      if (
-        document.visibilityState === "visible" &&
-        !actualizacionAutomaticaEnCurso.current
-      ) {
-        actualizarSeccionVisible();
-      }
-    }, 15000);
+    }
 
-    return () => {
-      window.clearInterval(intervalo);
-    };
-  }, [
-    token,
-    usuario?.rol,
+  };
+
+  const intervalo = window.setInterval(() => {
+
+    if (
+      document.visibilityState === "visible" &&
+      !actualizacionAutomaticaEnCurso.current
+    ) {
+
+      actualizarNotificaciones();
+
+    }
+
+  }, 15000);
+
+  return () => {
+    window.clearInterval(intervalo);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+}, [token, usuario?.rol,
     seccion,
     cargarNotificaciones,
     cargarHorario,
