@@ -8,3 +8,288 @@ body,
 body {
   min-width: 320px;
 }
+
+/* ==========================================
+   ESTILO GLOBAL DE BOTONES
+========================================== */
+
+button {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+
+  padding: 8px 14px;
+
+  background-color: #172746;
+  color: #ffffff;
+
+  border: 1px solid #172746;
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #223a67;
+  border-color: #223a67;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 3px 8px rgba(23, 39, 70, 0.18);
+}
+
+button:active:not(:disabled) {
+  background-color: #101c36;
+  border-color: #101c36;
+
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+button:disabled {
+  background-color: #e9edf3;
+  color: #94a3b8;
+  border-color: #d5dce5;
+
+  cursor: not-allowed;
+
+  transform: none;
+  box-shadow: none;
+}
+
+
+/* ==========================================
+   ICONOS DENTRO DE BOTONES
+========================================== */
+
+button svg {
+  width: 18px;
+  height: 18px;
+
+  min-width: 18px;
+  min-height: 18px;
+
+  flex-shrink: 0;
+}
+
+
+/* ==========================================
+   BOTONES PEQUEÑOS DE ACCIONES
+   EDITAR / ELIMINAR
+========================================== */
+
+.table-actions,
+.actions-buttons,
+.action-buttons,
+.actions {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  flex-wrap: wrap;
+}
+
+.table-actions button,
+.actions-buttons button,
+.action-buttons button {
+  min-width: 40px;
+  min-height: 40px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 9px;
+}
+
+
+/* ==========================================
+   MENÚ SUPERIOR DE USUARIO
+   ADMINISTRADOR / PRACTICANTE
+========================================== */
+
+.user-info-button {
+  background: transparent;
+  color: #172746;
+
+  border: none;
+
+  padding: 6px 8px;
+
+  border-radius: 10px;
+
+  box-shadow: none;
+
+  transform: none;
+}
+
+.user-info-button:hover:not(:disabled) {
+  background: #eef2f7;
+  color: #172746;
+
+  border-color: transparent;
+
+  box-shadow: none;
+
+  transform: none;
+}
+
+
+/* Nombre del usuario */
+
+.user-info-button .user-info-text strong {
+  color: #172746;
+}
+
+
+/* Rol del usuario */
+
+.user-info-button .user-info-text span {
+  color: #64748b;
+}
+
+
+/* Flecha del menú */
+
+.user-info-button .user-menu-chevron {
+  color: #64748b;
+}
+
+
+/* ==========================================
+   MINI MENÚ DEL USUARIO
+========================================== */
+
+.user-dropdown-item {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  gap: 10px;
+
+  background: transparent;
+  color: #172746;
+
+  border: none;
+
+  border-radius: 8px;
+
+  box-shadow: none;
+
+  transform: none;
+}
+
+.user-dropdown-item:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #172746;
+
+  border-color: transparent;
+
+  box-shadow: none;
+
+  transform: none;
+}
+
+
+/* Cerrar sesión */
+
+.user-dropdown-item.logout {
+  color: #dc2626;
+}
+
+.user-dropdown-item.logout:hover:not(:disabled) {
+  background: #fff1f2;
+  color: #dc2626;
+}
+
+
+/* ==========================================
+   BOTÓN ELEGIR ARCHIVO
+========================================== */
+
+input[type="file"] {
+  font-family: inherit;
+  font-size: 14px;
+
+  color: #334155;
+}
+
+input[type="file"]::file-selector-button {
+  font-family: inherit;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  padding: 8px 14px;
+
+  margin-right: 10px;
+
+  background-color: #172746;
+  color: #ffffff;
+
+  border: 1px solid #172746;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.15s ease;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background-color: #223a67;
+  border-color: #223a67;
+}
+
+
+/* ==========================================
+   BOTONES DE ACCIONES EN TABLAS
+========================================== */
+
+/* Separación horizontal */
+
+td:last-child button + button {
+  margin-left: 8px;
+}
+
+
+/* Separación cuando los botones bajan
+   uno debajo del otro */
+
+td:last-child button {
+  margin-bottom: 6px;
+}
+
+
+/* ==========================================
+   AJUSTES RESPONSIVE PARA ACCIONES
+========================================== */
+
+@media (max-width: 768px) {
+
+  .table-actions,
+  .actions-buttons,
+  .action-buttons,
+  .actions {
+    gap: 6px;
+  }
+
+  td:last-child button {
+    margin-bottom: 6px;
+  }
+
+}
