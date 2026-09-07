@@ -41,7 +41,7 @@ const obtenerFechaHoy = () => {
 
 const FORMULARIO_INICIAL = {
   id_practicante: "",
-  empresa: "NMR CONSULTORES",
+  empresa: "",
   nombre: "",
   carrera: "",
   horario: "",
@@ -367,7 +367,9 @@ function ActividadDiariaAdmin({
       setFormulario((actual) => ({
         ...actual,
         id_practicante: value,
-        empresa: "NMR CONSULTORES",
+        empresa:
+          practicanteSeleccionado?.empresa ||
+          "No registrada",
         nombre: practicanteSeleccionado
           ? [
               practicanteSeleccionado.nombre,
@@ -680,7 +682,7 @@ function ActividadDiariaAdmin({
 
     const filas = actividadesOrdenadas.map(
       (actividad) => [
-        actividad.empresa || "NMR CONSULTORES",
+        actividad.empresa || "No registrada",
         actividad.nombre || "Sin nombre",
         actividad.carrera || "No registrada",
         actividad.horario || "No registrado",
@@ -1109,7 +1111,7 @@ function ActividadDiariaAdmin({
           body: registros.map(
             (actividad) => [
               actividad.empresa ||
-                "NMR CONSULTORES",
+                "No registrada",
               actividad.nombre ||
                 "Sin nombre",
               actividad.carrera ||

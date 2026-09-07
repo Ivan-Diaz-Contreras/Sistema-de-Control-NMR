@@ -231,6 +231,7 @@ const obtenerPracticantes = (req, res) => {
             p.matricula,
             p.telefono,
             p.universidad,
+            p.empresa,
             p.fecha_inicio,
             p.fecha_fin,
             p.horas_requeridas,
@@ -307,6 +308,7 @@ const crearPracticanteAdmin = async (req, res) => {
         id_carrera,
         telefono,
         universidad,
+        empresa,
         fecha_inicio,
         fecha_fin,
         horas_requeridas
@@ -344,6 +346,11 @@ const crearPracticanteAdmin = async (req, res) => {
 
     const universidadLimpia =
         normalizarTexto(universidad);
+
+    const empresaLimpia =
+        normalizarTexto(
+            empresa || "NMR CONSULTORES"
+        );
 
     const passwordTexto =
         String(password ?? "");
@@ -400,6 +407,16 @@ const crearPracticanteAdmin = async (req, res) => {
         return res.status(400).json({
             mensaje:
                 "La universidad debe tener entre 2 y 20 caracteres"
+        });
+    }
+
+    if (
+        empresaLimpia.length < 2 ||
+        empresaLimpia.length > 100
+    ) {
+        return res.status(400).json({
+            mensaje:
+                "La empresa debe tener entre 2 y 100 caracteres"
         });
     }
 
@@ -783,11 +800,12 @@ const crearPracticanteAdmin = async (req, res) => {
                                                                 matricula,
                                                                 telefono,
                                                                 universidad,
+                                                                empresa,
                                                                 fecha_inicio,
                                                                 fecha_fin,
                                                                 horas_requeridas
                                                             )
-                                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                                                         `,
                                                         [
                                                             idUsuario,
@@ -797,6 +815,7 @@ const crearPracticanteAdmin = async (req, res) => {
                                                                 null,
                                                             universidadLimpia ||
                                                                 null,
+                                                            empresaLimpia,
                                                             fecha_inicio,
                                                             fecha_fin ||
                                                                 null,
@@ -957,6 +976,7 @@ const obtenerPracticantePorId = (req, res) => {
             p.matricula,
             p.telefono,
             p.universidad,
+            p.empresa,
             p.fecha_inicio,
             p.fecha_fin,
             p.horas_requeridas,
@@ -982,6 +1002,7 @@ const obtenerPracticantePorId = (req, res) => {
             p.matricula,
             p.telefono,
             p.universidad,
+            p.empresa,
             p.fecha_inicio,
             p.fecha_fin,
             p.horas_requeridas,
@@ -4057,6 +4078,7 @@ const actualizarPracticante = (req, res) => {
         matricula,
         telefono,
         universidad,
+        empresa,
         id_carrera,
         fecha_inicio,
         fecha_fin,
@@ -4071,6 +4093,7 @@ const actualizarPracticante = (req, res) => {
         matricula === undefined &&
         telefono === undefined &&
         universidad === undefined &&
+        empresa === undefined &&
         id_carrera === undefined &&
         fecha_inicio === undefined &&
         fecha_fin === undefined &&
@@ -4151,6 +4174,7 @@ const actualizarPracticante = (req, res) => {
                         matricula = COALESCE(?, matricula),
                         telefono = COALESCE(?, telefono),
                         universidad = COALESCE(?, universidad),
+                        empresa = COALESCE(?, empresa),
                         id_carrera = COALESCE(?, id_carrera),
                         fecha_inicio = COALESCE(?, fecha_inicio),
                         fecha_fin = COALESCE(?, fecha_fin),
@@ -4164,6 +4188,7 @@ const actualizarPracticante = (req, res) => {
                         matricula ?? null,
                         telefono ?? null,
                         universidad ?? null,
+                        empresa ?? null,
                         id_carrera ?? null,
                         fecha_inicio ?? null,
                         fecha_fin ?? null,

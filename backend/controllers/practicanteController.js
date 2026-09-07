@@ -17,6 +17,7 @@ const obtenerPerfil = (req, res) => {
             p.matricula,
             p.telefono,
             p.universidad,
+            p.empresa,
             p.fecha_inicio,
             p.fecha_fin,
             p.horas_requeridas,
@@ -596,6 +597,7 @@ const actualizarPerfil = (req, res) => {
         apellido_materno,
         telefono,
         universidad,
+        empresa,
         matricula,
         id_carrera,
         fecha_inicio,
@@ -609,6 +611,7 @@ const actualizarPerfil = (req, res) => {
         apellido_materno === undefined &&
         telefono === undefined &&
         universidad === undefined &&
+        empresa === undefined &&
         matricula === undefined &&
         id_carrera === undefined &&
         fecha_inicio === undefined &&
@@ -745,6 +748,7 @@ const actualizarPerfil = (req, res) => {
                     SET
                         telefono = COALESCE(?, telefono),
                         universidad = COALESCE(?, universidad),
+                        empresa = COALESCE(?, empresa),
                         matricula = COALESCE(?, matricula),
                         id_carrera = COALESCE(?, id_carrera),
                         fecha_inicio = COALESCE(?, fecha_inicio),
@@ -761,6 +765,10 @@ const actualizarPerfil = (req, res) => {
 
                         universidad !== undefined
                             ? universidad.trim()
+                            : null,
+
+                        empresa !== undefined
+                            ? empresa.trim()
                             : null,
 
                         matricula !== undefined

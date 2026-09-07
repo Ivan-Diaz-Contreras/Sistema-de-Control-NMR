@@ -39,6 +39,7 @@ const obtenerPracticantePorUsuario = (
             p.id_carrera,
             p.matricula,
             p.universidad,
+            p.empresa,
             u.nombre,
             u.apellido_paterno,
             u.apellido_materno,
@@ -694,7 +695,7 @@ const obtenerActividadesAdmin = (req, res) => {
                 u.apellido_materno
             ) AS nombre_completo,
             c.nombre AS carrera,
-            'NMR CONSULTORES' AS empresa,
+            COALESCE(NULLIF(TRIM(p.empresa), ''), 'NMR CONSULTORES') AS empresa,
             COALESCE(
                 (
                     SELECT CONCAT(

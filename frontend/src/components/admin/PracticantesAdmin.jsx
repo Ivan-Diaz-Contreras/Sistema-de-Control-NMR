@@ -125,6 +125,15 @@ function PracticantesAdmin({
           ? ""
           : "Ingresa una universidad valida.";
 
+      case "empresa": {
+        const empresa = normalizarTexto(valor);
+
+        return empresa.length >= 2 &&
+          empresa.length <= 100
+          ? ""
+          : "La empresa debe tener entre 2 y 100 caracteres.";
+      }
+
       case "id_carrera":
         return valor
           ? ""
@@ -169,6 +178,7 @@ function PracticantesAdmin({
       "confirmar_password",
       "telefono",
       "universidad",
+      "empresa",
       "id_carrera",
       "fecha_inicio",
       "fecha_fin",
@@ -638,6 +648,28 @@ function PracticantesAdmin({
                       {erroresNuevoPracticante.universidad && (
                         <small className="field-error">
                           {erroresNuevoPracticante.universidad}
+                        </small>
+                      )}
+                    </label>
+
+                    <label>
+                      Empresa *
+                      <input
+                        name="empresa"
+                        value={nuevoPracticante.empresa}
+                        onChange={manejarCambioNuevo}
+                        onBlur={manejarBlurNuevo}
+                        className={
+                          erroresNuevoPracticante.empresa
+                            ? "input-invalid"
+                            : ""
+                        }
+                        minLength="2"
+                        maxLength="100"
+                      />
+                      {erroresNuevoPracticante.empresa && (
+                        <small className="field-error">
+                          {erroresNuevoPracticante.empresa}
                         </small>
                       )}
                     </label>
@@ -1713,6 +1745,23 @@ function PracticantesAdmin({
                           }
                         />
                       </label>
+                      <label>
+                        Empresa
+                        <input
+                          name="empresa"
+                          value={
+                            editandoPracticante.empresa ||
+                            ""
+                          }
+                          onChange={
+                            cambiarCampoEdicion
+                          }
+                          minLength="2"
+                          maxLength="100"
+                          required
+                        />
+                      </label>
+
 
                       <label>
                         Carrera

@@ -159,6 +159,7 @@ function AdminPanel({ usuario, onLogout }) {
     confirmar_password: "Temporal1234",
     telefono: "",
     universidad: "",
+    empresa: "NMR CONSULTORES",
     id_carrera: "",
     fecha_inicio: "",
     fecha_fin: "",
@@ -636,6 +637,9 @@ function AdminPanel({ usuario, onLogout }) {
           .toLowerCase()
           .includes(texto) ||
         String(practicante.carrera || "")
+          .toLowerCase()
+          .includes(texto) ||
+        String(practicante.empresa || "")
           .toLowerCase()
           .includes(texto)
       );
