@@ -1054,10 +1054,6 @@ const obtenerPracticantePorId = (req, res) => {
                 : 0;
 
 
-                console.log(
-    "EMPRESA OBTENIDA:",
-    practicante.empresa
-);
         return res.status(200).json({
             practicante: {
                 ...practicante,
