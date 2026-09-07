@@ -162,13 +162,10 @@ const registrarEntrada = (req, res) => {
                             // DETERMINAR ESTADO DE ENTRADA
                             // ==========================================
 
-                            const llegoTarde =
-                                String(horaActual).slice(0, 8) >
-                                String(horario.hora_entrada).slice(0, 8);
-
-                            const estado = llegoTarde
-                                ? "Retardo - En jornada"
-                                : "A tiempo - En jornada";
+                            // Mientras exista una entrada y todavía no
+                            // se registre la salida, el estado compatible
+                            // con la base de datos es "En jornada".
+                            const estado = "En jornada";
 
 
                             // ==========================================
@@ -567,22 +564,17 @@ const registrarSalida = (req, res) => {
                                 segundosSalidaEsperada -
                                 segundosEntradaEsperada;
 
-                            const llegoTarde =
-                                segundosEntrada >
-                                segundosEntradaEsperada;
-
                             const jornadaCompleta =
                                 segundosTrabajados >=
                                 segundosJornadaEsperada;
 
+                            // El ENUM de asistencias solo admite
+                            // "Jornada completada" o
+                            // "Jornada incompleta" en este punto.
                             const estadoJornada =
                                 jornadaCompleta
-                                    ? llegoTarde
-                                        ? "Jornada completada - Retardo"
-                                        : "Jornada completada"
-                                    : llegoTarde
-                                        ? "Jornada incompleta - Retardo"
-                                        : "Jornada incompleta";
+                                    ? "Jornada completada"
+                                    : "Jornada incompleta";
 
                             // ==========================================
                             // ACTUALIZAR ASISTENCIA
