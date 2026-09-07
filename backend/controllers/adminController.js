@@ -624,18 +624,14 @@ const crearPracticanteAdmin = async (req, res) => {
                                 ) => {
                                     connection.query(
                                         `
-                                            SELECT
-                                                COALESCE(
-                                                    MAX(
-                                                        CAST(
-                                                            SUBSTRING(matricula, 4)
-                                                            AS UNSIGNED
-                                                        )
-                                                    ),
-                                                    -1
-                                                ) + 1 AS siguiente_numero
+                                            SELECT matricula
                                             FROM practicantes
                                             WHERE matricula REGEXP '^NMR[0-9]{3}$'
+                                            ORDER BY
+                                                CAST(
+                                                    SUBSTRING(matricula, 4)
+                                                    AS UNSIGNED
+                                                ) ASC
                                         `,
                                         (
                                             errorMatricula,
@@ -644,38 +640,51 @@ const crearPracticanteAdmin = async (req, res) => {
                                             if (errorMatricula) {
                                                 return rollback(
                                                     500,
-                                                    "Error al generar la matr?cula",
+                                                    "Error al generar la matrícula",
                                                     errorMatricula
                                                 );
                                             }
 
-                                            const siguienteNumero = Number(
-                                                matriculaResultado[0]
-                                                    .siguiente_numero
-                                            );
-
-                                            if (
-                                                !Number.isInteger(siguienteNumero) ||
-                                                siguienteNumero < 0
-                                            ) {
-                                                return rollback(
-                                                    500,
-                                                    "No fue posible calcular la siguiente matr?cula"
+                                            const numerosOcupados =
+                                                new Set(
+                                                    matriculaResultado
+                                                        .map((registro) =>
+                                                            Number(
+                                                                String(
+                                                                    registro.matricula
+                                                                ).substring(3)
+                                                            )
+                                                        )
+                                                        .filter(
+                                                            (numero) =>
+                                                                Number.isInteger(numero) &&
+                                                                numero >= 1 &&
+                                                                numero <= 999
+                                                        )
                                                 );
+
+                                            let siguienteNumero = 1;
+
+                                            while (
+                                                siguienteNumero <= 999 &&
+                                                numerosOcupados.has(
+                                                    siguienteNumero
+                                                )
+                                            ) {
+                                                siguienteNumero++;
                                             }
 
                                             if (siguienteNumero > 999) {
                                                 return rollback(
                                                     409,
-                                                    "Se alcanz? el l?mite de matr?culas NMR"
+                                                    "Se alcanzó el límite de matrículas NMR"
                                                 );
                                             }
 
                                             const matriculaGenerada =
-                                                `NMR${String(siguienteNumero).padStart(
-                                                    3,
-                                                    "0"
-                                                )}`;
+                                                `NMR${String(
+                                                    siguienteNumero
+                                                ).padStart(3, "0")}`;
 
                                             continuar(matriculaGenerada);
                                         }
