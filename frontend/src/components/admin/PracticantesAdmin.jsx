@@ -86,7 +86,7 @@ function PracticantesAdmin({
       case "nombre":
         return validarNombre(valor)
           ? ""
-          : "Escribe un nombre de 2 a 15 caracteres, usando solo letras.";
+          : "Escribe un nombre de 2 a 50 caracteres, usando solo letras.";
 
       case "apellido_paterno":
         return validarNombre(valor)
@@ -449,7 +449,7 @@ function PracticantesAdmin({
                             : ""
                         }
                         minLength="2"
-                        maxLength="15"
+                        maxLength="50"
                       />
                       {erroresNuevoPracticante.nombre && (
                         <small className="field-error">
@@ -1233,8 +1233,6 @@ function PracticantesAdmin({
                               "Miércoles",
                               "Jueves",
                               "Viernes",
-                              "Sábado",
-                              "Domingo",
                             ].map((dia) => (
                               <option key={dia} value={dia}>
                                 {dia}

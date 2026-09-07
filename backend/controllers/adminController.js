@@ -1,4 +1,8 @@
 const db = require("../config/db");
+console.log(
+    "ADMIN CONTROLLER CARGADO DESDE:",
+    __filename
+);
 const bcrypt = require("bcrypt");
 const registrarActividad = require("../utils/registrarActividad");
 const {
@@ -358,7 +362,7 @@ const crearPracticanteAdmin = async (req, res) => {
     if (!validarNombre(nombreLimpio)) {
         return res.status(400).json({
             mensaje:
-                "El nombre debe tener entre 2 y 15 caracteres y contener solo letras"
+                "El nombre debe tener entre 2 y 50 caracteres y contener solo letras"
         });
     }
 
@@ -1049,6 +1053,11 @@ const obtenerPracticantePorId = (req, res) => {
                   )
                 : 0;
 
+
+                console.log(
+    "EMPRESA OBTENIDA:",
+    practicante.empresa
+);
         return res.status(200).json({
             practicante: {
                 ...practicante,
@@ -2062,9 +2071,7 @@ const crearHorarioPracticante = (req, res) => {
         "Martes",
         "Miércoles",
         "Jueves",
-        "Viernes",
-        "Sábado",
-        "Domingo"
+        "Viernes"
     ];
 
     if (!dia_semana || !hora_entrada || !hora_salida) {
@@ -2182,9 +2189,7 @@ const actualizarHorario = (req, res) => {
         "Martes",
         "Miércoles",
         "Jueves",
-        "Viernes",
-        "Sábado",
-        "Domingo"
+        "Viernes"
     ];
 
     if (

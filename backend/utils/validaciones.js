@@ -8,7 +8,7 @@ const validarNombre = (valor) => {
 
     return (
         texto.length >= 2 &&
-        texto.length <= 15 &&
+        texto.length <= 50 &&
         /^[\p{L}]+(?:[ '\-][\p{L}]+)*$/u.test(
             texto
         )

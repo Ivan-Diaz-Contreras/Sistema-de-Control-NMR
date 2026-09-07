@@ -887,7 +887,7 @@ const guardarNuevoAdministrador = async (e) => {
 
     if (!validarNombre(nombreLimpio)) {
       setMensaje(
-        "El nombre debe contener solo letras y tener entre 2 y 15 caracteres."
+        "El nombre debe contener solo letras y tener entre 2 y 50 caracteres."
       );
       return;
     }
@@ -1050,6 +1050,11 @@ const guardarNuevoAdministrador = async (e) => {
           telefonoLimpio || null,
         universidad:
           universidadLimpia || null,
+        empresa:
+          normalizarTexto(
+            nuevoPracticante.empresa ||
+              "NMR CONSULTORES"
+          ),
         id_carrera: Number(
           nuevoPracticante.id_carrera
         ),
@@ -1216,6 +1221,8 @@ const guardarNuevoAdministrador = async (e) => {
           editandoPracticante.telefono || "",
         universidad:
           editandoPracticante.universidad || "",
+        empresa:
+          editandoPracticante.empresa || "",
         id_carrera: Number(
           editandoPracticante.id_carrera
         ),
