@@ -786,28 +786,59 @@ const obtenerArchivoBitacora = (req, res) => {
                 });
             }
 
-            const nombreSeguro = String(
+            // Nombre original almacenado en la base de datos
+            const nombreOriginal = String(
                 bitacora.nombre_archivo || "bitacora.pdf"
-            ).replace(/["\r\n]/g, "");
+            )
+                .replace(/[\r\n]/g, "")
+                .trim();
 
-            res.setHeader(
-                "Content-Type",
-                "application/pdf"
-            );
+            // Nombre ASCII seguro como respaldo para Content-Disposition
+            let nombreSeguro = nombreOriginal
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^\x20-\x7E]/g, "_")
+                .replace(/["\\]/g, "_");
 
-            res.setHeader(
-                "Content-Disposition",
-                `inline; filename="${nombreSeguro}"`
-            );
+            if (!nombreSeguro) {
+                nombreSeguro = "bitacora.pdf";
+            }
 
-            res.setHeader(
-                "Content-Length",
-                bitacora.archivo_pdf.length
-            );
+            // Nombre UTF-8 correctamente codificado
+            const nombreUTF8 = encodeURIComponent(nombreOriginal);
 
-            return res.status(200).send(
-                bitacora.archivo_pdf
-            );
+            try {
+                res.setHeader(
+                    "Content-Type",
+                    "application/pdf"
+                );
+
+                res.setHeader(
+                    "Content-Disposition",
+                    `inline; filename="${nombreSeguro}"; filename*=UTF-8''${nombreUTF8}`
+                );
+
+                res.setHeader(
+                    "Content-Length",
+                    bitacora.archivo_pdf.length
+                );
+
+                return res.status(200).send(
+                    bitacora.archivo_pdf
+                );
+            } catch (errorHeader) {
+                console.error(
+                    "Error preparando encabezados del PDF:",
+                    errorHeader
+                );
+
+                if (!res.headersSent) {
+                    return res.status(500).json({
+                        mensaje:
+                            "No se pudo abrir el archivo PDF"
+                    });
+                }
+            }
         }
     );
 };
