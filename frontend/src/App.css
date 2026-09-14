@@ -1844,6 +1844,15 @@ button {
     box-shadow 0.2s;
 }
 
+/* Evita el zoom al enfocar el login en la aplicación instalada en iOS. */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    .login-field-modern input {
+      font-size: 16px;
+    }
+  }
+}
+
 .login-field-modern input::placeholder {
   color: #9aa4b4;
 }
