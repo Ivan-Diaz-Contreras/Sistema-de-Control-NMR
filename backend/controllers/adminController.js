@@ -2842,7 +2842,11 @@ const obtenerArchivoBitacoraAdmin = (req, res) => {
 
         const nombreSeguro = String(
             bitacora.nombre_archivo || "bitacora.pdf"
-        ).replace(/["\r\n]/g, "");
+        )
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^\x20-\x7E]/g, "")
+            .replace(/["\\]/g, "_");
 
         res.setHeader(
             "Content-Type",
