@@ -1426,7 +1426,7 @@ useEffect(() => {
           0
         ) / registrosHoras.length
       : 0;
-  
+
   const calcularHorasDelDia = () => {
     if (!asistenciaHoy?.hora_entrada_real) {
       return "0.00";
@@ -1634,7 +1634,7 @@ useEffect(() => {
   };
 
   const estadoAsistencia =
-  obtenerEstadoAsistencia();
+    obtenerEstadoAsistencia();
 
   return (
     <div className="app">
@@ -2757,9 +2757,9 @@ useEffect(() => {
                   </div>
                 </div>
 
-                <div className="progress-track">
+                <div className="progress-track progreso-horas">
                   <div
-                    className="progress-bar"
+                    className="progress-fill"
                     style={{
                       width: `${Math.min(
                         Number(porcentaje),

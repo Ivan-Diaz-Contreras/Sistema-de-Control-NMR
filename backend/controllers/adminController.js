@@ -1,8 +1,4 @@
 const db = require("../config/db");
-console.log(
-    "ADMIN CONTROLLER CARGADO DESDE:",
-    __filename
-);
 const bcrypt = require("bcrypt");
 const registrarActividad = require("../utils/registrarActividad");
 const {
@@ -362,7 +358,7 @@ const crearPracticanteAdmin = async (req, res) => {
     if (!validarNombre(nombreLimpio)) {
         return res.status(400).json({
             mensaje:
-                "El nombre debe tener entre 2 y 50 caracteres y contener solo letras"
+                "El nombre debe tener entre 2 y 15 caracteres y contener solo letras"
         });
     }
 
@@ -1052,7 +1048,6 @@ const obtenerPracticantePorId = (req, res) => {
                       100
                   )
                 : 0;
-
 
         return res.status(200).json({
             practicante: {
@@ -2067,7 +2062,9 @@ const crearHorarioPracticante = (req, res) => {
         "Martes",
         "Miércoles",
         "Jueves",
-        "Viernes"
+        "Viernes",
+        "Sábado",
+        "Domingo"
     ];
 
     if (!dia_semana || !hora_entrada || !hora_salida) {
@@ -2185,7 +2182,9 @@ const actualizarHorario = (req, res) => {
         "Martes",
         "Miércoles",
         "Jueves",
-        "Viernes"
+        "Viernes",
+        "Sábado",
+        "Domingo"
     ];
 
     if (
@@ -2842,11 +2841,7 @@ const obtenerArchivoBitacoraAdmin = (req, res) => {
 
         const nombreSeguro = String(
             bitacora.nombre_archivo || "bitacora.pdf"
-        )
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^\x20-\x7E]/g, "")
-            .replace(/["\\]/g, "_");
+        ).replace(/["\r\n]/g, "");
 
         res.setHeader(
             "Content-Type",
