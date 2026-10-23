@@ -1,3 +1,4 @@
+import { formatoHorasMinutos } from "../../utils/formatoHorasMinutos.js";
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import {
@@ -315,7 +316,7 @@ function DashboardAdmin({
               <div>
                 <p>Horas acumuladas</p>
                 <strong>
-                  {Number(totalHoras).toFixed(2)}
+                  {formatoHorasMinutos(totalHoras)}
                 </strong>
                 <small>
                   horas contabilizadas
@@ -705,7 +706,7 @@ function DashboardAdmin({
                 <div>
                   <p>Horas de hoy</p>
                   <strong>
-                    {Number(horasHoy).toFixed(2)}
+                    {formatoHorasMinutos(horasHoy)}
                   </strong>
                   <small>horas acumuladas</small>
                 </div>
@@ -777,7 +778,7 @@ function DashboardAdmin({
                     Horas contabilizadas hoy
                   </span>
                   <strong>
-                    {Number(horasHoy).toFixed(2)}
+                    {formatoHorasMinutos(horasHoy)}
                   </strong>
                 </div>
 
@@ -856,7 +857,7 @@ function DashboardAdmin({
                         </span>
 
                         <span>
-                          {horas.toFixed(2)} h
+                          {formatoHorasMinutos(horas)}
                         </span>
                       </div>
 
@@ -880,7 +881,7 @@ function DashboardAdmin({
                               horas > 0 ? 8 : 2
                             )}%`,
                           }}
-                          title={`${horas.toFixed(2)} horas`}
+                          title={`${formatoHorasMinutos(horas)}oras`}
                         />
                       </div>
 

@@ -1,3 +1,4 @@
+import { formatoHorasMinutos } from "../../utils/formatoHorasMinutos.js";
 function AsistenciaAdmin({
   abrirEdicionAsistencia,
   abrirFormularioAsistenciaHistorica,

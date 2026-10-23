@@ -1505,7 +1505,7 @@ const crearAsistenciaHistorica = (req, res) => {
 
                                     const horasContabilizadas =
                                         Number(
-                                            horasReales.toFixed(2)
+                                            horasReales.toFixed(6)
                                         );
 
                                     const estado =
@@ -1562,9 +1562,7 @@ const crearAsistenciaHistorica = (req, res) => {
                                                     .insertId;
 
                                             const descripcion =
-                                                `Registro historico. Tiempo real contabilizado: ${horasReales.toFixed(
-                                                    2
-                                                )} h.`;
+                                                `Registro historico. Tiempo real contabilizado: ${horasReales.toFixed(6)} h.`;
 
                                             const sqlHoras = `
                                                 INSERT INTO registros_horas (
@@ -1637,9 +1635,7 @@ const crearAsistenciaHistorica = (req, res) => {
                                                                     estado,
                                                                     horas_reales:
                                                                         Number(
-                                                                            horasReales.toFixed(
-                                                                                2
-                                                                            )
+                                                                            horasReales.toFixed(6)
                                                                         ),
                                                                     horas_contabilizadas:
                                                                         horasContabilizadas
@@ -1916,13 +1912,11 @@ const actualizarAsistencia = (req, res) => {
 
                         const horasRedondeadas =
                             Number(
-                                horasReales.toFixed(2)
+                                horasReales.toFixed(6)
                             );
 
                         const descripcion =
-                            `Horas recalculadas automáticamente por corrección de asistencia. Tiempo real contabilizado: ${horasReales.toFixed(
-                                2
-                            )} h.`;
+                            `Horas recalculadas automáticamente por corrección de asistencia. Tiempo real contabilizado: ${horasReales.toFixed(6)} h.`;
 
                         const sqlHoras = `
                             INSERT INTO registros_horas (
@@ -2004,9 +1998,7 @@ const actualizarAsistencia = (req, res) => {
 
                                         horas_reales:
                                             Number(
-                                                horasReales.toFixed(
-                                                    2
-                                                )
+                                                horasReales.toFixed(6)
                                             ),
 
                                         horas_contabilizadas:
@@ -2839,9 +2831,18 @@ const obtenerArchivoBitacoraAdmin = (req, res) => {
             });
         }
 
+        // Conservar el nombre original en UTF-8, pero evitar caracteres
+        // inválidos en la cabecera HTTP Content-Disposition.
         const nombreSeguro = String(
             bitacora.nombre_archivo || "bitacora.pdf"
-        ).replace(/["\r\n]/g, "");
+        ).replace(/[\x00-\x1F\x7F]/g, "").trim() || "bitacora.pdf";
+
+        // filename usa solo ASCII; filename* admite el nombre UTF-8.
+        const nombreAscii = nombreSeguro
+            .normalize("NFKD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^\x20-\x7E]/g, "_")
+            .replace(/["\\]/g, "_") || "bitacora.pdf";
 
         res.setHeader(
             "Content-Type",
@@ -2850,7 +2851,7 @@ const obtenerArchivoBitacoraAdmin = (req, res) => {
 
         res.setHeader(
             "Content-Disposition",
-            `inline; filename="${nombreSeguro}"`
+            `inline; filename="${nombreAscii}"; filename*=UTF-8''${encodeURIComponent(nombreSeguro)}`
         );
 
         res.setHeader(

@@ -542,7 +542,7 @@ const registrarSalida = (req, res) => {
 
                             const horasRedondeadas =
                                 Number(
-                                    horasReales.toFixed(2)
+                                    horasReales.toFixed(6)
                                 );
 
 
@@ -721,9 +721,7 @@ const registrarSalida = (req, res) => {
 
                                                     horas_reales:
                                                         Number(
-                                                            horasReales.toFixed(
-                                                                2
-                                                            )
+                                                            horasReales.toFixed(6)
                                                         ),
 
                                                     horas_contabilizadas:

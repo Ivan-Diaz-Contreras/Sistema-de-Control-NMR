@@ -1,3 +1,4 @@
+import { formatoHorasMinutos } from "../../utils/formatoHorasMinutos.js";
 import {
   Eye,
   EyeOff,
@@ -1560,7 +1561,7 @@ function PracticantesAdmin({
                                 className="admin-table-cell"
                               >
                                 <strong>
-                                  {Number(registro.horas).toFixed(2)}
+                                  {formatoHorasMinutos(registro.horas)}
                                 </strong>
                               </td>
 

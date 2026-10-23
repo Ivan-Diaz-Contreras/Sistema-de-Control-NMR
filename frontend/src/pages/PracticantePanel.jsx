@@ -1,3 +1,4 @@
+import { formatoHorasMinutos } from "../utils/formatoHorasMinutos.js";
 import {
   useCallback,
   useEffect,
@@ -1429,7 +1430,7 @@ useEffect(() => {
 
   const calcularHorasDelDia = () => {
     if (!asistenciaHoy?.hora_entrada_real) {
-      return "0.00";
+      return "00:00";
     }
 
     const convertirSegundos = (hora) => {
@@ -1480,13 +1481,10 @@ useEffect(() => {
       segundosSalida === null ||
       segundosSalida <= segundosEntrada
     ) {
-      return "0.00";
+      return "00:00";
     }
 
-    return (
-      (segundosSalida - segundosEntrada) /
-      3600
-    ).toFixed(2);
+    return formatoHorasMinutos((segundosSalida - segundosEntrada) / 3600);
   };
 
   const obtenerEstadoAsistencia = () => {
@@ -2085,7 +2083,7 @@ useEffect(() => {
                 <div>
                   <p>Horas acumuladas</p>
                   <strong>
-                    {avance?.horas_acumuladas?.toFixed(2) || "0.00"}
+                    {formatoHorasMinutos(avance?.horas_acumuladas)}
                   </strong>
                   <small>horas</small>
                 </div>
@@ -2111,7 +2109,7 @@ useEffect(() => {
                 <div>
                   <p>Horas restantes</p>
                   <strong>
-                    {avance?.horas_restantes?.toFixed(2) || "0.00"}
+                    {formatoHorasMinutos(avance?.horas_restantes)}
                   </strong>
                   <small>horas</small>
                 </div>
@@ -2235,12 +2233,12 @@ useEffect(() => {
 
               <div className="progress-footer">
                 <span>
-                  {avance?.horas_acumuladas?.toFixed(2) || "0.00"} horas
+                  {formatoHorasMinutos(avance?.horas_acumuladas)} horas
                   acumuladas
                 </span>
 
                 <span>
-                  {avance?.horas_requeridas?.toFixed(2) || "0.00"} horas
+                  {formatoHorasMinutos(avance?.horas_requeridas)} horas
                   requeridas
                 </span>
               </div>
@@ -2469,7 +2467,7 @@ useEffect(() => {
                 <div>
                   <p>Horas del día</p>
 
-                  <strong>{calcularHorasDelDia()} h</strong>
+                  <strong>{calcularHorasDelDia()}</strong>
 
                   <span>Tiempo real registrado</span>
                 </div>
@@ -2703,8 +2701,7 @@ useEffect(() => {
                   <div>
                     <p>Horas acumuladas</p>
                     <strong>
-                      {avance?.horas_acumuladas?.toFixed(2) ||
-                        "0.00"}
+                      {formatoHorasMinutos(avance?.horas_acumuladas)}
                     </strong>
                     <small>horas</small>
                   </div>
@@ -2715,8 +2712,7 @@ useEffect(() => {
                   <div>
                     <p>Horas requeridas</p>
                     <strong>
-                      {avance?.horas_requeridas?.toFixed(2) ||
-                        "0.00"}
+                      {formatoHorasMinutos(avance?.horas_requeridas)}
                     </strong>
                     <small>horas</small>
                   </div>
@@ -2727,8 +2723,7 @@ useEffect(() => {
                   <div>
                     <p>Horas restantes</p>
                     <strong>
-                      {avance?.horas_restantes?.toFixed(2) ||
-                        "0.00"}
+                      {formatoHorasMinutos(avance?.horas_restantes)}
                     </strong>
                     <small>horas</small>
                   </div>
@@ -2771,14 +2766,12 @@ useEffect(() => {
 
                 <div className="progress-footer">
                   <span>
-                    {avance?.horas_acumuladas?.toFixed(2) ||
-                      "0.00"}{" "}
+                    {formatoHorasMinutos(avance?.horas_acumuladas)}{" "}
                     horas acumuladas
                   </span>
 
                   <span>
-                    {avance?.horas_requeridas?.toFixed(2) ||
-                      "0.00"}{" "}
+                    {formatoHorasMinutos(avance?.horas_requeridas)}{" "}
                     horas requeridas
                   </span>
                 </div>
@@ -2793,7 +2786,7 @@ useEffect(() => {
                   <div>
                     <p>Esta semana</p>
                     <strong>
-                      {horasEstaSemana.toFixed(2)}
+                      {formatoHorasMinutos(horasEstaSemana)}
                     </strong>
                     <small>horas</small>
                   </div>
@@ -2804,7 +2797,7 @@ useEffect(() => {
                   <div>
                     <p>Promedio por registro</p>
                     <strong>
-                      {promedioHoras.toFixed(2)}
+                      {formatoHorasMinutos(promedioHoras)}
                     </strong>
                     <small>horas</small>
                   </div>
@@ -2898,9 +2891,7 @@ useEffect(() => {
 
                             <td className="admin-table-cell">
                               <strong>
-                                {Number(
-                                  registro.horas || 0
-                                ).toFixed(2)}
+                                {formatoHorasMinutos(registro.horas)}
                               </strong>
                             </td>
 
